@@ -1,5 +1,7 @@
 # Nashi for Windows (x64 preview)
 
+Source target: **0.7.4**, awaiting native Windows verification. The official download remains **0.7.1** until those checks finish.
+
 Native WPF / .NET 10 port. The Home, file cards, Library, gold actions and light/dark palettes follow the macOS design. Appearance can follow Windows or be selected explicitly. Build with `dotnet publish windows/Nashi.Windows -c Release -o build/windows/Nashi`. The resulting folder is self-contained; users do not install .NET.
 
 Implemented: image PNG/JPG/BMP/GIF/TIFF/PDF conversion, resize, crop (drag / Shift aspect lock / Enter), rotate, flip, annotation with separate marker and rectangle modes, JPEG compression and metadata-free exports; PDF merge, split and page ordering; safe ZIP creation/extraction; local media conversion and 15 FFmpeg tools; public-link video/audio/thumbnail downloads; a sound-enabled tools wheel; borderless progress and three-second success cards; signed anonymous update staging and restart.

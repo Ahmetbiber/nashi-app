@@ -6,10 +6,11 @@ using PdfSharp.Pdf;
 using PdfSharp.Drawing;
 namespace Nashi.Windows;
 
-public sealed record ImageOptions(int? Width=null,int? Height=null,int Rotation=90,Int32Rect? Crop=null,int Quality=85,bool Horizontal=true,BitmapSource? Annotated=null)
+public sealed record ImageOptions(int? Width=null,int? Height=null,int Rotation=0,Int32Rect? Crop=null,int Quality=85,bool Horizontal=true,BitmapSource? Annotated=null)
 {
     public PhotoAdjustments Adjustments{get;init;}=new();public FrameOptions Frame{get;init;}=new();public CollageOptions Collage{get;init;}=new();
     public string RedactionStyle{get;init;}="solid";public Rect[] Redactions{get;init;}=[];
+    public bool FlipHorizontal{get;init;}public bool FlipVertical{get;init;}
     public string? EncoderPath{get;init;}
 }
 public static partial class ImageEngine
@@ -67,8 +68,7 @@ public static partial class ImageEngine
                 case "flip":image=new TransformedBitmap(image,new ScaleTransform(options.Horizontal?-1:1,options.Horizontal?1:-1));break;
                 case "editImage":
                     image=FromPng(PhotoCodec.Adjust(PngBytes(image),options.Adjustments));
-                    if(options.Width is {} ew&&options.Height is {} eh&&(ew!=image.PixelWidth||eh!=image.PixelHeight)){if(ew<1||eh<1||ew>30000||eh>30000||(long)ew*eh>100_000_000)throw new ArgumentException("Choose valid image dimensions.");image=new TransformedBitmap(image,new ScaleTransform((double)ew/image.PixelWidth,(double)eh/image.PixelHeight));}
-                    if(options.Rotation%360!=0)image=new TransformedBitmap(image,new RotateTransform(options.Rotation));break;
+                    image=TransformPhoto(image,options);break;
                 case "frameImage":image=Frame(image,options.Frame);ext="png";break;
                 case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);ext="png";break;
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;
@@ -79,6 +79,12 @@ public static partial class ImageEngine
             Save(image,output,ext,options.Quality,options.EncoderPath,token);outputs.Add(output);progress?.Report(new(++completed/(double)inputs.Count*.98,"Saving images…"));
         }
         return tx.Publish(outputs,token);
+    }
+    internal static BitmapSource TransformPhoto(BitmapSource image,ImageOptions options)
+    {
+        if(options.Width is {} ew&&options.Height is {} eh&&(ew!=image.PixelWidth||eh!=image.PixelHeight)){if(ew<1||eh<1||ew>30000||eh>30000||(long)ew*eh>100_000_000)throw new ArgumentException("Choose valid image dimensions.");image=new TransformedBitmap(image,new ScaleTransform((double)ew/image.PixelWidth,(double)eh/image.PixelHeight));}
+        if(options.FlipHorizontal||options.FlipVertical)image=new TransformedBitmap(image,new ScaleTransform(options.FlipHorizontal?-1:1,options.FlipVertical?-1:1));
+        if(options.Rotation%360!=0)image=new TransformedBitmap(image,new RotateTransform(options.Rotation));image.Freeze();return image;
     }
     public static void Save(BitmapSource image,string output,string format,int quality=85,string? encoderPath=null,CancellationToken token=default)
     {

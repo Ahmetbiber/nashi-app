@@ -41,7 +41,18 @@ public static partial class ImageEngine
         return Render(width,height,g=>
         {
             g.DrawRectangle(ColorBrush(o.Color),null,new Rect(0,0,width,height));var cw=(width-2d*o.Padding-(columns-1)*o.Spacing)/columns;var ch=(height-2d*o.Padding-(rows-1)*o.Spacing)/rows;if(cw<=0||ch<=0)throw new ArgumentException("Reduce padding or spacing to fit the images.");
-            for(var n=0;n<order.Length;n++){token.ThrowIfCancellationRequested();Fitted(g,Load(inputs[order[n]]),new Rect(o.Padding+n%columns*(cw+o.Spacing),o.Padding+n/columns*(ch+o.Spacing),cw,ch),o.Fill,o.CornerRadius);}
+            for(var n=0;n<order.Length;n++)
+            {
+                token.ThrowIfCancellationRequested();Rect cell;
+                if(o.Layout=="featured")
+                {
+                    var availableWidth=width-2d*o.Padding;var availableHeight=height-2d*o.Padding;var largeWidth=(availableWidth-o.Spacing)*.62;var smallHeight=(availableHeight-(order.Length-2)*o.Spacing)/(order.Length-1);
+                    if(largeWidth<=0||smallHeight<=0)throw new ArgumentException("Reduce spacing to fit the featured layout.");
+                    cell=n==0?new(o.Padding,o.Padding,largeWidth,availableHeight):new(o.Padding+largeWidth+o.Spacing,o.Padding+(n-1)*(smallHeight+o.Spacing),availableWidth-largeWidth-o.Spacing,smallHeight);
+                }
+                else cell=new(o.Padding+n%columns*(cw+o.Spacing),o.Padding+n/columns*(ch+o.Spacing),cw,ch);
+                Fitted(g,Load(inputs[order[n]]),cell,o.Fill,o.CornerRadius);
+            }
         });
     }
     internal static BitmapSource Redact(BitmapSource image,Rect[] regions,string style)

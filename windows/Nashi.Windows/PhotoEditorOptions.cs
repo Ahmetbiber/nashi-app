@@ -13,13 +13,14 @@ public sealed partial class ToolEditor
     private readonly ComboBox backdrop=new(){ItemsSource=new[]{"solid","gradient","image"},SelectedIndex=0},collageLayout=new(){ItemsSource=new[]{"grid","row","column","featured"},SelectedIndex=0},redactionStyle=new(){ItemsSource=new[]{"solid","blur","pixelate"},SelectedIndex=0};
     private string? backgroundImage,annotationImage;private string[] collageInputs=[];private readonly ListBox imageOrder=new(){MaxHeight=140};
     private UIElement? annotationShape;private int strokeKind;private Point endPoint;private int markNumber=1;
-    private System.Windows.Threading.DispatcherTimer? photoPreview;
+    private System.Windows.Threading.DispatcherTimer? photoPreview;private bool showingOriginal;private long photoGeneration;
+    private readonly CheckBox fitCollage=new(){Content="Fill cells (crop to fit)",IsChecked=true},flipHorizontal=new(){Content="Flip horizontally"},flipVertical=new(){Content="Flip vertically"};
     private void BuildPhotoOptions(IReadOnlyList<string> inputs)
     {
         collageInputs=inputs.ToArray();
         if(tool=="editImage")
         {
-            Field("Width",bitmap?.PixelWidth??1280);Field("Height",bitmap?.PixelHeight??720);Field("Degrees",0);
+            Field("Width",bitmap?.PixelWidth??1280);Field("Height",bitmap?.PixelHeight??720);Field("Degrees",0);options.Children.Add(flipHorizontal);options.Children.Add(flipVertical);flipHorizontal.Click+=(_,_)=>QueuePhotoPreview();flipVertical.Click+=(_,_)=>QueuePhotoPreview();
             foreach(var property in typeof(PhotoAdjustments).GetProperties())Field(property.Name,(double)property.GetValue(new PhotoAdjustments())!);
             options.Children.Insert(1,new TextBlock{Text="Light, color, detail and effects. Zero leaves an effect unchanged; Contrast, Gamma and Saturation start at 1.",TextWrapping=TextWrapping.Wrap,Margin=new(4,4,4,16)});
         }
@@ -32,7 +33,7 @@ public sealed partial class ToolEditor
         if(tool=="createCollage")
         {
             options.Children.Add(new TextBlock{Text="Layout"});options.Children.Add(collageLayout);Field("Columns",2);Field("Canvas width",2048);Field("Canvas height",2048);Field("Spacing",12);Field("Padding",16);Field("Corner radius",0);TextField("Background color","#FFFFFF");
-            foreach(var path in inputs)imageOrder.Items.Add(new ListBoxItem{Content=System.IO.Path.GetFileName(path),Tag=path});options.Children.Add(imageOrder);
+            for(var n=0;n<inputs.Count;n++)imageOrder.Items.Add(new ListBoxItem{Content=System.IO.Path.GetFileName(inputs[n]),Tag=n});options.Children.Add(imageOrder);options.Children.Add(fitCollage);fitCollage.Click+=(_,_)=>QueuePhotoPreview();
             var buttons=new WrapPanel();buttons.Children.Add(MainWindow.Button("Move up",()=>MoveImage(-1)));buttons.Children.Add(MainWindow.Button("Move down",()=>MoveImage(1)));options.Children.Add(buttons);
         }
         if(tool=="redactImage")
@@ -45,31 +46,32 @@ public sealed partial class ToolEditor
         {
             photoPreview=new(){Interval=TimeSpan.FromMilliseconds(300)};photoPreview.Tick+=async(_,_)=>{photoPreview.Stop();await PreviewPhoto();};
             foreach(var box in fields.Values)box.TextChanged+=(_,_)=>QueuePhotoPreview();backdrop.SelectionChanged+=(_,_)=>QueuePhotoPreview();collageLayout.SelectionChanged+=(_,_)=>QueuePhotoPreview();Closed+=(_,_)=>photoPreview.Stop();
-            var original=new CheckBox{Content="Show original",Margin=new(4,14,4,4)};original.Checked+=(_,_)=>{photoPreview.Stop();if(drawing.Children[0] is Image image)image.Source=bitmap;};original.Unchecked+=(_,_)=>QueuePhotoPreview();options.Children.Add(original);Loaded+=(_,_)=>QueuePhotoPreview();
+            var original=new CheckBox{Content="Show original",Margin=new(4,14,4,4)};original.Checked+=(_,_)=>{showingOriginal=true;photoPreview.Stop();photoGeneration++;SetPhotoPreview(bitmap!);};original.Unchecked+=(_,_)=>{showingOriginal=false;QueuePhotoPreview();};options.Children.Add(original);Loaded+=(_,_)=>QueuePhotoPreview();
         }
         if(tool=="annotate")options.Children.Add(MainWindow.Button("Choose annotation image…",()=>{var picker=new OpenFileDialog{Filter="Images|*.png;*.jpg;*.webp;*.heic;*.avif;*.bmp"};if(picker.ShowDialog(this)==true){annotationImage=picker.FileName;drawingTool.SelectedIndex=9;}}));
     }
     private void MoveImage(int delta){var index=imageOrder.SelectedIndex;var next=index+delta;if(index<0||next<0||next>=imageOrder.Items.Count)return;var item=imageOrder.Items[index];imageOrder.Items.RemoveAt(index);imageOrder.Items.Insert(next,item);imageOrder.SelectedIndex=next;QueuePhotoPreview();}
-    private void QueuePhotoPreview(){if(photoPreview is null)return;photoPreview.Stop();photoPreview.Start();}
+    private void QueuePhotoPreview(){if(photoPreview is null||showingOriginal)return;photoPreview.Stop();photoPreview.Start();}
     private ImageOptions PhotoSettings(ImageOptions original)
     {
         var changes=new Dictionary<string,double>();foreach(var property in typeof(PhotoAdjustments).GetProperties())changes[property.Name]=Value(property.Name,(double)property.GetValue(new PhotoAdjustments())!);
         var adjustments=System.Text.Json.JsonSerializer.Deserialize<PhotoAdjustments>(System.Text.Json.JsonSerializer.Serialize(changes))!;
-        return original with{Adjustments=adjustments,Frame=new((int)Value("Padding",80),Value("Corner radius",24),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",backdrop.SelectedItem as string??"solid",fields.GetValueOrDefault("Gradient end")?.Text??"#FFD85C",backgroundImage,Value("Background blur"),Value("Shadow radius",24),Value("Shadow opacity",.25),fields.ContainsKey("Canvas width")?(int)Value("Canvas width"):null,fields.ContainsKey("Canvas height")?(int)Value("Canvas height"):null,Value("Image scale",1),Value("Position X",.5),Value("Position Y",.5)),Collage=new(collageLayout.SelectedItem as string??"grid",(int)Value("Columns",2),(int)Value("Canvas width",2048),(int)Value("Canvas height",2048),(int)Value("Spacing",12),(int)Value("Padding",16),Value("Corner radius"),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",true,imageOrder.Items.Count>0?imageOrder.Items.Cast<ListBoxItem>().Select(i=>Array.IndexOf(collageInputs,(string)i.Tag)).ToArray():null),Redactions=photoRegions.ToArray(),RedactionStyle=redactionStyle.SelectedItem as string??"solid"};
+        return original with{FlipHorizontal=flipHorizontal.IsChecked==true,FlipVertical=flipVertical.IsChecked==true,Adjustments=adjustments,Frame=new((int)Value("Padding",80),Value("Corner radius",24),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",backdrop.SelectedItem as string??"solid",fields.GetValueOrDefault("Gradient end")?.Text??"#FFD85C",backgroundImage,Value("Background blur"),Value("Shadow radius",24),Value("Shadow opacity",.25),fields.ContainsKey("Canvas width")?(int)Value("Canvas width"):null,fields.ContainsKey("Canvas height")?(int)Value("Canvas height"):null,Value("Image scale",1),Value("Position X",.5),Value("Position Y",.5)),Collage=new(collageLayout.SelectedItem as string??"grid",(int)Value("Columns",2),(int)Value("Canvas width",2048),(int)Value("Canvas height",2048),(int)Value("Spacing",12),(int)Value("Padding",16),Value("Corner radius"),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",fitCollage.IsChecked==true,imageOrder.Items.Count>0?imageOrder.Items.Cast<ListBoxItem>().Select(i=>(int)i.Tag).ToArray():null),Redactions=photoRegions.ToArray(),RedactionStyle=redactionStyle.SelectedItem as string??"solid"};
     }
     private async Task PreviewPhoto()
     {
-        if(bitmap is null||!IsVisible)return;
+        if(bitmap is null||!IsVisible||showingOriginal)return;var generation=++photoGeneration;
         try
         {
-            var settings=PhotoSettings(new());BitmapSource result;
-            if(tool=="editImage"){var png=ImageEngine.PngBytes(bitmap);result=ImageEngine.FromPng(await Task.Run(()=>PhotoCodec.Adjust(png,settings.Adjustments)));}
+            var settings=PhotoSettings(new((int)Value("Width",bitmap.PixelWidth),(int)Value("Height",bitmap.PixelHeight),(int)Value("Degrees",0)));BitmapSource result;
+            if(tool=="editImage"){var png=ImageEngine.PngBytes(bitmap);result=ImageEngine.FromPng(await Task.Run(()=>PhotoCodec.Adjust(png,settings.Adjustments)));result=ImageEngine.TransformPhoto(result,settings);}
             else if(tool=="frameImage")result=ImageEngine.Frame(bitmap,settings.Frame);
             else result=ImageEngine.Collage(collageInputs,settings.Collage,CancellationToken.None);
-            if(!IsVisible)return;drawing.Width=result.PixelWidth;drawing.Height=result.PixelHeight;if(drawing.Children[0] is Image image){image.Source=result;image.Width=result.PixelWidth;image.Height=result.PixelHeight;}
+            if(!IsVisible||showingOriginal||generation!=photoGeneration)return;SetPhotoPreview(result);
         }
-        catch(Exception error)when(error is ArgumentException or FormatException or InvalidDataException){ToolTip=error.Message;}
+        catch(Exception error)when(error is ArgumentException or FormatException or InvalidDataException or ImageMagick.MagickException or IOException or NotSupportedException){ToolTip=error.Message;}
     }
+    private void SetPhotoPreview(BitmapSource result){drawing.Width=result.PixelWidth;drawing.Height=result.PixelHeight;if(drawing.Children[0] is Image image){image.Source=result;image.Width=result.PixelWidth;image.Height=result.PixelHeight;}}
     private async Task DetectPhoto(bool text,bool faces)
     {
         if(bitmap is null)return;try{var regions=await NativePdf.DetectAsync(bitmap,text,faces);foreach(var r in regions){photoRegions.Add(r);var shape=new Rectangle{Width=r.Width,Height=r.Height,Fill=Brushes.Black,Stroke=Brushes.Gold,StrokeThickness=2,IsHitTestVisible=false};Canvas.SetLeft(shape,r.X);Canvas.SetTop(shape,r.Y);drawing.Children.Add(shape);}if(regions.Length==0)MessageBox.Show(this,"No matching regions were detected. You can still draw areas by hand.","Redact Photo");}catch(Exception error){MessageBox.Show(this,error.Message,"Detection unavailable");}

@@ -33,23 +33,26 @@ public sealed partial class ToolEditor:Window
         {
             drawing.Width=bitmap.PixelWidth;drawing.Height=bitmap.PixelHeight;
             drawing.Children.Add(new Image{Source=bitmap,Width=bitmap.PixelWidth,Height=bitmap.PixelHeight});
-            var viewbox=new Viewbox{Child=drawing,Stretch=Stretch.Uniform,MaxHeight=420};viewbox.SizeChanged+=(_,_)=>viewbox.Clip=new RectangleGeometry(new Rect(0,0,viewbox.ActualWidth,viewbox.ActualHeight),14,14);previewStack.Children.Add(viewbox);
+            UIElement visual=drawing;if(media is not null){var layered=new Grid{Width=bitmap.PixelWidth,Height=bitmap.PixelHeight};player.Width=bitmap.PixelWidth;player.Height=bitmap.PixelHeight;player.Source=new Uri(input);layered.Children.Add(player);layered.Children.Add(drawing);visual=layered;((Image)drawing.Children[0]).Opacity=0;}
+            var viewbox=new Viewbox{Child=visual,Stretch=Stretch.Uniform,MaxHeight=420};viewbox.SizeChanged+=(_,_)=>viewbox.Clip=new RectangleGeometry(new Rect(0,0,viewbox.ActualWidth,viewbox.ActualHeight),14,14);previewStack.Children.Add(viewbox);
             drawing.MouseLeftButtonDown+=BeginDraw;drawing.MouseMove+=MoveDraw;drawing.MouseLeftButtonUp+=EndDraw;
         }
         else if(media is not null)
         {
             player.Source=new Uri(input);previewStack.Children.Add(player);player.MediaOpened+=(_,_)=>{if(player.NaturalDuration.HasTimeSpan)duration=player.NaturalDuration.TimeSpan.TotalSeconds;};
-            player.MediaFailed+=(_,_)=>time.Text="Windows cannot preview this codec. Export still uses FFmpeg.";
         }
         else previewStack.Children.Add(new TextBlock{Text="Your files will be saved as new copies.\nChoose options, then save.",FontSize=21,TextWrapping=TextWrapping.Wrap,Margin=new(0,50,20,0)});
         duration=media?.Duration??1;
         if(media is not null)
         {
+            player.ScrubbingEnabled=true;player.Loaded+=(_,_)=>{player.Play();player.Pause();};player.MediaFailed+=async(_,_)=>await CreatePreviewProxy();
             if(tool is "trimVideo" or "trimAudio" or "redactAudio")
             {
                 timeline.Set(duration,0,duration);previewStack.Children.Add(timeline);timeline.Changed+=(a,b)=>{fields["Start"].Text=Number(a);fields["End"].Text=Number(b);Seek(a);};
             }
             var controls=new StackPanel{Orientation=Orientation.Horizontal};var play=MainWindow.Button("▶ / Ⅱ",()=>{if(playing){player.Pause();playing=false;}else{player.Play();playing=true;}});controls.Children.Add(MainWindow.Button("−1s",()=>Seek(player.Position.TotalSeconds-1)));controls.Children.Add(play);controls.Children.Add(MainWindow.Button("+1s",()=>Seek(player.Position.TotalSeconds+1)));previewStack.Children.Add(controls);previewStack.Children.Add(time);
+            var scrub=new Slider{Minimum=0,Maximum=duration,Margin=new(4,12,4,8),ToolTip="Preview position"};scrub.ValueChanged+=(_,_)=>{if(scrub.IsMouseCaptureWithin)Seek(scrub.Value);};previewStack.Children.Add(scrub);
+            if(tool is "trimAudio" or "trimVideo" or "redactAudio")previewStack.Children.Add(MainWindow.Button("Play selected range",PlayRange));
             previewStack.Children.Add(new TextBlock{Text="Space play/pause · ←/→ 1s · Shift+←/→ 1/30s · I/O set range · Enter save",TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Muted")});
         }
         if(tool=="convert")
@@ -87,12 +90,12 @@ public sealed partial class ToolEditor:Window
         var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
         clock.Tick+=(_,_)=>{if(playing){time.Text=$"{player.Position:mm\\:ss\\.fff} / {TimeSpan.FromSeconds(duration):mm\\:ss\\.fff}";if(playingRange&&player.Position.TotalSeconds>=Value("End",duration)){player.Pause();playing=false;playingRange=false;}}};
         player.MediaEnded+=(_,_)=>{playing=false;player.Pause();};clock.Start();
-        PreviewKeyDown+=OnKey;Closed+=(_,_)=>{clock.Stop();player.Close();};
+        PreviewKeyDown+=OnKey;Closed+=(_,_)=>{clock.Stop();player.Close();previewLifetime.Cancel();DeletePreviewFiles();};
     }
     private static string Number(double n)=>n.ToString("0.###",CultureInfo.CurrentCulture);
     private void Field(string name,double value)=>TextField(name,Number(value));
     private void TextField(string name,string value){options.Children.Add(new TextBlock{Text=name,Margin=new(4,12,4,0)});var box=new TextBox{Text=value};System.Windows.Automation.AutomationProperties.SetAutomationId(box,name);if(name is "Start" or "End")box.LostKeyboardFocus+=(_,_)=>{try{SyncTimeline();}catch(ArgumentException){}};fields.Add(name,box);defaults.Add(name,value);options.Children.Add(box);}
-    private void Reset(){foreach(var pair in defaults)fields[pair.Key].Text=pair.Value;while(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);selection=null;activeRectangle=null;activeStroke=null;timeline.Set(duration,0,duration);if(media is not null)Seek(0);}
+    private void Reset(){foreach(var pair in defaults)fields[pair.Key].Text=pair.Value;while(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);selection=null;activeRectangle=null;activeStroke=null;photoRegions.Clear();videoRegions.Clear();bleepRanges.Clear();ReloadRanges();markNumber=1;flipHorizontal.IsChecked=false;flipVertical.IsChecked=false;QueuePhotoPreview();timeline.Set(duration,0,duration);if(media is not null)Seek(0);}
     private double Value(string key,double fallback=0)
     {
         if(!fields.TryGetValue(key,out var box))return fallback;
@@ -144,7 +147,7 @@ public sealed partial class ToolEditor:Window
             if(tool is "crop" or "cropVideo" or "redactVideo"&& (w<1||h<1))throw new ArgumentException("Drag an area first.");
             MediaOptions=new(){Start=Value("Start"),End=fields.ContainsKey("End")?Value("End"):null,Quality=Value("Quality (%)",80)/100,Speed=Value("Speed",1),Width=fields.ContainsKey("Width")?(int)w:null,Height=fields.ContainsKey("Height")?(int)h:null,Channels=(int)Value("Channels",2),LeftVolume=Value("Left volume",1),RightVolume=Value("Right volume",1),EqualClips=(int)Value("Number of clips",2),TargetLoudness=Value("Target LUFS",-16),TruePeak=Value("True peak dB",-1.5),Regions=tool is "cropVideo" or "redactVideo"?[new(x,y,w,h,Value("Start"),fields.ContainsKey("End")?Value("End"):null)]:[],AudioRedactions=tool=="redactAudio"?[new(Value("Start"),Value("End"))]:[],SnapshotTimes=tool=="videoSnapshots"?fields["Times (seconds)"].Text.Split(';',StringSplitOptions.RemoveEmptyEntries).Select(s=>double.Parse(s,CultureInfo.CurrentCulture)).ToArray():[0]};
             BitmapSource? annotated=null;if(tool=="annotate"){var target=new RenderTargetBitmap(bitmap!.PixelWidth,bitmap.PixelHeight,96,96,PixelFormats.Pbgra32);target.Render(drawing);target.Freeze();annotated=target;}
-            ImageOptions=PhotoSettings(new(fields.ContainsKey("Width")?(int)w:null,fields.ContainsKey("Height")?(int)h:null,(int)Value("Degrees",90),tool=="crop"?new Int32Rect((int)x,(int)y,(int)w,(int)h):null,(int)Value("Quality (%)",85),true,annotated));
+            ImageOptions=PhotoSettings(new(fields.ContainsKey("Width")?(int)w:null,fields.ContainsKey("Height")?(int)h:null,(int)Value("Degrees",tool=="rotate"?90:0),tool=="crop"?new Int32Rect((int)x,(int)y,(int)w,(int)h):null,(int)Value("Quality (%)",85),true,annotated));
             MediaOptions=MoreMediaSettings(MediaOptions);
             Format=format.SelectedItem as string??"png";
             if(tool=="organizePDF")Pages=fields["Page numbers"].Text.Split(',',StringSplitOptions.RemoveEmptyEntries).Select(s=>int.Parse(s.Trim(),CultureInfo.InvariantCulture)).ToArray();

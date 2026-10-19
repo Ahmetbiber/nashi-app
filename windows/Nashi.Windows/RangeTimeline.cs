@@ -8,7 +8,7 @@ public sealed class RangeTimeline:FrameworkElement
 {
     public double Duration{get;set;}=1;public double Start{get;private set;}public double End{get;private set;}=1;
     public event Action<double,double>? Changed;
-    private bool dragging,startHandle;private double originalStart,originalEnd,originX,laneWidth;
+    private bool dragging,startHandle,moveRange;private double originalStart,originalEnd,originX,laneWidth;
     private BitmapSource[] artwork=[];
     public void SetArtwork(BitmapSource[] images){artwork=images;InvalidateVisual();}
     public RangeTimeline(){Height=54;MinWidth=160;Cursor=Cursors.SizeWE;Focusable=true;}
@@ -24,12 +24,12 @@ public sealed class RangeTimeline:FrameworkElement
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         Focus();var x=e.GetPosition(this).X;laneWidth=Math.Max(1,ActualWidth-24);var a=12+laneWidth*Start/Duration;var b=12+laneWidth*End/Duration;
-        startHandle=Math.Abs(x-a)<=Math.Abs(x-b);originalStart=Start;originalEnd=End;originX=x;dragging=CaptureMouse();e.Handled=true;
+        moveRange=x>a+14&&x<b-14;startHandle=Math.Abs(x-a)<=Math.Abs(x-b);originalStart=Start;originalEnd=End;originX=x;dragging=CaptureMouse();e.Handled=true;
     }
     protected override void OnMouseMove(MouseEventArgs e)
     {
         if(!dragging)return;var delta=(e.GetPosition(this).X-originX)/laneWidth*Duration;
-        if(startHandle)Start=Math.Clamp(originalStart+delta,0,originalEnd-.05);else End=Math.Clamp(originalEnd+delta,originalStart+.05,Duration);
+        if(moveRange){var length=originalEnd-originalStart;Start=Math.Clamp(originalStart+delta,0,Duration-length);End=Start+length;}else if(startHandle)Start=Math.Clamp(originalStart+delta,0,originalEnd-.05);else End=Math.Clamp(originalEnd+delta,originalStart+.05,Duration);
         InvalidateVisual();Changed?.Invoke(Start,End);e.Handled=true;
     }
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e){dragging=false;ReleaseMouseCapture();e.Handled=true;}

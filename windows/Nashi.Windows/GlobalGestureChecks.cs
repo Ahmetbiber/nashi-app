@@ -16,7 +16,7 @@ internal static class GlobalGestureChecks
             selected=null;started=false;source.Activate();DesktopInput.Pump();var start=target.PointToScreen(new Point(50,30));
             var driver=Task.Run(()=>
             {
-                DesktopInput.MovePointer(start);Thread.Sleep(100);DesktopInput.Hold(modifier,true);DesktopInput.HoldMouse(true);
+                DesktopInput.MovePointer(start);Thread.Sleep(100);DesktopInput.Hold(modifier,true);DesktopInput.HoldMouse(true);Thread.Sleep(100);
                 try{DesktopInput.MovePointer(new(start.X+35,start.Y+15));Thread.Sleep(700);Point drop=default;owner.Dispatcher.Invoke(()=>{var wheel=Application.Current.Windows.OfType<GlobalDropWheel>().SingleOrDefault();if(wheel is null)throw new Exception("Drag shortcut did not open its global wheel.");drop=wheel.PointToScreen(new(wheel.ActualWidth/2,wheel.ActualHeight*.18));});DesktopInput.MovePointer(drop);Thread.Sleep(300);}
                 finally{DesktopInput.HoldMouse(false);DesktopInput.Hold(modifier,false);}
             });
@@ -26,7 +26,7 @@ internal static class GlobalGestureChecks
         {
             Drag(Key.LeftCtrl,"compress");Drag(Key.LeftAlt,"share");Drag(Key.LeftShift,"convert:"+FeatureCatalog.Formats([file])[0]);
             if(controller.LinkShortcutRegistered){DesktopInput.Key(source,Key.D,control:true,shift:true);check(selected=="link-shortcut","Global copied-link shortcut Ctrl+Shift+D");}
-            settings.Save(settings.Value with{Enabled=false});DesktopInput.Key(source,Key.D,control:true,shift:true);check(selected=="link-shortcut","Disabled shortcuts preserved current state");
+            settings.Save(settings.Value with{Enabled=false});selected="disabled";DesktopInput.Key(source,Key.D,control:true,shift:true);check(selected=="disabled","Disabled shortcuts preserved current state");
             var data=new DataObject();using var stream=new MemoryStream(System.Text.Encoding.Unicode.GetBytes("https://www.instagram.com/p/FixtureCode/\0"));data.SetData("UniformResourceLocatorW",stream);check(DragPayload.Parse(data) is {Kind:"instagramPhotos"},"Browser URL stream was decoded as an Instagram photo post");
             data.SetData(DataFormats.Html,"<a href=\"https://www.instagram.com/reel/FixtureCode/\"><img src=\"https://cdn.example/preview.jpg\"></a>");check(DragPayload.Parse(data) is {Kind:"instagramReel"},"Browser HTML context identified a reel without thumbnail actions");
         }

@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 namespace Nashi.Core;
 public sealed record DocumentOptions(int Dpi=144,string Layout="editable",string EpubLayout="reflowable",string Password="");
-public sealed class OfficeDocuments(string office,string deno,string assets)
+public sealed partial class OfficeDocuments(string office,string deno,string assets)
 {
     private static string Escape(string value)=>WebUtility.HtmlEncode(value);
     public async Task<string> OfficeAsync(string input,string format,string outputDirectory,CancellationToken token)
@@ -38,49 +38,11 @@ public sealed class OfficeDocuments(string office,string deno,string assets)
     }
     private Task<ProcessResult> PagesCall(string mode,string input,string output,CancellationToken token)
     {
-        var bundle=Path.Combine(assets,"PagesInterop.js");var script=Path.Combine(assets,"pages-windows.js");return ProcessRunner.RunAsync(deno,["run","--no-prompt","--no-config","--cached-only","--allow-read="+bundle+","+Path.GetFullPath(input),"--allow-write="+Path.GetFullPath(output),script,bundle,mode,Path.GetFullPath(input),Path.GetFullPath(output)],token);
+        var bundle=Path.Combine(assets,"PagesInterop.js");var script=Path.Combine(assets,"pages-windows.js");return ProcessRunner.RunAsync(deno,["run","--no-prompt","--no-config","--cached-only","--allow-read="+bundle.Replace(",",",,")+","+Path.GetFullPath(input).Replace(",",",,"),"--allow-write="+Path.GetFullPath(output).Replace(",",",,"),script,bundle,mode,Path.GetFullPath(input),Path.GetFullPath(output)],token);
     }
     private static XDocument Xml(ZipArchive zip,string entry)
     {
         var resource=zip.GetEntry(entry)??throw new InvalidDataException("The document is missing "+entry);if(resource.Length>20_000_000)throw new InvalidDataException("Document XML is too large.");using var stream=resource.Open();using var reader=XmlReader.Create(stream,new(){DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=20_000_000});return XDocument.Load(reader);
-    }
-    public static object ReadDocx(string path)
-    {
-        using var zip=ZipFile.OpenRead(path);var xml=Xml(zip,"word/document.xml");XNamespace w="http://schemas.openxmlformats.org/wordprocessingml/2006/main";XNamespace a="http://schemas.openxmlformats.org/drawingml/2006/main";XNamespace r="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-        var relationships=zip.GetEntry("word/_rels/document.xml.rels") is null?new Dictionary<string,string>():Xml(zip,"word/_rels/document.xml.rels").Root!.Elements().Where(e=>e.Attribute("TargetMode")?.Value!="External").ToDictionary(e=>e.Attribute("Id")!.Value,e=>e.Attribute("Target")!.Value);
-        var blocks=new List<object>();
-        object Paragraph(XElement p)
-        {
-            var runs=new List<object>();foreach(var run in p.Descendants(w+"r"))
-            {
-                var text=string.Concat(run.Descendants().Select(n=>n.Name==w+"t"?n.Value:n.Name==w+"br"?"\n":n.Name==w+"tab"?"\t":""));var properties=run.Element(w+"rPr");
-                if(text.Length>0)runs.Add(new{text,character=new{bold=properties?.Element(w+"b") is not null,italic=properties?.Element(w+"i") is not null,fontSize=double.TryParse(properties?.Element(w+"sz")?.Attribute(w+"val")?.Value,out var size)?size/2:12,fontName=properties?.Element(w+"rFonts")?.Attribute(w+"ascii")?.Value??"Arial"}});
-                foreach(var blip in run.Descendants(a+"blip"))if(relationships.TryGetValue(blip.Attribute(r+"embed")?.Value??"",out var target))
-                {var normalized="word/"+target.Replace('\\','/');if(target.Contains("..",StringComparison.Ordinal)||target.StartsWith('/'))continue;var entry=zip.GetEntry(normalized);if(entry is not null&&entry.Length<20_000_000){using var input=entry.Open();using var output=new MemoryStream();input.CopyTo(output);runs.Add(new{type="image",data=Convert.ToBase64String(output.ToArray()),fileName=Path.GetFileName(target)});}}
-            }
-            var alignment=p.Element(w+"pPr")?.Element(w+"jc")?.Attribute(w+"val")?.Value;return new{type="paragraph",runs,paragraph=new{alignment=alignment switch{"right"=>1,"center"=>2,"both"=>3,_=>0},pageBreakBefore=p.Element(w+"pPr")?.Element(w+"pageBreakBefore") is not null}};
-        }
-        foreach(var element in xml.Root!.Element(w+"body")!.Elements())
-        {
-            if(element.Name==w+"p")blocks.Add(Paragraph(element));
-            else if(element.Name==w+"tbl")blocks.Add(new{type="table",rows=element.Elements(w+"tr").Select(row=>row.Elements(w+"tc").Select(cell=>new{text=string.Join("\n",cell.Elements(w+"p").Select(p=>string.Concat(p.Descendants(w+"t").Select(t=>t.Value))))}).ToArray()).ToArray()});
-        }
-        return new{blocks};
-    }
-    public static string ModelHtml(JsonElement model)
-    {
-        var html=new StringBuilder("<!DOCTYPE html><html><head><meta charset=\"utf-8\"/><style>body{font:12pt Arial}table{border-collapse:collapse}td{border:1px solid #888;padding:5pt}p{white-space:pre-wrap}img{max-width:100%;height:auto}</style></head><body>");
-        foreach(var block in model.GetProperty("blocks").EnumerateArray())
-        {
-            if(block.TryGetProperty("type",out var type)&&type.GetString()=="table")
-            {html.Append("<table>");foreach(var row in block.GetProperty("rows").EnumerateArray()){html.Append("<tr>");foreach(var cell in row.EnumerateArray())html.Append("<td>").Append(Escape(cell.GetProperty("text").GetString()??"")).Append("</td>");html.Append("</tr>");}html.Append("</table>");continue;}
-            html.Append("<p>");if(block.TryGetProperty("runs",out var runs))foreach(var run in runs.EnumerateArray())
-            {
-                if(run.TryGetProperty("type",out var kind)&&kind.GetString()=="image"){var name=run.GetProperty("fileName").GetString()??"image.png";var mime=FeatureCatalog.Extension(name) is "jpg" or "jpeg"?"image/jpeg":"image/png";var bytes=Convert.FromBase64String(run.GetProperty("data").GetString()??"");if(bytes.Length>20_000_000)throw new InvalidDataException("Embedded image exceeds 20 MB.");html.Append("<img src=\"data:").Append(mime).Append(";base64,").Append(Convert.ToBase64String(bytes)).Append("\"/>");}
-                else if(run.TryGetProperty("text",out var text)){var value=Escape(text.GetString()??"").Replace("\n","<br/>");if(run.TryGetProperty("character",out var character)){if(character.TryGetProperty("bold",out var bold)&&bold.ValueKind==JsonValueKind.True)value="<b>"+value+"</b>";if(character.TryGetProperty("italic",out var italic)&&italic.ValueKind==JsonValueKind.True)value="<i>"+value+"</i>";}html.Append(value);}
-            }html.Append("</p>");
-        }
-        return html.Append("</body></html>").ToString();
     }
     public static string PdfText(string input,string password="")
     {

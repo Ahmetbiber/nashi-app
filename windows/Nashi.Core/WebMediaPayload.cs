@@ -5,6 +5,7 @@ public sealed record WebMediaPayload(string Url,string Kind,string? Thumbnail=nu
 {
     public static WebMediaPayload? Parse(string? text,string? html=null,string? sourceHint=null)
     {
+        if(text?.Length>32768||html?.Length>2_000_000||sourceHint?.Length>16384)return null;
         var candidates=new List<string>();if(sourceHint is not null)candidates.Add(sourceHint);
         if(html is not null)foreach(Match match in Regex.Matches(html,"(?:href|src)\\s*=\\s*[\"']([^\"']+)[\"']",RegexOptions.IgnoreCase,TimeSpan.FromSeconds(1)))candidates.Add(WebUtility.HtmlDecode(match.Groups[1].Value));
         if(text is not null)candidates.AddRange(text.Split(['\r','\n','\t'],StringSplitOptions.RemoveEmptyEntries).Select(t=>t.Trim()));
@@ -20,7 +21,7 @@ public sealed record WebMediaPayload(string Url,string Kind,string? Thumbnail=nu
         {
             if(url.Host is not ("instagram.com" or "www.instagram.com"))continue;var match=Regex.Match(url.AbsolutePath,@"^/(p|reel|reels|tv)/([A-Za-z0-9_-]+)/?",RegexOptions.CultureInvariant,TimeSpan.FromSeconds(1));if(match.Success)return new("https://www.instagram.com/"+(match.Groups[1].Value is "reels" or "tv"?"reel":match.Groups[1].Value)+"/"+match.Groups[2].Value+"/",match.Groups[1].Value=="p"?"instagramPhotos":"instagramReel");
         }
-        var first=urls.FirstOrDefault();if(first is null)return null;var ext=Path.GetExtension(first.AbsolutePath).ToLowerInvariant();return new(first.AbsoluteUri,new[]{".jpg",".jpeg",".png",".webp",".avif",".gif",".heic"}.Contains(ext)?"image":"media");
+        var first=urls.FirstOrDefault();if(first is null)return null;var ext=Path.GetExtension(first.AbsolutePath).ToLowerInvariant();return new(first.AbsoluteUri,new[]{".jpg",".jpeg",".png",".webp",".avif",".gif",".heic",".svg",".bmp",".tiff",".tif"}.Contains(ext)?"image":"media");
     }
     public static string? YoutubeId(Uri url)
     {

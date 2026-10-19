@@ -117,7 +117,7 @@ internal static class SmokeTests
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");Capture(restarted,"windows-home-empty.png");restarted.Close();
-        File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations. No global Explorer gesture claimed."}));
+        File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations.",extendedParity=Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true"}));
         void Capture(Window view,string name){view.UpdateLayout();var capture=new RenderTargetBitmap((int)view.ActualWidth,(int)view.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(view);ImageEngine.Save(capture,Path.Combine(root,name),"png");}
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)

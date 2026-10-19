@@ -65,6 +65,6 @@ internal static class ParitySmokeTests
         var fixedBook=Wait(document.ConvertAsync([pdfFile],"epub",outputs,new(EpubLayout:"fixed"),null,CancellationToken.None))[0];using(var zip=System.IO.Compression.ZipFile.OpenRead(fixedBook))Check(zip.Entries.Any(e=>e.FullName.EndsWith("page0.png",StringComparison.Ordinal)),"Fixed EPUB lost page images");
         var csv=Path.Combine(outputs,"Table.csv");File.WriteAllText(csv,"Fruit,Count\nNashi,7\nApple,3\n");var sheets=Wait(document.ConvertAsync([csv],"xlsx",outputs,new(),null,CancellationToken.None));foreach(var format in new[]{"ods","csv","tsv","pdf"})Check(Wait(document.ConvertAsync(sheets,format,outputs,new(),null,CancellationToken.None)).All(File.Exists),"Spreadsheet conversion failed: "+format);
         if(problems.Count>0)throw new Exception(string.Join("\n",problems));
-        File.WriteAllText(Path.Combine(root,"parity.json"),JsonSerializer.Serialize(new{passed=checks,scope="Real Windows native photo/annotation/crop/QR/PDF/Float input and export, private Office extraction, Pages/PDF/EPUB/spreadsheet conversions, lossless metadata edits"}));return checks;
+        File.WriteAllText(Path.Combine(root,"parity.json"),JsonSerializer.Serialize(new{passed=checks,scope="Real Explorer OLE drag and global shortcuts, singleton file forwarding, native photo/annotation/crop/QR/PDF/Float input and export, private Office extraction, Pages/PDF/EPUB/spreadsheet conversions, lossless metadata edits"}));return checks;
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 import NashiCore
 
 struct ToolSetupView:View {
+    var onWorkingChange:(Bool)->Void = {_ in}
     @State private var working=false
     @State private var fraction:Double?
     @State private var message="Choose the tools you need. Files are downloaded directly from their publishers and checked before installation."
@@ -36,14 +37,14 @@ struct ToolSetupView:View {
         }.padding(28).frame(width:590).background(NashiPalette.canvas).tint(.nashi).buttonStyle(NashiButtonStyle())
     }
     private func install(office:Bool) {
-        working=true;fraction=nil;token=CancellationToken();let currentToken=token
+        working=true;onWorkingChange(true);fraction=nil;token=CancellationToken();let currentToken=token
         task=Task {
             do {
                 let report:@Sendable(Double?,String)->Void = { value,label in Task{@MainActor in fraction=value;message=label} }
                 if office {try await ExternalToolSetup.installOffice(token:currentToken,progress:report)}else{try await ExternalToolSetup.installMedia(token:currentToken,progress:report)}
                 mediaReady=ExternalToolSetup.mediaReady;officeReady=ExternalToolSetup.officeReady;message="Ready. You can go back to your files."
             }catch {message=currentToken.isCancelled ? "Setup cancelled. Existing tools were kept.":error.localizedDescription}
-            working=false
+            working=false;onWorkingChange(false)
         }
     }
 }

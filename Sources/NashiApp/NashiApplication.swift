@@ -27,6 +27,7 @@ enum NashiApplication {
     var settings:NSWindow?
     var updateConnection:NSWindow?
     private let progressToast=ProgressToastController()
+    var toolSetupWorking=false
     var toolSetupWindow:NSWindow?
     var downloadWindow:NSWindow?
     lazy var downloadModel=WebDownloadModel(state:state)
@@ -71,7 +72,7 @@ enum NashiApplication {
         statusItem.button?.image=NashiArtwork.menuIcon()
         statusItem.menu=menu;menu.delegate=self
         appMenu.delegate=self
-        state.$working.sink { [weak self] in self?.updater.setBusy($0) }.store(in:&updateObservations)
+        state.$working.sink { [weak self] working in guard let self else{return};self.updater.setBusy(working || self.toolSetupWorking) }.store(in:&updateObservations)
         updater.$availableVersion.sink { [weak self] version in
             guard let self else { return }
             let title=version.map { "Update to \($0)…" } ?? "Check for Updates…"
@@ -114,7 +115,7 @@ enum NashiApplication {
         home?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
     @objc func showToolSetup() {
-        if toolSetupWindow == nil {toolSetupWindow=makeWindow(title:"Set up Nashi tools",size:NSSize(width:646,height:620),view:ToolSetupView())}
+        if toolSetupWindow == nil {toolSetupWindow=makeWindow(title:"Set up Nashi tools",size:NSSize(width:646,height:620),view:ToolSetupView(onWorkingChange:{[weak self] working in guard let self else{return};self.toolSetupWorking=working;self.updater.setBusy(working || self.state.working)}))}
         toolSetupWindow?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
     @objc func showDownloadLink() { showWebDownload(WebLinkPayload.clipboardLink(),mode:.video) }
@@ -205,7 +206,7 @@ enum NashiApplication {
     func applicationShouldTerminate(_ sender:NSApplication)->NSApplication.TerminateReply {
         // Sparkle can resume an earlier install without the postponement callback.
         // Never terminate a conversion before it has committed its results.
-        state.working ? .terminateCancel:.terminateNow
+        (state.working || toolSetupWorking) ? .terminateCancel:.terminateNow
     }
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool { showHome();return true }
     func makeWindow<V:View>(title:String,size:NSSize,view:V)->NSWindow {

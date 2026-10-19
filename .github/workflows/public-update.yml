@@ -44,9 +44,8 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'Nashi-Portable-Update'
           Expand-Archive $zip $target
           $old = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion
-          $process = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--install-update' -WorkingDirectory $target -PassThru
-          if (!$process.WaitForExit(120000)) { throw 'Initial updater did not exit within two minutes' }
-          if ($process.ExitCode -ne 0) { throw 'Initial updater failed' }
+          powershell.exe -NoProfile -STA -File scripts/verify-windows-update-ui.ps1 -AppPath (Join-Path $target 'Nashi.exe') -ExpectedVersion '0.7.4' -ProofPath (Join-Path $proof 'native-update-ui.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The native update UI test failed' }
           $new = $old
           $restarted = $null
           for ($i = 0; $i -lt 30; $i++) {
@@ -67,7 +66,7 @@ jobs:
           $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'updated-native-smoke'
           $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--smoke-test' -PassThru
           if (!$check.WaitForExit(90000) -or $check.ExitCode -ne 0) { throw 'Updated native app smoke failed' }
-          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
+          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true; nativeUpdateUi = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
           Get-Content (Join-Path $proof 'result.json')
           Remove-Item $zip
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

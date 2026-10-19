@@ -145,7 +145,7 @@ public sealed class MainWindow:Window
         var card=Card(row);card.Padding=new(14,10,14,10);return card;
     }
     private void SetBusy(bool value){busy=value;workArea.IsEnabled=!value;RenderLibrary();}
-    private void ShowShortcuts()=>MessageBox.Show(this,"Ctrl+O  Choose files\nCtrl+V  Paste files, text, an image or link\nCtrl+Space / Enter  Open tools\nCtrl+1 / Ctrl+2  Home / Library\nCtrl+F  Find in Library\nCtrl+Shift+D  Use a copied download link\nCtrl+U  Check for updates\n\nWheel: arrows / Tab to choose, Enter to open, Esc to close\nMedia: Space play/pause, ←/→ 1 second, Shift+←/→ 1 frame, I/O set range\nCrop: drag, Shift locks ratio, Enter saves\nEditing text: normal paste and arrow keys are preserved.","Nashi · Features & shortcuts");
+    private void ShowShortcuts()=>MessageBox.Show(this,"Ctrl+O  Choose files\nCtrl+V  Paste files, text, an image or link\nCtrl+Space / Enter  Open tools\nCtrl+1 / Ctrl+2  Home / Library\nCtrl+F  Find in Library\nCtrl+Shift+D  Use a copied download link\nCtrl+U  Check for updates\n\nWheel: arrows / Tab to choose, Enter to open, Esc to close\nMedia: Space play/pause, ←/→ 1 second, Shift+←/→ 1/30s, I/O set range\nCrop: drag, Shift locks ratio, Enter saves\nEditing text: normal paste and arrow keys are preserved.","Nashi · Features & shortcuts");
     private sealed class FileNameConverter:System.Windows.Data.IValueConverter
     {
         public object Convert(object value,Type type,object parameter,System.Globalization.CultureInfo culture)=>Path.GetFileName((string)value);
@@ -171,11 +171,11 @@ public sealed class MainWindow:Window
     private void ShowWheel(){if(!busy&&Choices().Count>0)new WheelWindow(this,Choices(),async choice=>await EditAsync(choice)).Show();}
     private async Task EditAsync(ToolChoice choice)
     {
-        if(busy||files.Count==0)return;try
+        if(busy||files.Count==0)return;string? temporary=null;try
         {
-            var selected=files.ToArray();MediaInfo? info=null;BitmapSource? preview=null;var input=selected[0];string? temporary=null;
-            if(Images)preview=ImageEngine.Load(input);
-            else if(Video||Audio)
+            SetBusy(true);var imageSelection=Images;var mediaSelection=Video||Audio;var selected=files.ToArray();MediaInfo? info=null;BitmapSource? preview=null;var input=selected[0];
+            if(imageSelection)preview=ImageEngine.Load(input);
+            else if(mediaSelection)
             {
                 if(!tools.Ready){MessageBox.Show(this,"Choose Set up media tools once to enable media editing.","Media setup");return;}
                 var engine=new MediaEngine(tools.Executable("ffmpeg"),tools.Executable("ffprobe"));info=await engine.InspectAsync(input);
@@ -185,14 +185,15 @@ public sealed class MainWindow:Window
                     await ProcessRunner.RunAsync(tools.Executable("ffmpeg"),["-v","error","-i",input,"-frames:v","1",temporary]);preview=ImageEngine.Load(temporary);
                 }
             }
-            var editor=new ToolEditor(this,choice.Id,choice.Title,input,info,preview);var accepted=editor.ShowDialog()==true;if(temporary is not null)File.Delete(temporary);if(!accepted)return;
+            SetBusy(false);var editor=new ToolEditor(this,choice.Id,choice.Title,input,info,preview);var accepted=editor.ShowDialog()==true;if(temporary is not null)File.Delete(temporary);if(!accepted)return;
             var inputs=choice.Id is "crop" or "cropVideo" or "redactVideo" or "annotate"?new[]{input}:selected;
-            if(Images)await RunAsync((destination,p,t)=>OnStaAsync(()=>ImageEngine.Apply(choice.Id,inputs,destination,editor.ImageOptions,choice.Id=="convert"?editor.Format:null,t,p)),choice.Title);
-            else if(Video||Audio)await RunAsync((destination,p,t)=>{var engine=new MediaEngine(tools.Executable("ffmpeg"),tools.Executable("ffprobe"));return choice.Id=="convert"?engine.ConvertAsync(inputs,editor.Format,destination,editor.MediaOptions,p,t):engine.ToolAsync(choice.Id,inputs,destination,editor.MediaOptions,p,t);},choice.Title);
+            if(imageSelection)await RunAsync((destination,p,t)=>OnStaAsync(()=>ImageEngine.Apply(choice.Id,inputs,destination,editor.ImageOptions,choice.Id=="convert"?editor.Format:null,t,p)),choice.Title);
+            else if(mediaSelection)await RunAsync((destination,p,t)=>{var engine=new MediaEngine(tools.Executable("ffmpeg"),tools.Executable("ffprobe"));return choice.Id=="convert"?engine.ConvertAsync(inputs,editor.Format,destination,editor.MediaOptions,p,t):engine.ToolAsync(choice.Id,inputs,destination,editor.MediaOptions,p,t);},choice.Title);
             else if(choice.Id=="unzip")await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>{using var tx=new ExportTransaction(destination);var outputs=inputs.SelectMany(file=>DocumentEngine.Unzip(file,tx.StagingDirectory,p,t)).ToList();return tx.Publish(outputs,t);},t));
             else await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf(choice.Id,inputs,destination,editor.Pages,t),t),choice.Title);
         }
         catch(Exception error){MessageBox.Show(this,error.Message,"Couldn’t open this tool",MessageBoxButton.OK,MessageBoxImage.Information);}
+        finally{if(temporary is not null&&File.Exists(temporary))File.Delete(temporary);SetBusy(false);}
     }
     private async Task RunAsync(Func<string,IProgress<OperationProgress>,CancellationToken,Task<IReadOnlyList<string>>> work,string label="Fresh copy")
     {
@@ -229,7 +230,7 @@ public sealed class MainWindow:Window
             if(busy)return;
             if(MessageBox.Show(this,"Download, verify and install Nashi "+update.Version+"? The app will restart. No account or token is needed.","Nashi update",MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
             SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();
-            try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);busy=false;Application.Current.Shutdown();}finally{toast.Close();busy=false;}
+            try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);busy=false;Application.Current.Shutdown();}finally{toast.Close();SetBusy(false);}
         }
         catch(OperationCanceledException){status.Text="Update cancelled.";}catch(Exception error){if(user)MessageBox.Show(this,error.Message,"Couldn’t check for updates");}
         finally{checking=false;}

@@ -16,6 +16,10 @@ public sealed class ToolEditor:Window
     private readonly Canvas drawing=new(){Background=Brushes.Transparent};private Rectangle? selection,activeRectangle;private Polyline? activeStroke;private Point origin;private bool dragging;
     private readonly MediaElement player=new(){LoadedBehavior=MediaState.Manual,UnloadedBehavior=MediaState.Close,Stretch=Stretch.Uniform,Height=260};private bool playing;
     private readonly RangeTimeline timeline=new();private readonly TextBlock time=new(){Margin=new(4,6,4,10)};private double duration=1;
+    internal double PreviewSeconds=>player.Position.TotalSeconds;
+    internal bool Playing=>playing;
+    internal RangeTimeline Timeline=>timeline;
+    internal TextBox FieldForTest(string name)=>fields[name];
     private readonly string input;private readonly MediaInfo? media;private readonly StackPanel options=new(){Margin=new(18,0,0,0)};
     public ToolEditor(Window owner,string tool,string title,string input,MediaInfo? media=null,BitmapSource? preview=null)
     {
@@ -78,11 +82,14 @@ public sealed class ToolEditor:Window
         }
         if(options.Children.Count==0)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
         var footer=new DockPanel{Margin=new(0,20,0,0)};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Brush("Gold");save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);footer.Children.Add(MainWindow.Button("Cancel",()=>DialogResult=false));
-        PreviewKeyDown+=OnKey;Closed+=(_,_)=>{player.Close();};
+        var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
+        clock.Tick+=(_,_)=>{if(playing)time.Text=$"{player.Position:mm\\:ss\\.fff} / {TimeSpan.FromSeconds(duration):mm\\:ss\\.fff}";};
+        player.MediaEnded+=(_,_)=>{playing=false;player.Pause();};clock.Start();
+        PreviewKeyDown+=OnKey;Closed+=(_,_)=>{clock.Stop();player.Close();};
     }
     private static string Number(double n)=>n.ToString("0.###",CultureInfo.CurrentCulture);
     private void Field(string name,double value)=>TextField(name,Number(value));
-    private void TextField(string name,string value){options.Children.Add(new TextBlock{Text=name,Margin=new(4,12,4,0)});var box=new TextBox{Text=value};fields.Add(name,box);options.Children.Add(box);}
+    private void TextField(string name,string value){options.Children.Add(new TextBlock{Text=name,Margin=new(4,12,4,0)});var box=new TextBox{Text=value};System.Windows.Automation.AutomationProperties.SetAutomationId(box,name);if(name is "Start" or "End")box.LostKeyboardFocus+=(_,_)=>{try{SyncTimeline();}catch(ArgumentException){}};fields.Add(name,box);options.Children.Add(box);}
     private double Value(string key,double fallback=0)
     {
         if(!fields.TryGetValue(key,out var box))return fallback;

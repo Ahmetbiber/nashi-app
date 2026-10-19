@@ -32,7 +32,7 @@ public sealed class LibraryStore
         }
         catch(Exception error)when(error is JsonException or InvalidDataException)
         {
-            File.Copy(FilePath,FilePath+".recovered-"+Guid.NewGuid().ToString("N"));
+            try{File.Copy(FilePath,FilePath+".recovered-"+Guid.NewGuid().ToString("N"));}catch(Exception backupError)when(backupError is IOException or UnauthorizedAccessException){RecoveryNotice="Library recovery needs access to your Nashi data folder. Your files are safe.";return;}
             RecoveryNotice="Your previous Library could not be read. A recovery copy was kept; your files are safe.";
         }
         catch(Exception error)when(error is IOException or UnauthorizedAccessException)

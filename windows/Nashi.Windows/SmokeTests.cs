@@ -8,6 +8,16 @@ using Nashi.Core;
 namespace Nashi.Windows;
 internal static class SmokeTests
 {
+    public static void VerifyUpdateState()
+    {
+        var output=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY")??throw new Exception("Choose a proof directory.");Directory.CreateDirectory(output);
+        var library=new LibraryStore();var entry=library.Entries.Single(e=>e.Action=="Update persistence fixture");
+        if(library.Appearance!="dark"||entry.AvailablePaths.Length!=2||!entry.Paths.Any(p=>Path.GetExtension(p)==".txt"&&File.ReadAllText(p).Contains("Persistent clipboard")))throw new Exception("Update did not preserve Library, appearance or imports.");
+        var window=new MainWindow(library:library,checkForUpdates:false);window.Show();window.ShowLibrary(true);window.UpdateLayout();DesktopInput.Pump();
+        if(!Descendants(window).OfType<TextBlock>().Any(t=>t.Text.Contains("Update persistence fixture")))throw new Exception("Updated Library did not render persisted entry.");
+        var capture=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(window);ImageEngine.Save(capture,Path.Combine(output,"windows-updated-library.png"),"png");window.Close();
+        File.WriteAllText(Path.Combine(output,"preserved-state.json"),JsonSerializer.Serialize(new{library=true,clipboardText=true,clipboardImage=true,appearance=true,nativeLibraryRendered=true}));
+    }
     public static void Run()
     {
         Application.Current.ShutdownMode=ShutdownMode.OnExplicitShutdown;
@@ -78,7 +88,17 @@ internal static class SmokeTests
         DesktopInput.Key(wheel,Key.Left);Check(wheel.SelectedIndex==0,"Wheel Left arrow failed");
         DesktopInput.Key(wheel,Key.Left);Check(wheel.SelectedIndex==2,"Wheel did not wrap to last tool");
         var wheelImage=new RenderTargetBitmap((int)wheel.ActualWidth,(int)wheel.ActualHeight,96,96,PixelFormats.Pbgra32);wheelImage.Render(wheel);ImageEngine.Save(wheelImage,Path.Combine(root,"windows-wheel.png"),"png");DesktopInput.Key(wheel,Key.Escape);Check(!wheel.IsVisible,"Escape did not close wheel");
-        var editor=new ToolEditor(window,"crop","Crop",source,preview:bitmap);editor.Show();editor.UpdateLayout();var editorImage=new RenderTargetBitmap((int)editor.ActualWidth,(int)editor.ActualHeight,96,96,PixelFormats.Pbgra32);editorImage.Render(editor);ImageEngine.Save(editorImage,Path.Combine(root,"windows-crop.png"),"png");editor.Close();
+        var editor=new ToolEditor(window,"crop","Crop",source,preview:bitmap);editor.Show();editor.UpdateLayout();DesktopInput.Pump();
+        var canvas=Descendants(editor).OfType<Canvas>().First();
+        DesktopInput.Drag(canvas,new Point(20,20),new Point(180,130),shift:true);
+        var cw=double.Parse(editor.FieldForTest("Width").Text);var ch=double.Parse(editor.FieldForTest("Height").Text);
+        Check(cw>1&&Math.Abs(cw/ch-320d/180)<.03,"Shift-drag crop did not lock image aspect");
+        editor.FieldForTest("Width").Focus();DesktopInput.Key(editor,Key.Left);Check(editor.IsVisible,"Arrow in a crop field closed editor");
+        var editorImage=new RenderTargetBitmap((int)editor.ActualWidth,(int)editor.ActualHeight,96,96,PixelFormats.Pbgra32);editorImage.Render(editor);ImageEngine.Save(editorImage,Path.Combine(root,"windows-crop.png"),"png");DesktopInput.Key(editor,Key.Escape);Check(!editor.IsVisible,"Escape did not close editor from an active text field");
+        var rangeOwner=new Window{Owner=window,Width=600,Height=180,WindowStartupLocation=WindowStartupLocation.CenterOwner};Theme.Attach(rangeOwner);var range=new RangeTimeline{Margin=new(30)};rangeOwner.Content=range;range.Set(1800,0,1800);rangeOwner.Show();rangeOwner.UpdateLayout();DesktopInput.Pump();
+        var width=range.ActualWidth-24;DesktopInput.Drag(range,new Point(12+width,27),new Point(12+width*.7,27));
+        Check(Math.Abs(range.End-1260)<25,"Long-video Out handle did not follow native mouse drag");
+        DesktopInput.Drag(range,new Point(12,27),new Point(12+width*.2,27));Check(Math.Abs(range.Start-360)<25&&range.End>range.Start,"Long-video In handle stuck or crossed Out");rangeOwner.Close();
         Theme.Apply("light");window.UpdateLayout();Capture(window,"windows-home-light.png");Theme.Apply("dark");
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();

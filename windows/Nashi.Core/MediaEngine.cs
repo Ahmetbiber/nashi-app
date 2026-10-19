@@ -15,6 +15,7 @@ public sealed record MediaOptions
 {
     public double Quality { get; init; } = .8;
     public int AudioBitrate { get; init; } = 256;
+    public string SampleDepth{get;init;}="matchSource";public int GifFrameRate{get;init;}=15;public int GifWidth{get;init;}=960;
     public double Start { get; init; }
     public double? End { get; init; }
     public double Speed { get; init; } = 1;
@@ -93,7 +94,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             else
             {
                 RequireVideo(info);
-                if (format == "gif") arguments.AddRange(["-filter_complex","[0:v]fps=15,scale=w='min(960,iw)':h=-2,split[p0][p1];[p0]palettegen[pal];[p1][pal]paletteuse=dither=sierra2_4a","-an","-loop","0"]);
+                if (format == "gif") arguments.AddRange(["-filter_complex",$"[0:v]fps={options.GifFrameRate},scale=w='min({options.GifWidth},iw)':h=-2,split[p0][p1];[p0]palettegen[pal];[p1][pal]paletteuse=dither=sierra2_4a","-an","-loop","0"]);
                 else
                 {
                     arguments.AddRange(["-map","0:v:0","-map","0:a:0?"]);
@@ -331,7 +332,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static string[] AudioEncoding(string ext,MediaOptions o)=>ext switch
     {
         "mp3"=>["-c:a","libmp3lame","-b:a",o.AudioBitrate+"k"],"m4a" or "aac"=>["-c:a","aac","-b:a",o.AudioBitrate+"k"],
-        "wav"=>["-c:a","pcm_s16le"],"aiff"=>["-c:a","pcm_s16be"],"flac"=>["-c:a","flac","-compression_level","8"],
+        "wav"=>["-c:a",o.SampleDepth switch{"pcm24"=>"pcm_s24le","pcm32"=>"pcm_s32le","float32"=>"pcm_f32le",_=>"pcm_s16le"}],"aiff"=>["-c:a",o.SampleDepth switch{"pcm24"=>"pcm_s24be","pcm32"=>"pcm_s32be","float32"=>"pcm_f32be",_=>"pcm_s16be"}],"flac"=>["-c:a","flac","-compression_level","8"],
         "ogg"=>["-c:a","libvorbis","-q:a",Number(o.Quality*9)],"opus"=>["-c:a","libopus","-b:a",Math.Min(256,o.AudioBitrate)+"k"],
         "wma"=>["-c:a","wmav2","-b:a",Math.Min(320,o.AudioBitrate)+"k"],_=>throw new ArgumentException("Unsupported audio format.")
     };
@@ -353,6 +354,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static int? GetInt(JsonElement element,string property)=>element.TryGetProperty(property,out var value)&&value.TryGetInt32(out var number)?number:null;
     private static void Validate(MediaOptions o)
     {
+        if(o.SampleDepth is not ("matchSource" or "pcm16" or "pcm24" or "pcm32" or "float32")||o.GifFrameRate<1||o.GifFrameRate>60||o.GifWidth<16||o.GifWidth>8192)throw new ArgumentException("Choose supported GIF and audio sample settings.");
         if(!double.IsFinite(o.Quality)||o.Quality<0||o.Quality>1||o.AudioBitrate<8||o.AudioBitrate>512||!double.IsFinite(o.Speed)||o.Speed<.05||o.Speed>100||o.Channels is not (1 or 2)||!double.IsFinite(o.LeftVolume)||!double.IsFinite(o.RightVolume)||o.LeftVolume<0||o.RightVolume<0||o.LeftVolume>4||o.RightVolume>4||o.Width is <2 or >8192||o.Height is <2 or >8192||o.TargetBytes is <=0||o.ReductionPercent is {} reduction&&(!double.IsFinite(reduction)||reduction<=0||reduction>=100)||!double.IsFinite(o.SplitInterval)||o.SplitInterval<=0)throw new ArgumentException("One or more media settings are outside their supported range.");
         if(!double.IsFinite(o.TargetLoudness)||o.TargetLoudness< -70||o.TargetLoudness> -5||!double.IsFinite(o.LoudnessRange)||o.LoudnessRange<1||o.LoudnessRange>50||!double.IsFinite(o.TruePeak)||o.TruePeak< -9||o.TruePeak>0)throw new ArgumentException("Choose supported loudness targets.");
     }

@@ -65,7 +65,10 @@ public static partial class ImageEngine
                 case "crop":if(options.Crop is not {} crop||crop.Width<1||crop.Height<1||crop.X<0||crop.Y<0||crop.X+crop.Width>image.PixelWidth||crop.Y+crop.Height>image.PixelHeight)throw new ArgumentException("Drag a crop inside the image.");image=new CroppedBitmap(image,crop);break;
                 case "rotate":image=new TransformedBitmap(image,new RotateTransform(options.Rotation));break;
                 case "flip":image=new TransformedBitmap(image,new ScaleTransform(options.Horizontal?-1:1,options.Horizontal?1:-1));break;
-                case "editImage":image=FromPng(PhotoCodec.Adjust(PngBytes(image),options.Adjustments));break;
+                case "editImage":
+                    image=FromPng(PhotoCodec.Adjust(PngBytes(image),options.Adjustments));
+                    if(options.Width is {} ew&&options.Height is {} eh&&(ew!=image.PixelWidth||eh!=image.PixelHeight)){if(ew<1||eh<1||ew>30000||eh>30000||(long)ew*eh>100_000_000)throw new ArgumentException("Choose valid image dimensions.");image=new TransformedBitmap(image,new ScaleTransform((double)ew/image.PixelWidth,(double)eh/image.PixelHeight));}
+                    if(options.Rotation%360!=0)image=new TransformedBitmap(image,new RotateTransform(options.Rotation));break;
                 case "frameImage":image=Frame(image,options.Frame);ext="png";break;
                 case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);ext="png";break;
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;

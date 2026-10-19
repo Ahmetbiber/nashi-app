@@ -1,0 +1,94 @@
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using Nashi.Core;
+namespace Nashi.Windows;
+
+/// Reads only the three configured modifiers and left mouse button. It never
+/// records keystrokes or polls the clipboard. Actual files/links arrive through
+/// OLE drag/drop after the user chooses a wheel segment.
+public sealed class GlobalDragController:IDisposable
+{
+    [StructLayout(LayoutKind.Sequential)]internal struct NativePoint{public int X,Y;}
+    [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
+    [DllImport("user32.dll")]private static extern bool GetCursorPos(out NativePoint point);
+    [DllImport("user32.dll")]private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]private static extern bool RegisterHotKey(IntPtr window,int id,uint modifiers,uint key);
+    [DllImport("user32.dll")]private static extern bool UnregisterHotKey(IntPtr window,int id);
+    [DllImport("oleacc.dll")]private static extern int AccessibleObjectFromPoint(NativePoint point,[MarshalAs(UnmanagedType.Interface)]out object accessible,[MarshalAs(UnmanagedType.Struct)]out object child);
+    private readonly Window owner;private readonly PreferencesStore preferences;private readonly Action<string,IDataObject,string?> dropped;private readonly Action link;private readonly System.Windows.Threading.DispatcherTimer timer;
+    private NativePoint start;private bool down,opened;private Task<string?>? hint;private GlobalDropWheel? wheel;private HwndSource? source;private IntPtr handle;
+    public bool LinkShortcutRegistered{get;private set;}
+    public GlobalDragController(Window owner,PreferencesStore preferences,Action<string,IDataObject,string?> dropped,Action link)
+    {
+        this.owner=owner;this.preferences=preferences;this.dropped=dropped;this.link=link;timer=new(){Interval=TimeSpan.FromMilliseconds(40)};timer.Tick+=(_,_)=>Poll();
+        if(new WindowInteropHelper(owner).Handle!=IntPtr.Zero)Register();else owner.SourceInitialized+=(_,_)=>Register();timer.Start();
+    }
+    private void Register(){handle=new WindowInteropHelper(owner).Handle;source=HwndSource.FromHwnd(handle);source.AddHook(Hook);LinkShortcutRegistered=RegisterHotKey(handle,7701,0x4000|0x2|0x4,0x44);}
+    private IntPtr Hook(IntPtr window,int message,IntPtr w,IntPtr l,ref bool handled){if(message==0x0312&&w.ToInt32()==7701){link();handled=true;}return IntPtr.Zero;}
+    private static bool Held(int key)=>(GetAsyncKeyState(key)&0x8000)!=0;
+    private string Chord(){var parts=new List<string>();if(Held(0x11))parts.Add("Ctrl");if(Held(0x10))parts.Add("Shift");if(Held(0x12))parts.Add("Alt");return string.Join('+',parts);}
+    private void Poll()
+    {
+        if(!preferences.Value.Enabled)return;var held=Held(1);GetCursorPos(out var point);
+        if(!held){if(down){down=false;opened=false;hint=null;if(wheel is {IsVisible:true}){var old=wheel;owner.Dispatcher.BeginInvoke(()=>{if(old.IsVisible)old.Close();});}wheel=null;}return;}
+        if(!down){down=true;start=point;opened=false;hint=null;return;}if(opened||Math.Abs(point.X-start.X)+Math.Abs(point.Y-start.Y)<10)return;
+        hint??=Task.Run(()=>LinkAt(start));var chord=Chord();var p=preferences.Value;var kind=chord==p.ToolsModifier?"tools":chord==p.ConvertModifier?"convert":chord==p.ActionsModifier?"actions":null;if(kind is null)return;opened=true;
+        wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,hint?.IsCompletedSuccessfully==true?hint.Result:null),()=>hint?.IsCompletedSuccessfully==true?hint.Result:null);wheel.Left=Math.Max(0,point.X-270*p.WheelScale);wheel.Top=Math.Max(0,point.Y-270*p.WheelScale);wheel.Show();
+    }
+    private static string? LinkAt(NativePoint point)
+    {
+        try
+        {
+            var element=AutomationElement.FromPoint(new Point(point.X,point.Y));for(var n=0;n<7&&element is not null;n++,element=TreeWalker.ControlViewWalker.GetParent(element))
+            {
+                if(element.Current.IsPassword||element.Current.ControlType==ControlType.Edit)return null;
+                if(element.TryGetCurrentPattern(ValuePattern.Pattern,out var value)&&WebMediaPayload.Parse(((ValuePattern)value).Current.Value) is {} result)return result.Url;
+            }
+            if(AccessibleObjectFromPoint(point,out var accessible,out var child)>=0)
+            {
+                try{for(var n=0;n<4;n++){var value=accessible.GetType().InvokeMember("accValue",System.Reflection.BindingFlags.GetProperty,null,accessible,[child])?.ToString();if(WebMediaPayload.Parse(value) is {} link)return link.Url;var parent=accessible.GetType().InvokeMember("accParent",System.Reflection.BindingFlags.GetProperty,null,accessible,null);if(parent is null)break;Marshal.FinalReleaseComObject(accessible);accessible=parent;child=0;}}finally{if(Marshal.IsComObject(accessible))Marshal.FinalReleaseComObject(accessible);}
+            }
+        }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}catch(System.Reflection.TargetInvocationException){}catch(MissingMethodException){}return null;
+    }
+    public void Dispose(){timer.Stop();wheel?.Close();if(handle!=IntPtr.Zero)UnregisterHotKey(handle,7701);source?.RemoveHook(Hook);}
+}
+
+internal sealed class GlobalDropWheel:Window
+{
+    private readonly string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
+    public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
+    {
+        this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=540*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);
+        DragEnter+=(_,e)=>{var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];choices=Choices(files,Payload(e.Data));Build(choices);e.Effects=choices.Count>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
+        DragOver+=(_,e)=>{var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;if(distance<106||distance>255||choices.Count==0)selection="";else{var angle=(Math.Atan2(p.Y-270,p.X-270)*180/Math.PI+90+360+180d/choices.Count)%360;var index=(int)(angle/(360d/choices.Count));var id=choices[index].Id;if(id!=selection){selection=id;Feedback.Play();}Highlight(index);}e.Effects=selection.Length>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
+        Drop+=(_,e)=>{var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
+    }
+    private WebMediaPayload? Payload(IDataObject data)=>WebMediaPayload.Parse(data.GetData(DataFormats.UnicodeText) as string??data.GetData("UniformResourceLocatorW") as string,data.GetData(DataFormats.Html) as string,hint());
+    private IReadOnlyList<ToolChoice> Choices(string[] files,WebMediaPayload? web)
+    {
+        if(files.Length>0)
+        {
+            if(mode=="convert")return FeatureCatalog.Formats(files).Select(f=>new ToolChoice("convert:"+f,f.ToUpperInvariant(),"↗")).ToArray();
+            if(mode=="actions")return [new("share","Share","◉"),new("float","Float","▣"),new("copy","Copy","▱"),new("move","Move","↗"),new("copyPath","Copy Path","↪"),new("terminal","Terminal",">_")];
+            return FeatureCatalog.Tools(files).Select(t=>new ToolChoice(t,FeatureCatalog.ToolNames[t],"✦")).ToArray();
+        }
+        if(web is null)return [];return web.Kind switch{"youtube"=>[new("download:video","Download Video","↓"),new("download:thumbnail","Download Thumbnail","▣"),new("download:audio","Download Audio","♫")],"instagramPhotos"=>[new("download:photos","Download Images","▣")],"instagramReel"=>[new("download:video","Download Video","↓"),new("download:audio","Download Audio","♫")],"image"=>[new("download:image","Download Image","↓")],_=>[new("download:video","Download Video","↓"),new("download:audio","Download Audio","♫") ]};
+    }
+    private void Highlight(int index){var paths=canvas.Children.OfType<System.Windows.Shapes.Path>().ToArray();for(var n=0;n<paths.Length;n++)paths[n].Fill=Theme.Brush(n==index?"Sage":"Inset");}
+    private void Build(IReadOnlyList<ToolChoice> tools)
+    {
+        canvas.Children.Clear();canvas.Children.Add(new Ellipse{Width=540,Height=540,Fill=Theme.Brush("Surface")});var count=tools.Count;
+        for(var i=0;i<count;i++)
+        {
+            var angle=(-90d+360d*i/count)*Math.PI/180;var half=(180d/count-1)*Math.PI/180;Point P(double r,double a)=>new(270+r*Math.Cos(a),270+r*Math.Sin(a));var a=angle-half;var b=angle+half;var geometry=new StreamGeometry();using(var g=geometry.Open()){g.BeginFigure(P(108,a),true,true);g.LineTo(P(250,a),true,false);g.ArcTo(P(250,b),new(250,250),0,b-a>Math.PI,SweepDirection.Clockwise,true,false);g.LineTo(P(108,b),true,false);g.ArcTo(P(108,a),new(108,108),0,b-a>Math.PI,SweepDirection.Counterclockwise,true,false);}canvas.Children.Add(new System.Windows.Shapes.Path{Data=geometry,Fill=Theme.Brush("Inset"),Stroke=Theme.Brush("Line")});
+            var radial=4*Math.Sin(half)*(Math.Pow(250,3)-Math.Pow(108,3))/(6*half*(250*250-108*108));var label=new TextBlock{Text=tools[i].Symbol+"\n"+tools[i].Title,Width=126,Height=90,TextAlignment=TextAlignment.Center,TextWrapping=TextWrapping.Wrap,FontSize=count>8?12:14,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink"),IsHitTestVisible=false};Canvas.SetLeft(label,270+radial*Math.Cos(angle)-63);Canvas.SetTop(label,270+radial*Math.Sin(angle)-30);canvas.Children.Add(label);
+        }
+        var center=new TextBlock{Text=count==0?"Keep dragging\nDrop a file or link":mode=="convert"?"Convert":mode=="actions"?"File actions":"Tools",Width=180,TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,FontSize=20,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink"),IsHitTestVisible=false};Canvas.SetLeft(center,180);Canvas.SetTop(center,250);canvas.Children.Add(center);
+    }
+}

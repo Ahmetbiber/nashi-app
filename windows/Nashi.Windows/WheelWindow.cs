@@ -53,10 +53,11 @@ public sealed class WheelWindow:Window
 }
 internal static class Feedback
 {
+    internal static bool Enabled{get;set;}=true;
     private static MediaPlayer? player;private static DateTime last;
     public static void Play()
     {
-        if((DateTime.UtcNow-last).TotalMilliseconds<70)return;last=DateTime.UtcNow;
+        if(!Enabled||(DateTime.UtcNow-last).TotalMilliseconds<70)return;last=DateTime.UtcNow;
         try
         {
             var directory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi");Directory.CreateDirectory(directory);var file=Path.Combine(directory,"WheelSelection.wav");

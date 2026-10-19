@@ -26,11 +26,11 @@ public sealed partial class MainWindow
         if(MessageBox.Show(this,"Download LibreOffice 26.8.1 (~360 MB) from The Document Foundation? Its SHA-256 is checked, then the package is extracted into Nashi’s user tools folder. No administrator password or Office subscription is needed. LibreOffice retains its upstream licenses.","Set up office tools",MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
         SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();try{await officeRuntime.InstallAsync(new Progress<OperationProgress>(toast.Update),cancellation.Token);toast.Complete([]);status.Text="Office tools ready.";}catch(OperationCanceledException){toast.Close();status.Text="Setup cancelled.";}catch(Exception error){toast.Close();MessageBox.Show(this,error.Message,"Office setup could not finish");}finally{SetBusy(false);}
     }
-    private async Task EditDocumentAsync(ToolChoice choice,string[] selected)
+    private async Task EditDocumentAsync(ToolChoice choice,string[] selected,string? requestedFormat=null)
     {
         if(choice.Id=="convert")
         {
-            var editor=new ToolEditor(this,"convert","Convert",selected[0],inputs:selected,outputFormats:FeatureCatalog.Formats(selected));if(editor.ShowDialog()!=true)return;
+            var editor=new ToolEditor(this,"convert","Convert",selected[0],inputs:selected,outputFormats:FeatureCatalog.Formats(selected));editor.ConfigureProfiles(preferences,requestedFormat);if(editor.ShowDialog()!=true)return;
             await RunAsync((destination,p,t)=>new DocumentConversion(officeRuntime,tools).ConvertAsync(selected,editor.Format,destination,editor.DocumentOptions,p,t),"Convert to "+editor.Format.ToUpperInvariant());return;
         }
         if(choice.Id=="organizePDF")

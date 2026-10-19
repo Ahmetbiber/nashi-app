@@ -19,6 +19,7 @@ public sealed partial class MainWindow
                 case "terminal":FileActions.Terminal(paths[0]);break;
                 case "share":FileActions.Share(this,paths);break;
                 case "float":
+                    if(preferences.Value.FloatBehavior=="addToExisting"&&shelves.LastOrDefault(s=>s.IsVisible) is {} existing){existing.Add(paths);existing.Activate();break;}
                     var shelf=new FloatShelf(paths,async(p,a)=>await PerformFileAction(a,p),p=>{files.Clear();Add(p);ShowLibrary(false);Activate();});shelves.Add(shelf);shelf.Closed+=(_,_)=>shelves.Remove(shelf);shelf.Show();break;
                 case "move":await RunAsync((destination,p,t)=>FileActions.MoveAsync(paths,destination,p,t),"Move");files.Clear();Refresh();break;
             }

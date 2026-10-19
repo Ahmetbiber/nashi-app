@@ -21,11 +21,13 @@ internal static class ParitySmokeTests
     private static void Capture(Window window,string root,string name){window.UpdateLayout();var image=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);image.Render(window);ImageEngine.Save(image,Path.Combine(root,name),"png");}
     private static bool Drive(ToolEditor editor,Action<ToolEditor> actions)
     {
+        using var watchdog=new System.Threading.Timer(_=>{var root=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY");if(root is not null)File.WriteAllText(Path.Combine(root,"dialog-timeout.txt"),"Native editor did not complete: "+editor.GetType().Name);Environment.Exit(1);},null,TimeSpan.FromSeconds(25),System.Threading.Timeout.InfiniteTimeSpan);
         Exception? error=null;editor.Dispatcher.BeginInvoke(()=>{try{DesktopInput.Pump();actions(editor);Children(editor).OfType<Canvas>().FirstOrDefault()?.Focus();DesktopInput.Key(editor,Key.Enter);}catch(Exception e){error=e;editor.Close();}});var accepted=editor.ShowDialog()==true;if(error is not null)throw error;return accepted;
     }
     public static int Run(string root,Window owner,string source,BitmapSource bitmap,Toolchain tools)
     {
-        var checks=0;void Check(bool value,string message){if(!value)throw new Exception(message);checks++;}
+        var checks=0;void Check(bool value,string message){if(!value)throw new Exception(message);checks++;File.WriteAllText(Path.Combine(root,"parity-progress.json"),JsonSerializer.Serialize(new{passed=checks,lastCheck=message}));}
+        File.WriteAllText(Path.Combine(root,"parity-progress.json"),"{\"phase\":\"starting photo editor\"}");
         var outputs=Path.Combine(root,"Parity exports");Directory.CreateDirectory(outputs);
         var editor=new ToolEditor(owner,"editImage","Edit Photo",source,preview:bitmap);Check(Drive(editor,e=>{e.FieldForTest("Brightness").Text="0.2";Capture(e,root,"windows-photo-editor.png");}),"Photo editor could not save with native Enter");
         var adjusted=ImageEngine.Apply("editImage",[source],outputs,editor.ImageOptions)[0];Check(!ImageEngine.PngBytes(ImageEngine.Load(adjusted)).SequenceEqual(ImageEngine.PngBytes(ImageEngine.Load(source))),"Saved photo adjustment did not change pixels");

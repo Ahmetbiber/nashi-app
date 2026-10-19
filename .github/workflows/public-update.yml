@@ -14,13 +14,13 @@ jobs:
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
         with:
           dotnet-version: '10.0.x'
-      - name: Verify anonymous download and real portable update
+      - name: Verify anonymous download, replacement, restart and Library persistence
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $proof = Join-Path $env:GITHUB_WORKSPACE 'build/public-update-proof'
           New-Item -ItemType Directory -Force $proof | Out-Null
-          $base = 'https://github.com/orkunisitmak/nashi-app/releases/download/v0.7.0-30/'
+          $base = 'https://github.com/orkunisitmak/nashi-app/releases/download/v0.7.1-31/'
           $zip = Join-Path $proof 'initial.zip'
           $manifest = Join-Path $proof 'initial.json'
           Invoke-WebRequest ($base + 'Nashi-Windows-x64.zip') -OutFile $zip
@@ -29,16 +29,24 @@ jobs:
           $env:NASHI_VERIFY_UPDATE_ARCHIVE = $zip
           dotnet run --project windows/Nashi.Verify -c Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $data = Join-Path $env:LOCALAPPDATA 'Nashi'
+          $imports = Join-Path $data 'Imports'
+          New-Item -ItemType Directory -Force $imports | Out-Null
+          $text = Join-Path $imports 'Update persistence.txt'
+          $image = Join-Path $imports 'Update persistence.png'
+          'Persistent clipboard · Türkçe 🍐' | Set-Content -Encoding utf8 $text
+          Copy-Item Resources/Brand/NashiIcon.png $image
+          $state = Join-Path $data 'library.json'
+          @{ Appearance = 'dark'; Entries = @(@{ Id = [guid]::NewGuid().ToString(); Created = [DateTimeOffset]::Now.ToString('o'); Action = 'Update persistence fixture'; Paths = @($text,$image) }) } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 $state
+          $stateHash = (Get-FileHash $state).Hash
+          $textHash = (Get-FileHash $text).Hash
+          $imageHash = (Get-FileHash $image).Hash
           $target = Join-Path $env:RUNNER_TEMP 'Nashi-Portable-Update'
           Expand-Archive $zip $target
           $old = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion
           $process = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--install-update' -WorkingDirectory $target -PassThru
           if (!$process.WaitForExit(120000)) { throw 'Initial updater did not exit within two minutes' }
-          if ($process.ExitCode -ne 0) {
-            $errorFile = Join-Path $env:LOCALAPPDATA 'Nashi/update-error.txt'
-            if (Test-Path $errorFile) { Get-Content $errorFile }
-            throw 'Initial updater failed'
-          }
+          if ($process.ExitCode -ne 0) { throw 'Initial updater failed' }
           $new = $old
           $restarted = $null
           for ($i = 0; $i -lt 30; $i++) {
@@ -52,11 +60,14 @@ jobs:
           $restartedId = $restarted.Id
           $restarted.CloseMainWindow() | Out-Null
           if (!$restarted.WaitForExit(15000)) { throw 'Updated app did not close normally' }
+          if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $text).Hash -ne $textHash -or (Get-FileHash $image).Hash -ne $imageHash) { throw 'Update changed saved Library or clipboard imports' }
+          $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'preserved-state'
+          $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--verify-update-state' -PassThru
+          if (!$check.WaitForExit(60000) -or $check.ExitCode -ne 0) { throw 'Updated native Library state verification failed' }
           $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'updated-native-smoke'
           $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--smoke-test' -PassThru
-          if (!$check.WaitForExit(60000)) { throw 'Updated native smoke timed out' }
-          if ($check.ExitCode -ne 0) { throw 'Updated native app smoke failed' }
-          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
+          if (!$check.WaitForExit(90000) -or $check.ExitCode -ne 0) { throw 'Updated native app smoke failed' }
+          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
           Get-Content (Join-Path $proof 'result.json')
           Remove-Item $zip
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

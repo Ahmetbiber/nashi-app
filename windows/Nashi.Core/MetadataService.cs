@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace Nashi.Core;
 public sealed class MetadataService(string root)
 {
-    public static readonly string[] EditableTags=["EXIF:Artist","EXIF:Copyright","EXIF:ImageDescription","EXIF:Make","EXIF:Model","EXIF:Software","EXIF:DateTimeOriginal","EXIF:CreateDate","EXIF:ModifyDate","EXIF:UserComment","XMP:Title","XMP:Description","XMP:Creator","XMP:Rights","PDF:Title","PDF:Author","PDF:Subject","PDF:Keywords","QuickTime:Title","QuickTime:Artist","QuickTime:Comment"];
+    public static readonly string[] EditableTags=["EXIF:Artist","EXIF:Copyright","EXIF:ImageDescription","EXIF:Make","EXIF:Model","EXIF:Software","EXIF:DateTimeOriginal","EXIF:CreateDate","EXIF:ModifyDate","EXIF:UserComment","XMP:Title","XMP:Description","XMP:Creator","XMP:Rights","PDF:Title","PDF:Author","PDF:Subject","PDF:Keywords","QuickTime:Title","QuickTime:Artist","QuickTime:Comment","ID3:Title","ID3:Artist","ID3:Album","ID3:Year","ID3:Genre","ID3:Comment"];
     public string? Executable=>File.Exists(Path.Combine(root,"metadata-13.59","exiftool.exe"))?Path.Combine(root,"metadata-13.59","exiftool.exe"):null;
     public async Task InstallAsync(IProgress<OperationProgress>? progress,CancellationToken token)
     {
@@ -19,6 +19,12 @@ public sealed class MetadataService(string root)
     public async Task<IReadOnlyDictionary<string,string>> ReadAsync(string input,CancellationToken token=default)
     {
         var result=await ProcessRunner.RunAsync(Executable??throw new InvalidOperationException("Set up metadata tools once."),["-json","-G","-s","-charset","filename=UTF8","--",Path.GetFullPath(input)],token);using var json=JsonDocument.Parse(result.Output);return json.RootElement[0].EnumerateObject().ToDictionary(p=>p.Name,p=>p.Value.ToString());
+    }
+    public async Task CopyImageTagsAsync(string source,string output,CancellationToken token)
+    {
+        // Pixels are already oriented and converted to sRGB. Do not reattach a
+        // stale orientation, source ICC profile, preview or image dimensions.
+        await ProcessRunner.RunAsync(Executable??throw new InvalidOperationException("Metadata tools are not ready."),["-overwrite_original","-charset","filename=UTF8","-tagsFromFile",Path.GetFullPath(source),"-all:all","--ICC_Profile","--Orientation","--ThumbnailImage","--PreviewImage","--JpgFromRaw","--ImageWidth","--ImageHeight","--ExifImageWidth","--ExifImageHeight","-Orientation=1","-ColorSpace=sRGB","--",Path.GetFullPath(output)],token);
     }
     public async Task<IReadOnlyList<string>> WriteAsync(IReadOnlyList<string> inputs,string destination,bool removeAll,IReadOnlyDictionary<string,string>? updates=null,IReadOnlyList<string>? removals=null,IProgress<OperationProgress>? progress=null,CancellationToken token=default)
     {

@@ -6,19 +6,19 @@ namespace Nashi.Core;
 
 public static class DocumentEngine
 {
-    public static IReadOnlyList<string> Pdf(string tool,IReadOnlyList<string> inputs,string destination,int[]? pages=null,CancellationToken token=default,Dictionary<int,int>? rotations=null,int pagesPerFile=1)
+    public static IReadOnlyList<string> Pdf(string tool,IReadOnlyList<string> inputs,string destination,int[]? pages=null,CancellationToken token=default,Dictionary<int,int>? rotations=null,int pagesPerFile=1,int[]? pageRotations=null,string password="")
     {
         using var tx=new ExportTransaction(destination);var outputs=new List<string>();
         if(tool=="mergePDFs")
         {
             if(inputs.Count<2)throw new ArgumentException("Choose at least two PDFs.");
             using var merged=new PdfDocument();
-            foreach(var file in inputs){token.ThrowIfCancellationRequested();using var source=PdfReader.Open(file,PdfDocumentOpenMode.Import);foreach(var page in source.Pages)merged.AddPage(page);}
+            foreach(var file in inputs){token.ThrowIfCancellationRequested();using var source=PdfReader.Open(file,password,PdfDocumentOpenMode.Import);foreach(var page in source.Pages)merged.AddPage(page);}
             var output=SafePaths.Unique(tx.StagingDirectory,"Merged.pdf");merged.Save(output);outputs.Add(output);
         }
         else foreach(var input in inputs)
         {
-            token.ThrowIfCancellationRequested();using var source=PdfReader.Open(input,PdfDocumentOpenMode.Import);
+            token.ThrowIfCancellationRequested();using var source=PdfReader.Open(input,password,PdfDocumentOpenMode.Import);
             if(tool=="splitPDF")
             {
                 if(pagesPerFile<1||pagesPerFile>source.PageCount)throw new ArgumentException("Choose pages per file within the PDF page count.");
@@ -32,7 +32,7 @@ public static class DocumentEngine
             else if(tool=="organizePDF")
             {
                 if(pages is null||pages.Length==0||pages.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Enter page numbers within this PDF, in the desired order.");
-                using var result=new PdfDocument();foreach(var page in pages){var added=result.AddPage(source.Pages[page-1]);added.Rotate=(added.Rotate+(rotations?.GetValueOrDefault(page)??0))%360;}
+                using var result=new PdfDocument();for(var n=0;n<pages.Length;n++){var page=pages[n];var added=result.AddPage(source.Pages[page-1]);added.Rotate=(added.Rotate+(pageRotations is not null?pageRotations[n]:rotations?.GetValueOrDefault(page)??0))%360;}
                 var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+" Organized.pdf");result.Save(output);outputs.Add(output);
             }
             else if(tool is "compress" or "removeMetadata")
@@ -48,13 +48,22 @@ public static class DocumentEngine
     {
         if(inputs.Count==0)throw new ArgumentException("Choose files to zip.");
         using var tx=new ExportTransaction(destination);var output=Path.Combine(tx.StagingDirectory,"Archive.zip");
-        var usedNames=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var usedNames=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var entries=0;long total=0;
         using(var zip=ZipFile.Open(output,ZipArchiveMode.Create))
-        for(var i=0;i<inputs.Count;i++)
         {
-            token.ThrowIfCancellationRequested();var input=inputs[i];if(!File.Exists(input)||(File.GetAttributes(input)&FileAttributes.ReparsePoint)!=0)throw new ArgumentException("Choose regular files; links and folders are not included.");
-            var name=Path.GetFileName(input);var n=2;while(usedNames.Contains(name))name=Path.GetFileNameWithoutExtension(input)+$" {n++}"+Path.GetExtension(input);
-            usedNames.Add(name);zip.CreateEntryFromFile(input,name,CompressionLevel.Optimal);progress?.Report(new((i+1d)/inputs.Count*.98,"Packing files…"));
+            void Add(string input,string name,int depth)
+            {
+                token.ThrowIfCancellationRequested();if(depth>64||++entries>10000||(File.GetAttributes(input)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Zip regular files and folders without links (10,000 item limit).");
+                if(Directory.Exists(input)){zip.CreateEntry(name.TrimEnd('/')+"/");foreach(var child in Directory.EnumerateFileSystemEntries(input))Add(child,name+"/"+Path.GetFileName(child),depth+1);}
+                else{total=checked(total+new FileInfo(input).Length);if(total>4L*1024*1024*1024)throw new InvalidDataException("Choose up to 4 GB of files.");using var source=File.OpenRead(input);using var target=zip.CreateEntry(name,CompressionLevel.Optimal).Open();var bytes=new byte[81920];int read;while((read=source.Read(bytes))>0){token.ThrowIfCancellationRequested();target.Write(bytes,0,read);}}
+            }
+            for(var i=0;i<inputs.Count;i++)
+            {
+                var input=Path.GetFullPath(inputs[i]).TrimEnd(Path.DirectorySeparatorChar);if(!File.Exists(input)&&!Directory.Exists(input))throw new FileNotFoundException("A selected item is missing.");
+                // A destination inside a selected folder must never pack its own staging directory.
+                if(Directory.Exists(input)&&Path.GetFullPath(destination).StartsWith(input+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||Directory.Exists(input)&&Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar).Equals(input,StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Save the archive outside the folder being zipped.");
+                var name=Path.GetFileName(input);var n=2;while(!usedNames.Add(name))name=Path.GetFileNameWithoutExtension(input)+$" {n++}"+Path.GetExtension(input);Add(input,name,0);progress?.Report(new((i+1d)/inputs.Count*.98,"Packing files…"));
+            }
         }
         return tx.Publish([output],token)[0];
     }

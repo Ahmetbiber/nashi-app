@@ -18,6 +18,9 @@ internal static class DesktopInput
     [StructLayout(LayoutKind.Sequential)]private struct MouseInput{public int X,Y;public uint Data,Flags,Time;public UIntPtr Extra;}
     [DllImport("user32.dll",SetLastError=true)]private static extern uint SendInput(uint count,Input[] inputs,int size);
     [DllImport("user32.dll")]private static extern bool SetCursorPos(int x,int y);
+    internal static void MovePointer(Point point)=>SetCursorPos((int)point.X,(int)point.Y);
+    internal static void Hold(Key key,bool pressed){var input=new Input{Type=1,Data=new(){Keyboard=new(){Key=(ushort)KeyInterop.VirtualKeyFromKey(key),Flags=pressed?0u:2u}}};if(SendInput(1,[input],Marshal.SizeOf<Input>())!=1)throw new InvalidOperationException("Native key input unavailable.");}
+    internal static void HoldMouse(bool pressed){var input=new Input{Data=new(){Mouse=new(){Flags=pressed?2u:4u}}};if(SendInput(1,[input],Marshal.SizeOf<Input>())!=1)throw new InvalidOperationException("Native mouse input unavailable.");}
     internal static void Pump(int milliseconds=140)
     {
         var frame=new DispatcherFrame();var timer=new DispatcherTimer(DispatcherPriority.Background){Interval=TimeSpan.FromMilliseconds(milliseconds)};

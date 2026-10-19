@@ -7,6 +7,7 @@ public static partial class SubtitleCodec
     public sealed record Cue(long Start,long End,string Text,string Settings="");
     [GeneratedRegex(@"^\s*((?:\d+:)?\d{2}:\d{2}[.,]\d{1,3})\s*-->\s*((?:\d+:)?\d{2}:\d{2}[.,]\d{1,3})(?:\s+(.*))?\s*$")]private static partial Regex Timing();
     [GeneratedRegex("<[^>]+>")]private static partial Regex Tags();
+    [GeneratedRegex(@"<(?:/?(?:c|v|lang|ruby|rt)(?:[ .][^>]*)?|\d{2}:\d{2}(?::\d{2})?\.\d{3})>")]private static partial Regex VttOnlyTags();
     public static Cue[] Parse(string source)
     {
         var lines=source.TrimStart('\uFEFF').Replace("\r\n","\n").Replace('\r','\n').Split('\n');var cues=new List<Cue>();
@@ -29,7 +30,7 @@ public static partial class SubtitleCodec
         var cues=Parse(source);return format switch
         {
             "vtt"=>"WEBVTT\n\n"+string.Join("\n\n",cues.Select(c=>$"{Stamp(c.Start,true)} --> {Stamp(c.End,true)}{(c.Settings.Length>0?" "+c.Settings:"")}\n{c.Text}"))+"\n",
-            "srt"=>string.Join("\n\n",cues.Select((c,i)=>$"{i+1}\n{Stamp(c.Start,false)} --> {Stamp(c.End,false)}\n{c.Text}"))+"\n",
+            "srt"=>string.Join("\n\n",cues.Select((c,i)=>$"{i+1}\n{Stamp(c.Start,false)} --> {Stamp(c.End,false)}\n{VttOnlyTags().Replace(c.Text,"")}"))+"\n",
             "txt"=>string.Join("\n\n",cues.Select(c=>WebUtility.HtmlDecode(Tags().Replace(c.Text,""))))+"\n",_=>throw new ArgumentException("Choose SRT, VTT or TXT.")
         };
     }

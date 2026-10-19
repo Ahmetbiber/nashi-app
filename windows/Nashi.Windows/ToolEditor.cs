@@ -84,7 +84,7 @@ public sealed partial class ToolEditor:Window
             options.Children.Add(new TextBlock{Text="Drawing tool"});options.Children.Add(drawingTool);TextField("Annotation text","Note");TextField("Ink color","#FF5200");Field("Stroke width",3);Field("Font size",24);options.Children.Add(new TextBlock{Text="Drag to draw. One active tool per stroke.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)});
             options.Children.Add(MainWindow.Button("Undo last mark",()=>{if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
-        BuildPhotoOptions(inputs??[input]);BuildDocumentOptions();BuildMediaOptions();
+        BuildPhotoOptions(inputs??[input]);BuildInputOrder(inputs??[input]);BuildCropOptions();BuildDocumentOptions();BuildMediaOptions();
         if(options.Children.Count==1)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
         var footer=new DockPanel{Margin=new(0,20,0,0),LastChildFill=false};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Primary;save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);var cancel=MainWindow.Button("Cancel",()=>DialogResult=false);DockPanel.SetDock(cancel,Dock.Left);footer.Children.Add(cancel);var reset=MainWindow.Button("↶ Reset",Reset);DockPanel.SetDock(reset,Dock.Left);footer.Children.Add(reset);var safe=new TextBlock{Text="Original stays safe",Foreground=Theme.Brush("Muted"),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new(0,0,16,0)};DockPanel.SetDock(safe,Dock.Right);footer.Children.Add(safe);
         var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
@@ -105,6 +105,7 @@ public sealed partial class ToolEditor:Window
     {
         if(tool is not ("crop" or "cropVideo" or "redactVideo" or "redactImage" or "annotate"))return;
         drawing.Focus();origin=e.GetPosition(drawing);dragging=drawing.CaptureMouse();
+        if(BeginCropGesture(origin)){e.Handled=true;return;}
         if(tool=="annotate"){try{AnnotationStart();}catch(ArgumentException error){dragging=false;drawing.ReleaseMouseCapture();if(App.IsSmokeTest)throw;MessageBox.Show(this,error.Message,"Check drawing settings");}e.Handled=true;return;}
         if(tool=="annotate"&&drawingTool.SelectedIndex==0){activeStroke=new Polyline{Stroke=new SolidColorBrush(Color.FromArgb(160,234,181,40)),StrokeThickness=Math.Max(3,drawing.Width/100),StrokeLineJoin=PenLineJoin.Round};activeStroke.Points.Add(origin);drawing.Children.Add(activeStroke);}
         else
@@ -117,18 +118,19 @@ public sealed partial class ToolEditor:Window
     private void MoveDraw(object sender,MouseEventArgs e)
     {
         if(!dragging)return;var p=e.GetPosition(drawing);p.X=Math.Clamp(p.X,0,drawing.Width);p.Y=Math.Clamp(p.Y,0,drawing.Height);
+        if(MoveCropGesture(p))return;
         if(tool=="annotate"){AnnotationMove(p);return;}
         if(activeStroke is not null){activeStroke.Points.Add(p);return;}
         if(activeRectangle is null)return;var dx=p.X-origin.X;var dy=p.Y-origin.Y;
-        if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)||CropRatio() is not null)
         {
-            var ratio=drawing.Width/drawing.Height;var width=Math.Min(Math.Abs(dx),Math.Abs(dy)*ratio);var height=width/ratio;p=new(origin.X+Math.CopySign(width,dx),origin.Y+Math.CopySign(height,dy));
+            var ratio=CropRatio()??drawing.Width/drawing.Height;var width=Math.Min(Math.Abs(dx),Math.Abs(dy)*ratio);var height=width/ratio;p=new(origin.X+Math.CopySign(width,dx),origin.Y+Math.CopySign(height,dy));
         }
         var x=Math.Min(origin.X,p.X);var y=Math.Min(origin.Y,p.Y);var w=Math.Abs(p.X-origin.X);var h=Math.Abs(p.Y-origin.Y);
         Canvas.SetLeft(activeRectangle,x);Canvas.SetTop(activeRectangle,y);activeRectangle.Width=w;activeRectangle.Height=h;
         if(tool!="annotate"){fields["X"].Text=Number(Math.Floor(x));fields["Y"].Text=Number(Math.Floor(y));fields["Width"].Text=Number(Math.Max(1,Math.Floor(w)));fields["Height"].Text=Number(Math.Max(1,Math.Floor(h)));}
     }
-    private void EndDraw(object sender,MouseButtonEventArgs e){if(tool=="redactImage"&&activeRectangle is {Width:>=1,Height:>=1} r)photoRegions.Add(new Rect(Canvas.GetLeft(r),Canvas.GetTop(r),r.Width,r.Height));if(tool=="redactVideo"&&activeRectangle is {Width:>=2,Height:>=2} v){videoRegions.Add(new(Canvas.GetLeft(v),Canvas.GetTop(v),v.Width,v.Height,Value("Start"),Value("End",duration)));ReloadRanges();}dragging=false;activeStroke=null;activeRectangle=null;annotationShape=null;drawing.ReleaseMouseCapture();e.Handled=true;}
+    private void EndDraw(object sender,MouseButtonEventArgs e){if(tool=="redactImage"&&activeRectangle is {Width:>=1,Height:>=1} r)photoRegions.Add(new Rect(Canvas.GetLeft(r),Canvas.GetTop(r),r.Width,r.Height));if(tool=="redactVideo"&&activeRectangle is {Width:>=2,Height:>=2} v){videoRegions.Add(new(Canvas.GetLeft(v),Canvas.GetTop(v),v.Width,v.Height,Value("Start"),Value("End",duration)));ReloadRanges();}dragging=false;cropGesture=null;activeStroke=null;activeRectangle=null;annotationShape=null;drawing.ReleaseMouseCapture();e.Handled=true;}
     private void Seek(double seconds){player.Position=TimeSpan.FromSeconds(Math.Clamp(seconds,0,duration));time.Text=$"{player.Position:mm\\:ss\\.fff} / {TimeSpan.FromSeconds(duration):mm\\:ss\\.fff}";}
     private void OnKey(object sender,KeyEventArgs e)
     {

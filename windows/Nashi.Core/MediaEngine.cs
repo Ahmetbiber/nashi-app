@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Nashi.Core;
 
-public sealed record MediaStream(int Index, string Kind, string Codec, int? Width, int? Height, bool AttachedPicture);
+public sealed record MediaStream(int Index, string Kind, string Codec, int? Width, int? Height, bool AttachedPicture,int Bits=0,string SampleFormat="");
 public sealed record MediaInfo(double Duration, long Bytes, IReadOnlyList<MediaStream> Streams)
 {
     public MediaStream? Video => Streams.FirstOrDefault(s => s.Kind == "video" && !s.AttachedPicture);
@@ -72,7 +72,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             // FFmpeg auto-rotates decoded frames before crop/scale filters. The
             // editor and validation use those same displayed dimensions.
             if(double.IsFinite(rotation)&&Math.Abs(Math.Abs(rotation)%180-90)<.001)(width,height)=(height,width);
-            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached));
+            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached,GetInt(stream,"bits_per_raw_sample")??GetInt(stream,"bits_per_sample")??0,GetString(stream,"sample_fmt")));
         }
         var duration = root.TryGetProperty("format", out var format) && double.TryParse(GetString(format,"duration"), CultureInfo.InvariantCulture, out var seconds) && double.IsFinite(seconds) ? Math.Max(0,seconds) : 0;
         return new(duration, new FileInfo(input).Length, streams);
@@ -90,7 +90,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             var output = Output(transaction.StagingDirectory,input,format,"");
             var arguments = new List<string> { "-i",input };
             if (AudioFormats.Contains(format))
-            { RequireAudio(info); arguments.AddRange(["-map","0:a:0","-vn"]); arguments.AddRange(AudioEncoding(format,options)); }
+            { RequireAudio(info); arguments.AddRange(["-map","0:a:0","-vn"]); arguments.AddRange(AudioEncoding(format,SourceDepth(options,info))); }
             else
             {
                 RequireVideo(info);
@@ -128,7 +128,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
 
     private async Task<IReadOnlyList<string>> ApplyAsync(string tool,string input,MediaInfo info,string directory,MediaOptions options,Action<OperationProgress> progress,CancellationToken token)
     {
-        progress(new(null,"Preparing "+Path.GetFileName(input)+"…"));
+        options=SourceDepth(options,info);progress(new(null,"Preparing "+Path.GetFileName(input)+"…"));
         var ext=Path.GetExtension(input).TrimStart('.').ToLowerInvariant();if(ext=="aif")ext="aiff";
         var output=Output(directory,input,ext," "+ToolSuffix(tool));
         var args=new List<string>{"-i",input};double? duration=info.Duration;
@@ -329,6 +329,11 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static Action<OperationProgress> Scoped(IProgress<OperationProgress>? progress,int index,int count)=>p=>progress?.Report(p with{Fraction=p.Fraction is null?null:(index+p.Fraction)/count*.98,Label=count>1?$"File {index+1} of {count} · {p.Label}":p.Label});
     private static string Output(string directory,string input,string ext,string suffix)=>SafePaths.Unique(directory,Path.GetFileNameWithoutExtension(input)+suffix+"."+ext);
     private static string ToolSuffix(string tool)=>tool switch{"muteVideo"=>"Muted","removeMetadata"=>"Metadata","trimAudio" or "trimVideo"=>"Trimmed","cropVideo"=>"Cropped","changeVideoSpeed"=>"Speed","audioChannels"=>"Channels","redactVideo" or "redactAudio"=>"Redacted",_=>tool};
+    internal static MediaOptions SourceDepth(MediaOptions options,MediaInfo info)
+    {
+        if(options.SampleDepth!="matchSource")return options;var audio=info.Streams.FirstOrDefault(s=>s.Kind=="audio");
+        var depth=audio?.Codec.Contains("pcm_f",StringComparison.Ordinal)==true?"float32":audio?.Bits>24?"pcm32":audio?.Bits>16?"pcm24":"pcm16";return options with{SampleDepth=depth};
+    }
     private static string[] AudioEncoding(string ext,MediaOptions o)=>ext switch
     {
         "mp3"=>["-c:a","libmp3lame","-b:a",o.AudioBitrate+"k"],"m4a" or "aac"=>["-c:a","aac","-b:a",o.AudioBitrate+"k"],
@@ -351,7 +356,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static void RequireAudio(MediaInfo info){if(!info.HasAudio)throw new ArgumentException("This file has no audio stream.");}
     private static string Number(double value)=>double.IsFinite(value)?value.ToString("0.########",CultureInfo.InvariantCulture):throw new ArgumentException("Enter a finite number.");
     private static string GetString(JsonElement element,string property)=>element.TryGetProperty(property,out var value)?value.ToString():"";
-    private static int? GetInt(JsonElement element,string property)=>element.TryGetProperty(property,out var value)&&value.TryGetInt32(out var number)?number:null;
+    private static int? GetInt(JsonElement element,string property)=>element.TryGetProperty(property,out var value)&&int.TryParse(value.ToString(),NumberStyles.Integer,CultureInfo.InvariantCulture,out var number)?number:null;
     private static void Validate(MediaOptions o)
     {
         if(o.SampleDepth is not ("matchSource" or "pcm16" or "pcm24" or "pcm32" or "float32")||o.GifFrameRate<1||o.GifFrameRate>60||o.GifWidth<16||o.GifWidth>8192)throw new ArgumentException("Choose supported GIF and audio sample settings.");

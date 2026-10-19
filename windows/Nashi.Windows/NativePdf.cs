@@ -11,10 +11,10 @@ using Nashi.Core;
 namespace Nashi.Windows;
 public static class NativePdf
 {
-    public static async Task<byte[][]> RenderAsync(string path,int dpi=144,CancellationToken token=default)
+    public static async Task<byte[][]> RenderAsync(string path,int dpi=144,CancellationToken token=default,string password="")
     {
-        var source=await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));var pdf=await global::Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(source);if(pdf.PageCount>1000)throw new InvalidDataException("Choose a PDF with at most 1,000 pages.");var images=new List<byte[]>();
-        for(uint i=0;i<pdf.PageCount;i++){token.ThrowIfCancellationRequested();using var page=pdf.GetPage(i);var width=(uint)Math.Max(1,Math.Round(page.Size.Width*dpi/96));var height=(uint)Math.Max(1,Math.Round(page.Size.Height*dpi/96));if((ulong)width*height>100_000_000)throw new InvalidDataException("PDF page exceeds 100 MP.");using var stream=new InMemoryRandomAccessStream();await page.RenderToStreamAsync(stream,new PdfPageRenderOptions{DestinationWidth=width,DestinationHeight=height});using var output=new MemoryStream();await stream.AsStreamForRead().CopyToAsync(output,token);images.Add(output.ToArray());}return images.ToArray();
+        var source=await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));var pdf=await global::Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(source,password);if(pdf.PageCount>1000)throw new InvalidDataException("Choose a PDF with at most 1,000 pages.");var images=new List<byte[]>();
+        for(uint i=0;i<pdf.PageCount;i++){token.ThrowIfCancellationRequested();using var page=pdf.GetPage(i);var width=(uint)Math.Max(1,Math.Round(page.Size.Width*dpi/96));var height=(uint)Math.Max(1,Math.Round(page.Size.Height*dpi/96));if((ulong)width*height>100_000_000)throw new InvalidDataException("PDF page exceeds 100 MP.");using var stream=new InMemoryRandomAccessStream();await page.RenderToStreamAsync(stream,new PdfPageRenderOptions{DestinationWidth=width,DestinationHeight=height});using var output=new MemoryStream();await stream.AsStreamForRead().CopyToAsync(output,token);images.Add(output.ToArray());if(images.Sum(p=>(long)p.Length)>512_000_000)throw new InvalidDataException("Rendered pages exceed 512 MB. Choose a lower DPI or split the PDF first.");}return images.ToArray();
     }
     public static async Task<Rect[]> DetectAsync(BitmapSource image,bool text,bool faces)
     {

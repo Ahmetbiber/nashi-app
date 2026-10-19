@@ -18,7 +18,7 @@ public sealed partial class MainWindow
         void Item(string text,Action action){var item=new System.Windows.Controls.MenuItem{Header=text};item.Click+=(_,_)=>action();menu.Items.Add(item);}
         Item("Open Nashi",ShowMain);Item("Library",()=>{ShowMain();ShowLibrary(true);});Item("Download copied link",OpenCopiedLink);Item("Settings",()=>{ShowMain();ShowSettings();});Item("Check for updates",()=>{ShowMain();_ = CheckUpdatesAsync(true);});menu.Items.Add(new System.Windows.Controls.Separator());Item("Quit Nashi",()=>{if(busy){ShowMain();status.Text="Finish or cancel the current operation before quitting.";return;}quitting=true;Application.Current.Shutdown();});return menu;
     }
-    private void ApplyPreferences()=>Feedback.Enabled=preferences.Value.Feedback;
+    private void ApplyPreferences(){Feedback.Enabled=preferences.Value.Feedback;WheelPresentation.Preferences=preferences.Value;}
     private void ShowSettings()=>new SettingsWindow(this,preferences,ApplyPreferences,()=>CheckUpdatesAsync(true)).ShowDialog();
     private void OpenCopiedLink()
     {
@@ -30,7 +30,7 @@ public sealed partial class MainWindow
     }
     private void OnGlobalDrop(string action,IDataObject data,string? hint)
     {
-        if(busy)return;var paths=data.GetData(DataFormats.FileDrop) as string[];var payload=WebMediaPayload.Parse(data.GetData(DataFormats.UnicodeText) as string??data.GetData("UniformResourceLocatorW") as string,data.GetData(DataFormats.Html) as string,hint);
+        if(busy)return;var paths=data.GetData(DataFormats.FileDrop) as string[];var payload=DragPayload.Parse(data,hint);
         Dispatcher.BeginInvoke(async()=>
         {
             if(busy)return;

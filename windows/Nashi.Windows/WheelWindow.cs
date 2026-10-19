@@ -31,9 +31,9 @@ public sealed class WheelWindow:Window
     }
     public WheelWindow(Window owner,IReadOnlyList<ToolChoice> tools,Action<ToolChoice> select)
     {
-        this.choices=tools;this.select=select;Owner=owner;Title="Nashi tools";Width=540;Height=540;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.CenterOwner;
-        var canvas=new Canvas{Width=540,Height=540};KeyboardNavigation.SetTabNavigation(canvas,KeyboardNavigationMode.Cycle);Content=canvas;
-        var disc=new Ellipse{Width=530,Height=530,Fill=Theme.Brush("Surface")};Canvas.SetLeft(disc,5);Canvas.SetTop(disc,5);canvas.Children.Add(disc);
+        this.choices=tools;this.select=select;Owner=owner;Title="Nashi tools";Width=540*WheelPresentation.Preferences.WheelScale;Height=Width;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        var canvas=new Canvas{Width=540,Height=540};KeyboardNavigation.SetTabNavigation(canvas,KeyboardNavigationMode.Cycle);Content=new Viewbox{Child=canvas};
+        var disc=new Ellipse{Width=530,Height=530,Fill=WheelPresentation.Backdrop};Canvas.SetLeft(disc,5);Canvas.SetTop(disc,5);canvas.Children.Add(disc);
         var count=Math.Min(12,tools.Count);
         for(var i=0;i<count;i++)
         {
@@ -41,14 +41,14 @@ public sealed class WheelWindow:Window
             Point P(double r,double v)=>new(270+r*Math.Cos(v),270+r*Math.Sin(v));
             var geometry=new StreamGeometry();using(var g=geometry.Open()){g.BeginFigure(P(108,a),true,true);g.LineTo(P(250,a),true,false);g.ArcTo(P(250,b),new Size(250,250),0,b-a>Math.PI,SweepDirection.Clockwise,true,false);g.LineTo(P(108,b),true,false);g.ArcTo(P(108,a),new Size(108,108),0,b-a>Math.PI,SweepDirection.Counterclockwise,true,false);}geometry.Freeze();
             var path=new System.Windows.Shapes.Path{Data=geometry,Fill=Theme.Brush("Inset"),Stroke=Theme.Brush("Line"),StrokeThickness=1};canvas.Children.Add(path);sectors.Add(path);
-            var radial=4*Math.Sin(half)*(Math.Pow(250,3)-Math.Pow(108,3))/(6*half*(250*250-108*108));
+            var radial=WheelPresentation.LabelRadius(count,half);
             var label=new StackPanel{Width=112};label.Children.Add(new TextBlock{Text=choice.Symbol,FontSize=25,Foreground=Theme.Brush("Ink"),HorizontalAlignment=HorizontalAlignment.Center});label.Children.Add(new TextBlock{Text=choice.Title,FontSize=13,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center,TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Ink")});
             var button=new Button{Style=(Style)Application.Current.FindResource("WheelLabelButton"),Content=label,Width=126,Height=86,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink"),Padding=new(0),BorderThickness=new(0)};Canvas.SetLeft(button,270+radial*Math.Cos(angle)-63);Canvas.SetTop(button,270+radial*Math.Sin(angle)-43);canvas.Children.Add(button);buttons.Add(button);var index=i;
             button.Click+=(_,_)=>{Close();select(choice);};button.MouseEnter+=(_,_)=>Highlight(index);button.GotKeyboardFocus+=(_,_)=>Highlight(index);
             path.MouseLeftButtonUp+=(_,_)=>{Close();select(choice);};path.MouseEnter+=(_,_)=>Highlight(index);
         }
-        var centerLabel=new StackPanel();centerLabel.Children.Add(new TextBlock{Text="Tools",FontSize=20,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center});centerLabel.Children.Add(new TextBlock{Text="Esc to close",FontSize=11,TextAlignment=TextAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(0,6,0,0)});
-        var center=new Button{Style=(Style)Application.Current.FindResource("WheelLabelButton"),Focusable=false,Content=centerLabel,Width=180,Height=180,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink")};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();PreviewKeyDown+=(_,e)=>{e.Handled=Navigate(e.Key);};Loaded+=(_,_)=>{if(buttons.Count>0)buttons[0].Focus();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
+        var centerLabel=new StackPanel();centerLabel.Children.Add(new TextBlock{Text=tools.All(t=>t.Id.StartsWith("convert:"))?"Convert":tools.Any(t=>t.Id=="float")?"File actions":"Tools",FontSize=20,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center});centerLabel.Children.Add(new TextBlock{Text="Esc to close",FontSize=11,TextAlignment=TextAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(0,6,0,0)});
+        var center=new Button{Style=(Style)Application.Current.FindResource("WheelLabelButton"),Focusable=false,Content=centerLabel,Width=180,Height=180,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink")};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();PreviewKeyDown+=(_,e)=>{e.Handled=Navigate(e.Key);};Loaded+=(_,_)=>{WheelPresentation.Animate(this);if(buttons.Count>0)buttons[0].Focus();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
     }
 }
 internal static class Feedback

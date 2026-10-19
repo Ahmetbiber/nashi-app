@@ -42,13 +42,19 @@ public static class LegacyTextCodec
         if(data.Length<40)throw new InvalidDataException("Damaged binary plist.");var trailer=data.Length-32;var offsetSize=data[trailer+6];var refSize=data[trailer+7];
         ulong UInt(int start,int count){if(count<1||count>8||start<0||start>data.Length-count)throw new InvalidDataException("Damaged plist integer.");ulong value=0;for(var i=0;i<count;i++)value=value<<8|data[start+i];return value;}
         var objects=UInt(trailer+8,8);var root=UInt(trailer+16,8);var table=UInt(trailer+24,8);if(objects>1_000_000||root>=objects||table>(ulong)trailer||offsetSize is <1 or >8||refSize is <1 or >8||objects*(uint)offsetSize>(ulong)trailer-table)throw new InvalidDataException("Invalid plist object table.");
+        var cache=new Dictionary<ulong,object?>();var active=new HashSet<ulong>();long budget=0;
         object? Read(ulong index,int depth)
+        {
+            if(cache.TryGetValue(index,out var cached))return cached;if(!active.Add(index))throw new InvalidDataException("Cyclic plist reference.");try{var value=ReadValue(index,depth);cache[index]=value;return value;}finally{active.Remove(index);}
+        }
+        object? ReadValue(ulong index,int depth)
         {
             if(index>=objects||depth>64)throw new InvalidDataException("Invalid plist reference.");var offset=checked((int)UInt(checked((int)(table+index*offsetSize)),offsetSize));if(offset>=trailer)throw new InvalidDataException("Invalid plist offset.");var marker=data[offset++];var kind=marker>>4;var size=marker&15;
             var length=size==15&&kind is 4 or 5 or 6 or 10 or 13?ReadLength():size;
             int ReadLength(){if(offset>=trailer||data[offset]>>4!=1)throw new InvalidDataException("Invalid plist length.");var bytes=1<<(data[offset++]&15);var count=checked((int)UInt(offset,bytes));offset+=bytes;return count;}
             void Bounds(long bytes){if(bytes<0||offset<0||bytes>trailer-offset)throw new InvalidDataException("Invalid plist data range.");}
             if(kind==4){Bounds(length);return data.AsSpan(offset,length).ToArray();}if(kind==5){Bounds(length);return Encoding.ASCII.GetString(data,offset,length);}if(kind==6){Bounds((long)length*2);return Encoding.BigEndianUnicode.GetString(data,offset,checked(length*2));}
+            if(kind is 10 or 13){budget+=length;if(length>1_000_000||budget>2_000_000)throw new InvalidDataException("Plist contains too many references.");}
             if(kind==10){Bounds((long)length*refSize);var array=new object?[length];for(var n=0;n<length;n++)array[n]=Read(UInt(offset+n*refSize,refSize),depth+1);return array;}
             if(kind==13){Bounds((long)length*refSize*2);var dictionary=new Dictionary<string,object?>();for(var n=0;n<length;n++){var key=Read(UInt(offset+n*refSize,refSize),depth+1) as string;if(key is not null)dictionary[key]=Read(UInt(offset+(length+n)*refSize,refSize),depth+1);}return dictionary;}return null;
         }

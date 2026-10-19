@@ -11,7 +11,15 @@ using FileAttributes=System.IO.FileAttributes;
 namespace Nashi.Windows;
 public static class FileActions
 {
-    private static readonly List<global::Windows.ApplicationModel.DataTransfer.DataTransferManager> shares=[];
+    private static readonly Dictionary<IntPtr,ShareSession> shares=[];
+    private sealed class ShareSession(DataTransferManager manager)
+    {
+        internal readonly DataTransferManager Manager=manager;internal string[] Paths=[];
+        internal async void Requested(DataTransferManager sender,DataRequestedEventArgs args)
+        {
+            var paths=Paths.ToArray();var deferral=args.Request.GetDeferral();try{var items=new List<IStorageItem>();foreach(var path in paths)items.Add(Directory.Exists(path)?await StorageFolder.GetFolderFromPathAsync(path):await StorageFile.GetFileFromPathAsync(path));args.Request.Data.Properties.Title=paths.Length==1?Path.GetFileName(paths[0]):$"{paths.Length} files from Nashi";args.Request.Data.SetStorageItems(items);}catch(Exception error){args.Request.FailWithDisplayText(error.Message);}finally{deferral.Complete();}
+        }
+    }
     public static void Copy(IReadOnlyList<string> paths){var values=new StringCollection();values.AddRange(paths.ToArray());Clipboard.SetFileDropList(values);}
     public static void CopyPaths(IReadOnlyList<string> paths)=>Clipboard.SetText(string.Join(Environment.NewLine,paths));
     public static void Terminal(string path)
@@ -45,9 +53,13 @@ public static class FileActions
     [ComImport,Guid("3A3DCD6C-3EAB-43DC-BCDE-45671CE800C8"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]private interface IShareInterop{IntPtr GetForWindow(IntPtr window,ref Guid id);void ShowShareUIForWindow(IntPtr window);}
     public static void Share(Window owner,IReadOnlyList<string> paths)
     {
-        var handle=new WindowInteropHelper(owner).Handle;var interop=global::Windows.ApplicationModel.DataTransfer.DataTransferManager.As<IShareInterop>();var id=new Guid("a5caee9b-8708-49d1-8d36-67d25a8da00c");var pointer=interop.GetForWindow(handle,ref id);
-        var manager=WinRT.MarshalInterface<global::Windows.ApplicationModel.DataTransfer.DataTransferManager>.FromAbi(pointer);Marshal.Release(pointer);shares.Add(manager);
-        manager.DataRequested+=async(_,args)=>{var deferral=args.Request.GetDeferral();try{var items=new List<IStorageItem>();foreach(var path in paths)items.Add(Directory.Exists(path)?await StorageFolder.GetFolderFromPathAsync(path):await StorageFile.GetFileFromPathAsync(path));args.Request.Data.Properties.Title=paths.Count==1?Path.GetFileName(paths[0]):$"{paths.Count} files from Nashi";args.Request.Data.SetStorageItems(items);args.Request.Data.ShareCompleted+=(_,_)=>shares.Remove(manager);}catch(Exception error){args.Request.FailWithDisplayText(error.Message);shares.Remove(manager);}finally{deferral.Complete();}};
+        var handle=new WindowInteropHelper(owner).Handle;var interop=DataTransferManager.As<IShareInterop>();
+        if(!shares.TryGetValue(handle,out var session))
+        {
+            var id=new Guid("a5caee9b-8708-49d1-8d36-67d25a8da00c");var pointer=interop.GetForWindow(handle,ref id);DataTransferManager manager;try{manager=WinRT.MarshalInterface<DataTransferManager>.FromAbi(pointer);}finally{Marshal.Release(pointer);}
+            session=new(manager);manager.DataRequested+=session.Requested;shares[handle]=session;var retained=session;owner.Closed+=(_,_)=>{retained.Manager.DataRequested-=retained.Requested;shares.Remove(handle);};
+        }
+        session.Paths=paths.ToArray();
         interop.ShowShareUIForWindow(handle);
     }
 }

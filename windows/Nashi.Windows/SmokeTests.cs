@@ -15,9 +15,23 @@ internal static class SmokeTests
         const string query="/tEXt/{str=Comment}";
         var tagged=Path.Combine(root,"Tagged.png");var metadata=new BitmapMetadata("png");metadata.SetQuery(query,"Nashi metadata fixture");
         var taggedEncoder=new PngBitmapEncoder();taggedEncoder.Frames.Add(BitmapFrame.Create(bitmap,null,metadata,null));using(var taggedFile=File.Create(tagged))taggedEncoder.Save(taggedFile);
-        Check(ImageEngine.Load(tagged) is BitmapFrame taggedFrame&&taggedFrame.Metadata is BitmapMetadata originalMetadata&&originalMetadata.ContainsQuery(query),"Metadata fixture was not tagged");
+        bool HasTag(string file,string tag){using var stream=File.OpenRead(file);var decoded=BitmapDecoder.Create(stream,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);return decoded.Frames[0].Metadata is BitmapMetadata data&&data.ContainsQuery(tag);}
+        Check(HasTag(tagged,query),"Metadata fixture was not tagged");
         var cleaned=ImageEngine.Apply("removeMetadata",[tagged],root,new());
-        Check(ImageEngine.Load(cleaned[0]) is BitmapFrame cleanedFrame&&(cleanedFrame.Metadata is not BitmapMetadata remaining||!remaining.ContainsQuery(query)),"Metadata removal retained the source comment");
+        Check(!HasTag(cleaned[0],query),"Metadata removal retained the source comment");
+        var colors=new[]{Colors.Red,Colors.Lime,Colors.Blue,Colors.Yellow};var quadrants=new DrawingVisual();
+        using(var dc=quadrants.RenderOpen())for(var i=0;i<4;i++)dc.DrawRectangle(new SolidColorBrush(colors[i]),null,new Rect(i%2*40,i/2*20,40,20));
+        var quadrantBitmap=new RenderTargetBitmap(80,40,96,96,PixelFormats.Pbgra32);quadrantBitmap.Render(quadrants);
+        var topLeft=new[]{0,1,3,2,0,2,3,1};
+        for(ushort orientation=1;orientation<=8;orientation++)
+        {
+            var original=Path.Combine(root,$"Orientation {orientation}.jpg");var tags=new BitmapMetadata("jpg");tags.SetQuery("/app1/ifd/{ushort=274}",orientation);
+            var jpeg=new JpegBitmapEncoder{QualityLevel=100};jpeg.Frames.Add(BitmapFrame.Create(quadrantBitmap,null,tags,null));using(var file=File.Create(original))jpeg.Save(file);
+            var oriented=ImageEngine.Load(original);Check(oriented.PixelWidth==(orientation>=5?40:80)&&oriented.PixelHeight==(orientation>=5?80:40),"Orientation dimensions wrong");
+            var pixel=new byte[4];new FormatConvertedBitmap(oriented,PixelFormats.Bgra32,null,0).CopyPixels(new Int32Rect(5,5,1,1),pixel,4,0);var expected=colors[topLeft[orientation-1]];
+            Check(Math.Abs(pixel[2]-expected.R)<30&&Math.Abs(pixel[1]-expected.G)<30&&Math.Abs(pixel[0]-expected.B)<30,"Orientation pixels wrong: "+orientation);
+            var exported=ImageEngine.Apply("removeMetadata",[original],root,new());Check(!HasTag(exported[0],"/app1/ifd/{ushort=274}"),"EXIF orientation tag survived metadata removal");
+        }
         var crop=ImageEngine.Apply("crop",[source],root,new(Crop:new Int32Rect(10,10,80,60)));Check(ImageEngine.Load(crop[0]).PixelWidth==80,"Crop width mismatch");
         var resized=ImageEngine.Apply("resize",[source],root,new(Width:160));Check(ImageEngine.Load(resized[0]).PixelHeight==90,"Resize aspect mismatch");
         var rotated=ImageEngine.Apply("rotate",[source],root,new(Rotation:90));Check(ImageEngine.Load(rotated[0]).PixelWidth==180,"Rotate mismatch");

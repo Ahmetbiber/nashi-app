@@ -32,24 +32,32 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'Nashi-Portable-Update'
           Expand-Archive $zip $target
           $old = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion
-          $process = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--install-update' -WorkingDirectory $target -Wait -PassThru
+          $process = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--install-update' -WorkingDirectory $target -PassThru
+          if (!$process.WaitForExit(120000)) { throw 'Initial updater did not exit within two minutes' }
           if ($process.ExitCode -ne 0) {
             $errorFile = Join-Path $env:LOCALAPPDATA 'Nashi/update-error.txt'
             if (Test-Path $errorFile) { Get-Content $errorFile }
             throw 'Initial updater failed'
           }
           $new = $old
+          $restarted = $null
           for ($i = 0; $i -lt 30; $i++) {
             Start-Sleep -Seconds 2
             if (Test-Path (Join-Path $target 'Nashi.dll')) { $new = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion }
-            if ([version]$new -gt [version]$old) { break }
+            $restarted = Get-Process -Name Nashi -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq (Join-Path $target 'Nashi.exe') -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+            if ([version]$new -gt [version]$old -and $null -ne $restarted) { break }
           }
           if ([version]$new -le [version]$old) { throw 'Installed version did not advance' }
-          Get-Process -Name Nashi -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq (Join-Path $target 'Nashi.exe') } | ForEach-Object { $_.CloseMainWindow() | Out-Null; $_.WaitForExit(15000) | Out-Null }
+          if ($null -eq $restarted) { throw 'Updated app did not reopen a native window' }
+          $restartedId = $restarted.Id
+          $restarted.CloseMainWindow() | Out-Null
+          if (!$restarted.WaitForExit(15000)) { throw 'Updated app did not close normally' }
           $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'updated-native-smoke'
-          $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--smoke-test' -Wait -PassThru
+          $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--smoke-test' -PassThru
+          if (!$check.WaitForExit(60000)) { throw 'Updated native smoke timed out' }
           if ($check.ExitCode -ne 0) { throw 'Updated native app smoke failed' }
-          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
+          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
+          Get-Content (Join-Path $proof 'result.json')
           Remove-Item $zip
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()

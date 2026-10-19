@@ -11,7 +11,7 @@ namespace Nashi.Windows;
 
 public sealed class MainWindow:Window
 {
-    private readonly ObservableCollection<string> files=[];private readonly ListBox list=new(){MinHeight=130,MaxHeight=240,BorderThickness=new(0),Background=Brushes.Transparent};
+    private readonly ObservableCollection<string> files=[];private readonly ListBox list=new(){MinHeight=50,MaxHeight=180,BorderThickness=new(0),Background=Brushes.Transparent};
     private readonly StackPanel actions=new(){Orientation=Orientation.Horizontal};private readonly TextBlock selection=new(){FontSize=17,TextWrapping=TextWrapping.Wrap};
     private readonly TextBlock status=new(){Text="Files stay on your computer.",TextWrapping=TextWrapping.Wrap};
     private readonly TextBox link=new(){MinWidth=260,ToolTip="Paste a public video, image or audio page link"};
@@ -20,7 +20,7 @@ public sealed class MainWindow:Window
     private bool busy;private WindowsUpdate? update;private readonly Button updateButton;
     public MainWindow(string[]? initial=null)
     {
-        Title="Nashi";Width=940;Height=790;MinWidth=800;MinHeight=620;WindowStartupLocation=WindowStartupLocation.CenterScreen;AllowDrop=true;Icon=BitmapFrame.Create(new Uri("pack://application:,,,/Assets/NashiIcon.png"));
+        Background=(Brush)Application.Current.FindResource("Paper");Foreground=(Brush)Application.Current.FindResource("Ink");FontSize=14;FontFamily=new FontFamily("Segoe UI");Title="Nashi";Width=940;Height=840;MinWidth=800;MinHeight=620;WindowStartupLocation=WindowStartupLocation.CenterScreen;AllowDrop=true;Icon=BitmapFrame.Create(new Uri("pack://application:,,,/Assets/NashiIcon.png"));
         var scroll=new ScrollViewer{VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Content=scroll;var root=new StackPanel{Margin=new(34)};scroll.Content=root;
         var header=new DockPanel();var brand=new StackPanel{Orientation=Orientation.Horizontal};brand.Children.Add(new Image{Source=new BitmapImage(new Uri("pack://application:,,,/Assets/NashiIcon.png")),Width=64,Height=64,Margin=new(0,0,15,0)});brand.Children.Add(new TextBlock{Text="Nashi",FontSize=34,FontWeight=FontWeights.Bold,VerticalAlignment=VerticalAlignment.Center});header.Children.Add(brand);
         updateButton=Button("Check for updates",async()=>await CheckUpdatesAsync(true));DockPanel.SetDock(updateButton,Dock.Right);header.Children.Insert(0,updateButton);root.Children.Add(header);

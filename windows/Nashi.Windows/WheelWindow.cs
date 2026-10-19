@@ -20,8 +20,9 @@ public sealed class WheelWindow:Window
             Point P(double r,double v)=>new(270+r*Math.Cos(v),270+r*Math.Sin(v));
             var geometry=new StreamGeometry();using(var g=geometry.Open()){g.BeginFigure(P(108,a),true,true);g.LineTo(P(250,a),true,false);g.ArcTo(P(250,b),new Size(250,250),0,b-a>Math.PI,SweepDirection.Clockwise,true,false);g.LineTo(P(108,b),true,false);g.ArcTo(P(108,a),new Size(108,108),0,b-a>Math.PI,SweepDirection.Counterclockwise,true,false);}geometry.Freeze();
             var path=new System.Windows.Shapes.Path{Data=geometry,Fill=new SolidColorBrush(Color.FromRgb(43,62,45)),Stroke=new SolidColorBrush(Color.FromRgb(72,86,63)),StrokeThickness=1};canvas.Children.Add(path);
-            var label=new StackPanel{Width=112};label.Children.Add(new TextBlock{Text=choice.Symbol,FontSize=25,HorizontalAlignment=HorizontalAlignment.Center});label.Children.Add(new TextBlock{Text=choice.Title,FontSize=13,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.White});
-            var button=new Button{Content=label,Width=126,Height=86,Background=Brushes.Transparent,Padding=new(0)};Canvas.SetLeft(button,270+179*Math.Cos(angle)-63);Canvas.SetTop(button,270+179*Math.Sin(angle)-43);canvas.Children.Add(button);
+            var radial=4*Math.Sin(half)*(Math.Pow(250,3)-Math.Pow(108,3))/(6*half*(250*250-108*108));
+            var label=new StackPanel{Width=112};label.Children.Add(new TextBlock{Text=choice.Symbol,FontSize=25,Foreground=Brushes.White,HorizontalAlignment=HorizontalAlignment.Center});label.Children.Add(new TextBlock{Text=choice.Title,FontSize=13,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.White});
+            var button=new Button{Content=label,Width=126,Height=86,Background=Brushes.Transparent,Foreground=Brushes.White,Padding=new(0)};Canvas.SetLeft(button,270+radial*Math.Cos(angle)-63);Canvas.SetTop(button,270+radial*Math.Sin(angle)-43);canvas.Children.Add(button);
             button.Click+=(_,_)=>{Close();select(choice);};button.MouseEnter+=(_,_)=>Feedback.Play();
             path.MouseLeftButtonUp+=(_,_)=>{Close();select(choice);};path.MouseEnter+=(_,_)=>Feedback.Play();
         }

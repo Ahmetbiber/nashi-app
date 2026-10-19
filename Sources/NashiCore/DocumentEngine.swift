@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import AppKit
 import PDFKit
 import UniformTypeIdentifiers
@@ -164,12 +165,13 @@ public enum DocumentEngine {
             arguments.append("--infilter=Markdown")
         }
         arguments += ["--convert-to", filter, "--outdir", directory.path, source.path]
-        // LibreOffice imports linked HTML resources. Denying network access at
-        // the process boundary keeps every document conversion on this Mac.
+        // LibreOffice imports linked HTML resources. Denying IP networking at
+        // the process boundary keeps conversions local. Unix-domain IPC remains
+        // available because the upstream macOS build requires it to start.
         let result: ProcessResult
         let sandbox = URL(fileURLWithPath: "/usr/bin/sandbox-exec")
         if fm.isExecutableFile(atPath: sandbox.path) {
-            result = try ProcessRunner.run(sandbox, ["-p", "(version 1)(allow default)(deny network*)", executable.path] + arguments, token: token, environment: ["SAL_DISABLE_OPENCL": "1", "LC_ALL": "en_US.UTF-8"])
+            result = try ProcessRunner.run(sandbox, ["-p", "(version 1)(allow default)(deny network* (remote ip))", executable.path] + arguments, token: token, environment: ["SAL_DISABLE_OPENCL": "1", "LC_ALL": "en_US.UTF-8"])
         } else {
             result = try ProcessRunner.run(executable, arguments, token: token, environment: ["SAL_DISABLE_OPENCL": "1", "LC_ALL": "en_US.UTF-8"])
         }
@@ -207,22 +209,50 @@ public enum DocumentEngine {
         }
     }
 
-    private static func embedHTMLImages(_ html: URL, output: URL? = nil, token: CancellationToken) throws {
+    static func embedHTMLImages(_ html: URL, output: URL? = nil, token: CancellationToken) throws {
         var source = try DocumentText.read(html)
-        let pattern = try NSRegularExpression(pattern: #"(?i)\bsrc\s*=\s*(["'])([^"']+)\1"#)
-        for match in pattern.matches(in: source, range: NSRange(source.startIndex..., in: source)).reversed() {
-            try token.check()
-            let value = (source as NSString).substring(with: match.range(at: 2))
-            guard !value.hasPrefix("data:"), let decoded = value.removingPercentEncoding else { continue }
-            let image: URL
-            if value.hasPrefix("file:"), let url = URL(string: value) { image = url }
-            else if value.contains("://") { continue }
-            else { image = html.deletingLastPathComponent().appendingPathComponent(decoded) }
-            guard let data = try? Data(contentsOf: image) else { continue }
-            let mime = UTType(filenameExtension: image.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-            if let range = Range(match.range(at: 2), in: source) { source.replaceSubrange(range, with: "data:\(mime);base64,\(data.base64EncodedString())") }
+        let root=html.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path
+        func imageData(_ value:String)->String {
+            let data:Data
+            if value.lowercased().hasPrefix("data:") {
+                guard value.utf8.count<70_000_000,let comma=value.firstIndex(of:","),value[..<comma].lowercased().hasSuffix(";base64"),let decoded=Data(base64Encoded:String(value[value.index(after:comma)...])) else{return ""}
+                data=decoded
+            } else {
+                guard let decoded=value.removingPercentEncoding else{return ""}
+                let asset:URL
+                if let address=URL(string:value),address.scheme != nil {
+                    guard address.isFileURL else{return ""};asset=address
+                }else{asset=html.deletingLastPathComponent().appendingPathComponent(decoded)}
+                let resolved=asset.resolvingSymlinksInPath().standardizedFileURL
+                guard resolved.path.hasPrefix(root+"/"),let size=try? resolved.resourceValues(forKeys:[.fileSizeKey,.isRegularFileKey]),size.isRegularFile==true,(size.fileSize ?? Int.max)<=50_000_000,let bytes=try? Data(contentsOf:resolved) else{return ""}
+                data=bytes
+            }
+            guard let raster=CGImageSourceCreateWithData(data as CFData,nil),let type=CGImageSourceGetType(raster),
+                  let properties=CGImageSourceCopyPropertiesAtIndex(raster,0,nil) as? [CFString:Any],
+                  let width=properties[kCGImagePropertyPixelWidth] as? Int,let height=properties[kCGImagePropertyPixelHeight] as? Int,
+                  width>0,height>0,Double(width)*Double(height)<=100_000_000,
+                  let mime=UTType(type as String)?.preferredMIMEType,mime.hasPrefix("image/"),!mime.contains("svg") else{return ""}
+            return "data:\(mime);base64,\(data.base64EncodedString())"
         }
-        try source.write(to: output ?? html, atomically: true, encoding: .utf8)
+        // Linked resources must be local raster images beside the selected HTML.
+        // External CSS and SVG may load arbitrary additional resources, so they
+        // are excluded instead of handing those references to the importer.
+        for pattern in [#"(?is)<link\b[^>]*>"#,#"(?is)@import\s+[^;]+;"#] {
+            let expression=try NSRegularExpression(pattern:pattern)
+            source=expression.stringByReplacingMatches(in:source,range:NSRange(source.startIndex...,in:source),withTemplate:"")
+        }
+        let attributes=try NSRegularExpression(pattern:#"(?i)\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))"#)
+        for match in attributes.matches(in:source,range:NSRange(source.startIndex...,in:source)).reversed() {
+            try token.check();let index=(1...3).first{match.range(at:$0).location != NSNotFound}!
+            let value=(source as NSString).substring(with:match.range(at:index))
+            if let range=Range(match.range,in:source){source.replaceSubrange(range,with:"src=\"\(imageData(value))\"")}
+        }
+        let css=try NSRegularExpression(pattern:#"(?is)url\(\s*(['"]?)(.*?)\1\s*\)"#)
+        for match in css.matches(in:source,range:NSRange(source.startIndex...,in:source)).reversed() {
+            try token.check();let value=(source as NSString).substring(with:match.range(at:2))
+            if let range=Range(match.range,in:source){source.replaceSubrange(range,with:"url('\(imageData(value))')")}
+        }
+        try source.write(to:output ?? html,atomically:true,encoding:.utf8)
     }
 
     private static func normalized(_ format: String) -> String {

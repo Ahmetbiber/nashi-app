@@ -87,6 +87,18 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var snapshots=await engine.ToolAsync("videoSnapshots",[source],directory,new(){SnapshotTimes=[0,1]});Check(snapshots.Count==2&&snapshots.All(File.Exists),"Snapshot output missing");
         var bleeped=await engine.ToolAsync("redactAudio",audio,directory,new(){AudioRedactions=[new(.25,.75)]});Check((await engine.InspectAsync(bleeped[0])).HasAudio,"Bleep export failed");
         var redacted=await engine.ToolAsync("redactVideo",[source],directory,new(){Regions=[new(0,0,32,32,.25,.75)],RedactionMode="blur"});Check((await engine.InspectAsync(redacted[0])).Video is not null,"Video redaction failed");
+        var channels=await engine.ToolAsync("audioChannels",audio,directory,new(){Channels=1});Check((await engine.InspectAsync(channels[0])).HasAudio,"Channel export failed");
+        var visualized=await engine.ToolAsync("audioToVideo",audio,directory,new(){Width=128,Height=72});Check((await engine.InspectAsync(visualized[0])).Video?.Width==128,"Audio visualization failed");
+        var compressed=await engine.ToolAsync("compress",[source],directory,new(){TargetBytes=100000});Check(new FileInfo(compressed[0]).Length<=100000,"Compression ignored target");
+        var metadata=await engine.ToolAsync("removeMetadata",[source],directory,new());Check((await engine.InspectAsync(metadata[0])).Video is not null,"Metadata export failed");
+        foreach(var ext in MediaEngine.AudioFormats)
+        {
+            var converted=await engine.ConvertAsync([source],ext,directory,new());Check((await engine.InspectAsync(converted[0])).HasAudio,"No audio in "+ext);
+        }
+        foreach(var ext in MediaEngine.VideoFormats)
+        {
+            var converted=await engine.ConvertAsync([source],ext,directory,new());Check((await engine.InspectAsync(converted[0])).Video is not null,"No video in "+ext);
+        }
         var finalHash=System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(source));
         Check(original.SequenceEqual(finalHash),"Source changed");
         Console.WriteLine(JsonSerializer.Serialize(new{passed=checks,scope="Engine safety plus real FFmpeg conversion, trim, mute, speed, crop, split, join, normalize, snapshots and redaction; Windows UI not claimed"}));

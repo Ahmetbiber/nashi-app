@@ -35,6 +35,7 @@ public sealed class MainWindow:Window
         var download=new DockPanel();var save=Button("Download ↗",async()=>await DownloadAsync());DockPanel.SetDock(save,Dock.Right);download.Children.Add(save);DockPanel.SetDock(downloadKind,Dock.Right);download.Children.Add(downloadKind);download.Children.Add(link);root.Children.Add(download);
         root.Children.Add(new TextBlock{Text="Video, audio or thumbnail · Public, downloadable media · No browser login or cookies imported",FontSize=12,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.DarkOliveGreen,Margin=new(4,5,0,14)});
         var footer=new WrapPanel();footer.Children.Add(Button("Set up media tools",async()=>await SetupAsync()));footer.Children.Add(Button("Features & shortcuts",()=>OpenUrl("https://orkunisitmak.github.io/nashi-app/")));root.Children.Add(footer);status.Margin=new(4,12,4,20);root.Children.Add(status);
+        Closing+=(_,e)=>{if(busy){e.Cancel=true;status.Text="Finish the current operation or choose Cancel before closing Nashi.";}};
         DragOver+=(_,e)=>{e.Effects=!busy&&e.Data.GetDataPresent(DataFormats.FileDrop)?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};Drop+=(_,e)=>{if(!busy&&e.Data.GetData(DataFormats.FileDrop) is string[] paths)Add(paths);};
         PreviewKeyDown+=(_,e)=>{if(e.Key==Key.O&&Keyboard.Modifiers.HasFlag(ModifierKeys.Control)){Choose();e.Handled=true;}else if(e.Key==Key.Space&&Keyboard.Modifiers.HasFlag(ModifierKeys.Control)){ShowWheel();e.Handled=true;}};
         if(initial is not null)Add(initial);else Refresh();Loaded+=async(_,_)=>await CheckUpdatesAsync(false);
@@ -123,7 +124,7 @@ public sealed class MainWindow:Window
             if(busy)return;
             if(MessageBox.Show(this,"Download, verify and install Nashi "+update.Version+"? The app will restart. No account or token is needed.","Nashi update",MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
             busy=true;using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();
-            try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);Application.Current.Shutdown();}finally{toast.Close();busy=false;}
+            try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);busy=false;Application.Current.Shutdown();}finally{toast.Close();busy=false;}
         }
         catch(OperationCanceledException){status.Text="Update cancelled.";}catch(Exception error){if(user)MessageBox.Show(this,error.Message,"Couldn’t check for updates");}
     }

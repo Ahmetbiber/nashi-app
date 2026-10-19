@@ -139,7 +139,7 @@ public sealed class MainWindow:Window
     private Border LibraryRow(LibraryEntry entry)
     {
         var row=new DockPanel();var available=entry.AvailablePaths;var buttons=new WrapPanel{VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(buttons,Dock.Right);row.Children.Add(buttons);
-        var reuse=Button("Use in Nashi",()=>{if(busy)return;var existing=entry.AvailablePaths;if(existing.Length==0){status.Text="These files have moved or were deleted.";RenderLibrary();return;}files.Clear();Add(existing);ShowLibrary(false);status.Text=existing.Length==entry.Paths.Length?"Ready for another round.":"Available files selected. Some files have moved or were deleted.";});reuse.IsEnabled=!busy&&available.Length>0;buttons.Children.Add(reuse);
+        var reuse=Button("Use in Nashi",()=>{if(busy)return;var existing=entry.AvailablePaths.Where(File.Exists).ToArray();if(existing.Length==0){status.Text="These files have moved or were deleted.";RenderLibrary();return;}files.Clear();Add(existing);ShowLibrary(false);status.Text=existing.Length==entry.Paths.Length?"Ready for another round.":"Available files selected. Some files have moved or were deleted.";});reuse.IsEnabled=!busy&&available.Any(File.Exists);buttons.Children.Add(reuse);
         var reveal=Button("Show in Explorer",()=>{var existing=entry.AvailablePaths;if(existing.Length>0)Reveal(existing[0]);else{status.Text="This file has moved or was deleted.";RenderLibrary();}});reveal.IsEnabled=available.Length>0;buttons.Children.Add(reveal);
         var text=new StackPanel{Margin=new(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};var name=Text(entry.Name,14);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.ToolTip=string.Join(Environment.NewLine,entry.Paths);text.Children.Add(name);text.Children.Add(Text(entry.Action+"  ·  "+entry.Created.ToLocalTime().ToString("g")+(available.Length<entry.Paths.Length?"  ·  Files missing":""),11,"Muted"));row.Children.Add(text);
         var card=Card(row);card.Padding=new(14,10,14,10);return card;
@@ -224,7 +224,7 @@ public sealed class MainWindow:Window
     }
     private async Task CheckUpdatesAsync(bool user)
     {
-        if(busy||checking)return;checking=true;try
+        if(busy||checking)return;checking=true;updateButton.IsEnabled=false;if(user)status.Text="Checking for updates…";try
         {
             if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)status.Text="You have the latest published Windows version.";return;}updateButton.Content="Update to "+update.Version;if(!user)return;}
             if(busy)return;
@@ -233,6 +233,6 @@ public sealed class MainWindow:Window
             try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);busy=false;Application.Current.Shutdown();}finally{toast.Close();SetBusy(false);}
         }
         catch(OperationCanceledException){status.Text="Update cancelled.";}catch(Exception error){if(user)MessageBox.Show(this,error.Message,"Couldn’t check for updates");}
-        finally{checking=false;}
+        finally{checking=false;updateButton.IsEnabled=true;}
     }
 }

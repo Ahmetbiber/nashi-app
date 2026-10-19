@@ -12,7 +12,7 @@ public sealed class ToastWindow:Window
     private readonly Button action=new(){Content="Cancel",MinWidth=85};private readonly Action? cancel;private bool complete;
     public ToastWindow(Window owner,Action? cancel)
     {
-        Theme.Attach(this);this.cancel=cancel;Owner=owner;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;AllowsTransparency=true;Background=Brushes.Transparent;ShowInTaskbar=false;ShowActivated=false;Topmost=true;SizeToContent=SizeToContent.Height;Width=510;
+        Theme.Attach(this);bar.SetResourceReference(Control.ForegroundProperty,"Gold");bar.SetResourceReference(Control.BackgroundProperty,"Inset");this.cancel=cancel;Owner=owner;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;AllowsTransparency=true;Background=Brushes.Transparent;ShowInTaskbar=false;ShowActivated=false;Topmost=true;SizeToContent=SizeToContent.Height;Width=510;
         var content=new StackPanel();content.Children.Add(label);content.Children.Add(detail);content.Children.Add(bar);
         var grid=new Grid();grid.ColumnDefinitions.Add(new(){Width=new(1,GridUnitType.Star)});grid.ColumnDefinitions.Add(new(){Width=GridLength.Auto});grid.Children.Add(content);Grid.SetColumn(action,1);grid.Children.Add(action);action.Margin=new(18,0,0,0);action.VerticalAlignment=VerticalAlignment.Center;
         Content=new Border{CornerRadius=new(22),Background=Theme.Brush("Surface"),BorderBrush=Theme.Brush("Line"),BorderThickness=new(1),Padding=new(24),Child=grid};
@@ -24,7 +24,7 @@ public sealed class ToastWindow:Window
     {
         complete=true;label.Text=$"Nicely done. {outputs.Count} {(outputs.Count==1?"file is":"files are")} ready.";detail.Text=outputs.Count>0?Path.GetFileName(outputs[0]):"Ready.";bar.Visibility=Visibility.Collapsed;action.Content="Show in Explorer";action.IsEnabled=true;
         // Replace the cancel handler by disabling its callback after completion.
-        action.Click+=(_,_)=>{if(outputs.Count>0&&File.Exists(outputs[0]))MainWindow.Reveal(outputs[0]);};
+        action.Click+=(_,_)=>{if(outputs.Count>0&&(File.Exists(outputs[0])||Directory.Exists(outputs[0])))MainWindow.Reveal(outputs[0]);};
         var timer=new DispatcherTimer{Interval=TimeSpan.FromSeconds(3)};timer.Tick+=(_,_)=>{timer.Stop();if(SystemParameters.ClientAreaAnimation){var fade=new DoubleAnimation(0,TimeSpan.FromMilliseconds(280));fade.Completed+=(_,_)=>Close();BeginAnimation(OpacityProperty,fade);}else Close();};timer.Start();
     }
 }

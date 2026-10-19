@@ -4,7 +4,7 @@ namespace Nashi.Core;
 public sealed record LibraryEntry(Guid Id,DateTimeOffset Created,string Action,string[] Paths)
 {
     public string Name=>Paths.Length==1?Path.GetFileName(Paths[0]):$"{Paths.Length} files · {Path.GetFileName(Paths[0])}";
-    public string[] AvailablePaths=>Paths.Where(File.Exists).ToArray();
+    public string[] AvailablePaths=>Paths.Where(p=>File.Exists(p)||Directory.Exists(p)).ToArray();
 }
 
 // Lives outside the portable installation, so replacing the app never replaces
@@ -40,7 +40,7 @@ public sealed class LibraryStore
     }
     public void Record(string action,IEnumerable<string> paths)
     {
-        var existing=paths.Where(File.Exists).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var existing=paths.Where(p=>File.Exists(p)||Directory.Exists(p)).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         if(existing.Length==0)return;
         Save(state with{Entries=new[]{new LibraryEntry(Guid.NewGuid(),DateTimeOffset.Now,action,existing)}.Concat(state.Entries).Take(Limit).ToList()});
     }

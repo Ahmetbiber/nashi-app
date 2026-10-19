@@ -99,6 +99,15 @@ internal static class SmokeTests
         var width=range.ActualWidth-24;DesktopInput.Drag(range,new Point(12+width,27),new Point(12+width*.7,27));
         Check(Math.Abs(range.End-1260)<25,"Long-video Out handle did not follow native mouse drag");
         DesktopInput.Drag(range,new Point(12,27),new Point(12+width*.2,27));Check(Math.Abs(range.Start-360)<25&&range.End>range.Start,"Long-video In handle stuck or crossed Out");rangeOwner.Close();
+        var wave=Path.Combine(root,"Keyboard preview.wav");
+        using(var writer=new BinaryWriter(File.Create(wave)))
+        {var samples=44100*5;writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));writer.Write(36+samples*2);writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVEfmt "));writer.Write(16);writer.Write((short)1);writer.Write((short)1);writer.Write(44100);writer.Write(88200);writer.Write((short)2);writer.Write((short)16);writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));writer.Write(samples*2);for(var i=0;i<samples;i++)writer.Write((short)(Math.Sin(i*2*Math.PI*440/44100)*1500));}
+        var audioEditor=new ToolEditor(window,"trimAudio","Trim Audio",wave,new MediaInfo(5,new FileInfo(wave).Length,[new MediaStream(0,"audio","pcm_s16le",null,null,false)]));audioEditor.Show();audioEditor.UpdateLayout();DesktopInput.Pump();audioEditor.Timeline.Focus();
+        DesktopInput.Key(audioEditor,Key.Space);Check(audioEditor.Playing,"Space did not start media preview command");DesktopInput.Pump(350);DesktopInput.Key(audioEditor,Key.Space);Check(!audioEditor.Playing,"Space did not pause media preview command");
+        var position=audioEditor.PreviewSeconds;DesktopInput.Key(audioEditor,Key.Right);Check(Math.Abs(audioEditor.PreviewSeconds-position-1)<.1,"Right arrow did not seek one second");
+        DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Left arrow did not seek back one second");
+        DesktopInput.Key(audioEditor,Key.I);DesktopInput.Key(audioEditor,Key.Right);DesktopInput.Key(audioEditor,Key.O);Check(audioEditor.Timeline.End>audioEditor.Timeline.Start&&audioEditor.Timeline.End<5,"I/O did not synchronize trim range");
+        audioEditor.FieldForTest("Start").Focus();position=audioEditor.PreviewSeconds;DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Arrow in trim text field incorrectly sought media");DesktopInput.Key(audioEditor,Key.Escape);Check(!audioEditor.IsVisible,"Escape did not close trim editor");
         Theme.Apply("light");window.UpdateLayout();Capture(window,"windows-home-light.png");Theme.Apply("dark");
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();

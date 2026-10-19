@@ -72,7 +72,7 @@ internal static class SmokeTests
         var drops=new System.Collections.Specialized.StringCollection{source,tagged};Clipboard.SetFileDropList(drops);FindButton("Home").Focus();DesktopInput.Key(window,Key.V,control:true);
         Check(window.SelectedFiles.Count==2&&window.SelectedFiles.Contains(source),"File-list paste failed");
         Clipboard.SetText("https://www.youtube.com/watch?v=fixture");FindButton("Home").Focus();DesktopInput.Key(window,Key.D,control:true,shift:true);
-        Check(window.LinkField.Text.Contains("watch?v=fixture")&&window.LinkField.IsKeyboardFocused,"Copied-link shortcut failed");
+        Check(window.LinkField.Text.Contains("watch?v=fixture")&&window.LinkField.IsKeyboardFocused,"Copied-link shortcut failed");Capture(window.DownloadWindow,"windows-download.png");
         Clipboard.SetText("ordinary field paste");DesktopInput.Key(window.DownloadWindow,Key.V,control:true);
         Check(window.LinkField.Text.Contains("ordinary field paste")&&library.Entries.Count==3,"Link field paste was intercepted");window.DownloadWindow.Close();
         Clipboard.Clear();window.Import(new DataObject());Check(library.Entries.Count==3,"Empty clipboard created a Library item");

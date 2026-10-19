@@ -153,7 +153,7 @@ public sealed class MainWindow:Window
         dialog.Closing+=(_,e)=>{if(busy){e.Cancel=true;status.Text="Finish or cancel the current operation first.";}};
         dialog.Closed+=(_,_)=>{dialog.Content=null;webWindow=null;};dialog.PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape&&!busy){dialog.Close();e.Handled=true;}};dialog.Show();link.Focus();
     }
-    private void SetBusy(bool value){busy=value;workArea.IsEnabled=!value;RenderLibrary();}
+    private void SetBusy(bool value){busy=value;workArea.IsEnabled=!value;webContent.IsEnabled=!value;RenderLibrary();}
     private void ShowShortcuts()=>MessageBox.Show(this,"Ctrl+O  Choose files\nCtrl+V  Paste files, text, an image or link\nCtrl+Space / Enter  Open tools\nCtrl+1 / Ctrl+2  Home / Library\nCtrl+F  Find in Library\nCtrl+Shift+D  Use a copied download link\nCtrl+U  Check for updates\n\nWheel: arrows / Tab to choose, Enter to open, Esc to close\nMedia: Space play/pause, ←/→ 1 second, Shift+←/→ 1/30s, I/O set range\nCrop: drag, Shift locks ratio, Enter saves\nEditing text: normal paste and arrow keys are preserved.","Nashi · Features & shortcuts");
     private sealed class FileNameConverter:System.Windows.Data.IValueConverter
     {
@@ -220,8 +220,9 @@ public sealed class MainWindow:Window
     }
     private async Task DownloadAsync()
     {
-        if(!tools.Ready){MessageBox.Show(this,"Choose Set up media tools once to enable web downloads.","Media setup");return;}
-        try{var url=WebDownload.Validate(link.Text).AbsoluteUri;var kind=(string)downloadKind.SelectedItem;await RunAsync((destination,p,t)=>new WebDownload(tools).DownloadAsync(url,kind,destination,p,t),"Download "+kind);}catch(Exception error){MessageBox.Show(this,error.Message,"Check your link");}
+        if(busy)return;
+        if(!tools.Ready){MessageBox.Show(webWindow??this,"Choose Set up media tools once to enable web downloads.","Media setup");return;}
+        try{var url=WebDownload.Validate(link.Text).AbsoluteUri;var kind=(string)downloadKind.SelectedItem;await RunAsync((destination,p,t)=>new WebDownload(tools).DownloadAsync(url,kind,destination,p,t),"Download "+kind);}catch(Exception error){MessageBox.Show(webWindow??this,error.Message,"Check your link");}
     }
     private async Task SetupAsync()
     {

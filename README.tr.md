@@ -4,6 +4,22 @@
 
 Nashi, [Tangerine](https://tangerineformac.com/) uygulamasının sürükle ve çark etkileşiminden ilham alan bağımsız, açık kaynaklı bir dosya dönüştürme/düzenleme uygulamasıdır. Web’den medya indirme, QR okuma, geliştirilmiş crop/annotate araçları, klavyeyle medya düzenleme, canlı ilerleme ve imzalı otomatik güncelleme ekler. Tangerine veya LEAP STUDIO ile bağlantılı değildir; referans uygulamanın binary dosyaları veya görselleri dağıtılmaz.
 
+## Nashi’yi iş başında gör
+
+[![Nashi ürün turu: dosya seç, çarktan dönüştür, kırp ve çıktıları bul](docs/assets/showcase/nashi-demo.gif)](https://orkunisitmak.github.io/nashi-app/tr/#demo)
+
+**[23 saniyelik demoyu izle](https://orkunisitmak.github.io/nashi-app/tr/#demo)** · [MP4 aç / indir](https://orkunisitmak.github.io/nashi-app/assets/showcase/nashi-demo.mp4)
+
+Gerçek macOS 0.7.3 uygulama görüntülerinden hazırlanmış ürün turu: görsel seçme, JPG’ye dönüştürme, kırpma ve çıktılarını bulma. Video oynatıcıda Türkçe ve İngilizce altyazı bulunur.
+
+| macOS · Ana ekran | macOS · Görsel kırp |
+| :---: | :---: |
+| [![Nashi Mac ana ekranı](docs/assets/showcase/mac-home.png)](docs/assets/showcase/mac-home.png) | [![Kare seçim ve oran kontrolleriyle Nashi kırpma editörü](docs/assets/showcase/mac-crop.png)](docs/assets/showcase/mac-crop.png) |
+| **macOS · Dönüştürme çarkı** | **Windows · Geliştirme önizlemesi** |
+| [![JPG seçili Nashi dönüştürme çarkı](docs/assets/showcase/mac-wheel.png)](docs/assets/showcase/mac-wheel.png) | [![Açık temada yerel Windows ana ekranı](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
+
+Windows görüntüsü [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1) geliştirme sürümünün yerel UI testinden alınmıştır; mevcut public Windows sürümünden ileridedir. Demo dosyaları yalnızca Nashi görsellerini içerir; kişisel dosya veya hesap bilgisi gösterilmez.
+
 ## İndir ve kullan
 
 - **[macOS ZIP · Apple Silicon, macOS 13+](https://github.com/orkunisitmak/nashi-app/releases/latest/download/Nashi-macOS-arm64.zip):** ZIP’i aç, Nashi.app’i Uygulamalar klasörüne taşı ve aç. macOS kataloğu 27 araç, 45 girdi formatı ve 275 dönüşüm yolu içerir.

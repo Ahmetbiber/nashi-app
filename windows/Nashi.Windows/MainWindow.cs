@@ -23,10 +23,11 @@ public sealed partial class MainWindow:Window
     private readonly LibraryStore library;
     private readonly PreferencesStore preferences;private GlobalDragController? globalDrag;
     private readonly StackPanel home=new(),libraryPage=new(),libraryRows=new(),recentRows=new();
+    private readonly TextBox recentSearch=new(){ToolTip="Find a recent file",Width=165};private readonly TextBlock recentCount=Text("0",11,"Muted");private Button? chooseFilesButton,openWheelButton;private readonly TextBlock fileDescription=Text("Images, videos, documents, and all the little things in between.",12,"Muted");
     private readonly TextBox search=new(){ToolTip="Find a file or tool in Library",MinWidth=200};
     private readonly WrapPanel manage=new();private readonly FileGarden garden=new();private readonly StackPanel webContent=new();private Window? webWindow;
     internal Window DownloadWindow=>webWindow??this;
-    private readonly Button homeButton,libraryButton,updateButton;
+    private readonly Button homeButton,libraryButton,updateButton;private readonly ComboBox appearance;
     private readonly StackPanel workArea=new();
     private bool busy,checking;private WindowsUpdate? update;
     internal IReadOnlyList<string> SelectedFiles=>files;
@@ -36,13 +37,13 @@ public sealed partial class MainWindow:Window
     public MainWindow(string[]? initial=null,LibraryStore? library=null,bool checkForUpdates=true)
     {
         this.library=library??new LibraryStore();preferences=new(this.library.DirectoryPath);ApplyPreferences();Theme.Apply(this.library.Appearance);Theme.Attach(this);
-        Title="Nashi";Width=940;Height=860;MinWidth=780;MinHeight=620;WindowStartupLocation=WindowStartupLocation.CenterScreen;AllowDrop=true;
+        Title="Nashi";Width=820;Height=800;MinWidth=780;MinHeight=620;WindowStartupLocation=WindowStartupLocation.CenterScreen;AllowDrop=true;
         Icon=BitmapFrame.Create(new Uri("pack://application:,,,/Assets/NashiIcon.png"));
         var root=new DockPanel{Margin=new(28,18,28,18)};Content=root;
         var header=new DockPanel{Margin=new(0,0,0,18)};DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
         var controls=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(controls,Dock.Right);header.Children.Add(controls);
         homeButton=Button("Home",()=>ShowLibrary(false));libraryButton=Button("Library",()=>ShowLibrary(true));controls.Children.Add(homeButton);controls.Children.Add(libraryButton);
-        var appearance=new ComboBox{ItemsSource=new[]{"System","Light","Dark"},SelectedItem=char.ToUpper(this.library.Appearance[0])+this.library.Appearance[1..],ToolTip="Appearance",MinWidth=90};
+        appearance=new ComboBox{ItemsSource=new[]{"System","Light","Dark"},SelectedItem=char.ToUpper(this.library.Appearance[0])+this.library.Appearance[1..],ToolTip="Appearance",MinWidth=90};
         appearance.SelectionChanged+=(_,_)=>{var choice=((string)appearance.SelectedItem).ToLowerInvariant();Theme.Apply(choice);try{this.library.SetAppearance(choice);}catch(Exception error)when(error is IOException or UnauthorizedAccessException){status.Text="Appearance changed, but it could not be saved.";}};controls.Children.Add(appearance);
         updateButton=Button("Check for updates",async()=>await CheckUpdatesAsync(true));updateButton.ToolTip="Ctrl+U · Check for updates";controls.Children.Add(updateButton);
         controls.Children.Add(Button("Settings",ShowSettings));
@@ -52,21 +53,21 @@ public sealed partial class MainWindow:Window
         home.Children.Add(Text("Your files. Their next form.",30));var intro=Text("Convert, fine-tune, and send them on their way.",14,"Muted");intro.Margin=new(0,6,0,22);home.Children.Add(intro);
         home.Children.Add(workArea);
         var drop=new Grid();drop.ColumnDefinitions.Add(new(){Width=new(1,GridUnitType.Star)});drop.ColumnDefinitions.Add(new(){Width=new(166)});
-        var dropText=new StackPanel();drop.Children.Add(dropText);dropText.Children.Add(Text("✦  START HERE",11,"Gold"));selection.Margin=new(0,12,0,8);dropText.Children.Add(selection);dropText.Children.Add(Text("Images, videos, documents, and everything in between.",13,"Muted"));
-        var picks=new WrapPanel{Margin=new(0,14,0,8)};picks.Children.Add(Primary("Choose files",Choose));picks.Children.Add(Button("Paste  ·  Ctrl+V",PasteClipboard));dropText.Children.Add(picks);
+        var dropText=new StackPanel();drop.Children.Add(dropText);dropText.Children.Add(Text("✦  START HERE",11,"Gold"));selection.Margin=new(0,12,0,8);dropText.Children.Add(selection);dropText.Children.Add(fileDescription);
+        var picks=new WrapPanel{Margin=new(0,14,0,8)};chooseFilesButton=Primary("Choose files",Choose);picks.Children.Add(chooseFilesButton);openWheelButton=Primary("Open wheel",ShowWheel);picks.Children.Add(openWheelButton);picks.Children.Add(Button("Paste  ·  Ctrl+V",PasteClipboard));dropText.Children.Add(picks);
         Grid.SetColumn(garden,1);drop.Children.Add(garden);
         var dropStack=new StackPanel();dropStack.Children.Add(drop);list.ItemsSource=files;list.SelectionMode=SelectionMode.Extended;
         list.ItemTemplate=new DataTemplate(typeof(string)){VisualTree=new FrameworkElementFactory(typeof(TextBlock))};list.ItemTemplate.VisualTree.SetBinding(TextBlock.TextProperty,new System.Windows.Data.Binding{Converter=new FileNameConverter()});list.ItemTemplate.VisualTree.SetValue(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis);
         var chips=new FrameworkElementFactory(typeof(WrapPanel));list.ItemsPanel=new ItemsPanelTemplate(chips);list.ItemContainerStyle=new Style(typeof(ListBoxItem),(Style)Application.Current.FindResource(typeof(ListBoxItem)));list.ItemContainerStyle.Setters.Add(new Setter(FrameworkElement.MaxWidthProperty,190d));list.ItemContainerStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty,new Thickness(0,3,6,0)));dropStack.Children.Add(list);
         manage.Children.Add(Button("Remove selected",()=>{foreach(var file in list.SelectedItems.Cast<string>().ToArray())files.Remove(file);Refresh();}));manage.Children.Add(Button("Clear",()=>{files.Clear();Refresh();}));dropStack.Children.Add(manage);
         var hint=Text("Ctrl+O  Choose files       Ctrl+Space  Open tools       Ctrl+V  Paste",11,"Muted");hint.Margin=new(0,12,0,0);dropStack.Children.Add(hint);workArea.Children.Add(Card(dropStack));
-        actions.Margin=new(0,10,0,16);workArea.Children.Add(actions);
+        actions.Margin=new(0,10,0,0);dropStack.Children.Add(actions);
         var web=new StackPanel();web.Children.Add(Text("Download a link",17));web.Children.Add(Text("Video, audio, or an image. Straight into your tools.",12,"Muted"));
         var download=new DockPanel{Margin=new(0,12,0,0)};var save=Primary("Download ↗",async()=>await DownloadAsync());DockPanel.SetDock(save,Dock.Right);download.Children.Add(save);DockPanel.SetDock(downloadKind,Dock.Right);download.Children.Add(downloadKind);download.Children.Add(link);web.Children.Add(download);
         web.Children.Add(Text("Ctrl+Shift+D  Use a copied link  ·  Public, downloadable media",11,"Muted"));webContent.Margin=new(24);webContent.Children.Add(Text("Download from the web",27));webContent.Children.Add(Text("A link. A file. Yours to work with.",14,"Muted"));var webCard=Card(web);webCard.Margin=new(0,20,0,0);webContent.Children.Add(webCard);BuildWebOptions();
         var webHeader=new DockPanel();var shortcut=Text("Ctrl+Shift+D",12,"Muted");DockPanel.SetDock(shortcut,Dock.Right);webHeader.Children.Add(shortcut);var arrow=Text("↓",28,"Gold");arrow.Margin=new(0,0,14,0);DockPanel.SetDock(arrow,Dock.Left);webHeader.Children.Add(arrow);var caption=new StackPanel();caption.SetValue(TextBlock.TextAlignmentProperty,TextAlignment.Left);caption.Children.Add(Text("Download a link",15));caption.Children.Add(Text("Video, audio, or an image. Straight into your tools.",12,"Muted"));webHeader.Children.Add(caption);var webButton=Button("",OpenDownload);webButton.Content=webHeader;webButton.HorizontalContentAlignment=HorizontalAlignment.Stretch;webButton.Margin=new(0);webButton.Padding=new(18);webButton.BorderThickness=new(0);var webLanding=Card(webButton);webLanding.Padding=new(0);workArea.Children.Add(webLanding);
-        var recentHeading=new DockPanel{Margin=new(0,24,0,10)};var all=Button("See all  ↗",()=>ShowLibrary(true));DockPanel.SetDock(all,Dock.Right);recentHeading.Children.Add(all);recentHeading.Children.Add(Text("Freshly made",19));home.Children.Add(recentHeading);var recentCard=Card(recentRows);recentCard.Padding=new(7);home.Children.Add(recentCard);
-        var footer=new WrapPanel{Margin=new(0,14,0,0)};footer.Children.Add(Button("Set up media tools",async()=>await SetupAsync()));footer.Children.Add(Button("Set up office tools",async()=>await SetupOfficeAsync()));footer.Children.Add(Button("Features & shortcuts",ShowShortcuts));home.Children.Add(footer);
+        var recentHeading=new DockPanel{Margin=new(0,24,0,10)};var all=Button("See all  ↗",()=>ShowLibrary(true));DockPanel.SetDock(all,Dock.Right);recentHeading.Children.Add(all);var recentTitle=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};recentTitle.Children.Add(Text("Freshly made",19));recentCount.Margin=new(10,0,0,0);recentTitle.Children.Add(recentCount);recentHeading.Children.Add(recentTitle);home.Children.Add(recentHeading);recentSearch.Margin=new(0,0,0,10);recentSearch.TextChanged+=(_,_)=>RenderLibrary();home.Children.Add(recentSearch);var recentCard=Card(recentRows);recentCard.Padding=new(7);home.Children.Add(recentCard);
+        var footer=new WrapPanel{Margin=new(0,14,0,0)};footer.Children.Add(Button("Set up media tools",async()=>await SetupAsync()));footer.Children.Add(Button("Set up office tools",async()=>await SetupOfficeAsync()));footer.Children.Add(Button("Features & shortcuts",ShowShortcuts));home.Children.Add(new Expander{Header="Tools & shortcuts",Content=footer,Margin=new(4,8,4,0)});
         libraryPage.Children.Add(Text("Your Library",30));libraryPage.Children.Add(Text("Freshly made, pasted, and ready for another round.",14,"Muted"));
         var searchLabel=Text("Find a file or tool  ·  Ctrl+F",12,"Muted");searchLabel.Margin=new(4,20,4,0);libraryPage.Children.Add(searchLabel);libraryPage.Children.Add(search);libraryPage.Children.Add(libraryRows);search.TextChanged+=(_,_)=>RenderLibrary();
         AutomationProperties.SetAutomationId(search,"LibrarySearch");AutomationProperties.SetAutomationId(link,"DownloadLink");AutomationProperties.SetAutomationId(list,"SelectedFiles");
@@ -141,7 +142,7 @@ public sealed partial class MainWindow:Window
         libraryRows.Children.Clear();recentRows.Children.Clear();var filtered=library.Search(search.Text).ToArray();
         if(filtered.Length==0)libraryRows.Children.Add(Card(Text(library.Entries.Count==0?"Nothing here yet. Paste something or make your first fresh copy.":"No matches. Try a file name or tool.",14,"Muted")));
         foreach(var entry in filtered)libraryRows.Children.Add(LibraryRow(entry));
-        foreach(var entry in library.Entries.Take(3))recentRows.Children.Add(LibraryRow(entry,true));
+        recentCount.Text=library.Entries.Count.ToString();foreach(var entry in library.Search(recentSearch.Text).Take(3))recentRows.Children.Add(LibraryRow(entry,true));
         if(library.Entries.Count==0)recentRows.Children.Add(Card(Text("Your next fresh copy will land here.",13,"Muted")));
     }
     private Border LibraryRow(LibraryEntry entry,bool compact=false)
@@ -176,8 +177,8 @@ public sealed partial class MainWindow:Window
     }
     private void Refresh()
     {
-        selection.Text=files.Count==0?"Drop something good.":$"{files.Count} {(files.Count==1?"file":"files")} selected";list.Visibility=manage.Visibility=files.Count==0?Visibility.Collapsed:Visibility.Visible;actions.Children.Clear();garden.SetSelected(files.Count>0);
-        if(files.Count>0){if(FeatureCatalog.Formats(files).Length>0)actions.Children.Add(Button("Convert ↗",async()=>await EditAsync(new("convert","Convert","↗"))));if(Choices().Count>0)actions.Children.Add(Button("Open tools wheel  ·  Ctrl+Space",ShowWheel));actions.Children.Add(Button("File actions",ShowFileActions));actions.Children.Add(Button("Create ZIP",async()=>await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>[DocumentEngine.Zip(files.ToArray(),destination,p,t)],t))));}
+        selection.Text=files.Count==0?"Drop something good.":files.Count==1?Path.GetFileName(files[0]):$"{files.Count} files, ready to go.";fileDescription.Text=files.Count==0?"Images, videos, documents, and all the little things in between.":files.Count==1?Path.GetDirectoryName(files[0])!:"Keep them together, or give each one a fresh start.";if(chooseFilesButton is not null){chooseFilesButton.Content=files.Count==0?"Choose files":"Add or change files";if(files.Count==0){chooseFilesButton.Background=Theme.Primary;chooseFilesButton.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));}else{chooseFilesButton.SetResourceReference(Control.BackgroundProperty,"Surface");chooseFilesButton.SetResourceReference(Control.ForegroundProperty,"Ink");}}if(openWheelButton is not null)openWheelButton.Visibility=files.Count>0?Visibility.Visible:Visibility.Collapsed;list.Visibility=manage.Visibility=files.Count==0?Visibility.Collapsed:Visibility.Visible;actions.Children.Clear();garden.SetSelected(files.Count>0);
+        if(files.Count>0){if(FeatureCatalog.Formats(files).Length>0)actions.Children.Add(Button("Convert ↗",async()=>await EditAsync(new("convert","Convert","↗"))));actions.Children.Add(Button("File actions",ShowFileActions));actions.Children.Add(Button("Create ZIP",async()=>await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>[DocumentEngine.Zip(files.ToArray(),destination,p,t)],t))));}
     }
     private void ShowWheel(){if(!busy&&Choices().Count>0)new WheelWindow(this,Choices(),async choice=>await EditAsync(choice)).Show();}
     private async Task EditAsync(ToolChoice choice)

@@ -8,7 +8,7 @@ using System.Windows.Shapes;
 using Nashi.Core;
 namespace Nashi.Windows;
 
-public sealed class ToolEditor:Window
+public sealed partial class ToolEditor:Window
 {
     public MediaOptions MediaOptions{get;private set;}=new();public ImageOptions ImageOptions{get;private set;}=new();public string Format{get;private set;}="png";public int[] Pages{get;private set;}=[];
     private readonly string tool;private readonly BitmapSource? bitmap;private readonly Dictionary<string,TextBox> fields=[];private readonly Dictionary<string,string> defaults=[];
@@ -21,7 +21,7 @@ public sealed class ToolEditor:Window
     internal RangeTimeline Timeline=>timeline;
     internal TextBox FieldForTest(string name)=>fields[name];
     private readonly string input;private readonly MediaInfo? media;private readonly StackPanel options=new(){Margin=new(18,0,0,0)};
-    public ToolEditor(Window owner,string tool,string title,string input,MediaInfo? media=null,BitmapSource? preview=null)
+    public ToolEditor(Window owner,string tool,string title,string input,MediaInfo? media=null,BitmapSource? preview=null,IReadOnlyList<string>? inputs=null,string[]? outputFormats=null)
     {
         Theme.Attach(this);
         Owner=owner;this.tool=tool;this.input=input;this.media=media;bitmap=preview;Title=title+" · Nashi";Width=1060;Height=780;MinWidth=800;MinHeight=560;WindowStartupLocation=WindowStartupLocation.CenterOwner;
@@ -54,7 +54,7 @@ public sealed class ToolEditor:Window
         }
         if(tool=="convert")
         {
-            var formats=media is not null?(media.Video is null?MediaEngine.AudioFormats:MediaEngine.VideoFormats.Concat(MediaEngine.AudioFormats).ToHashSet()):ImageEngine.Formats.ToHashSet();
+            var formats=outputFormats?.ToHashSet()??(media is not null?(media.Video is null?MediaEngine.AudioFormats:MediaEngine.VideoFormats.Concat(MediaEngine.AudioFormats).ToHashSet()):ImageEngine.Formats.ToHashSet());
             options.Children.Add(new TextBlock{Text="Output format",FontWeight=FontWeights.SemiBold});format.ItemsSource=formats.Order().ToArray();format.SelectedIndex=0;options.Children.Add(format);
         }
         if(tool is "trimVideo" or "trimAudio" or "redactAudio"){Field("Start",0);Field("End",duration);}
@@ -68,7 +68,7 @@ public sealed class ToolEditor:Window
         if(tool=="audioToVideo"){Field("Width",1280);Field("Height",720);}
         if(tool=="organizePDF")TextField("Page numbers","1");
         if(tool=="rotate")Field("Degrees",90);
-        if(tool is "crop" or "cropVideo" or "redactVideo")
+        if(tool is "crop" or "cropVideo" or "redactVideo" or "redactImage")
         {
             options.Children.Add(new TextBlock{Text=tool=="redactVideo"?"Drag a region to cover with a solid block.":"Drag to select a crop. Hold Shift to lock the original aspect ratio. Press Enter to save.",TextWrapping=TextWrapping.Wrap,Margin=new(4,4,4,16)});
             var w=bitmap?.PixelWidth??media?.Video?.Width??1280;var h=bitmap?.PixelHeight??media?.Video?.Height??720;
@@ -77,9 +77,11 @@ public sealed class ToolEditor:Window
         }
         if(tool=="annotate")
         {
-            options.Children.Add(new TextBlock{Text="Drawing tool"});options.Children.Add(drawingTool);options.Children.Add(new TextBlock{Text="Drag to draw. Marker and rectangle are mutually exclusive.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)});
+            drawingTool.ItemsSource=new[]{"Marker","Rectangle","Arrow","Line","Ellipse","Text","Number","Callout","Magnifier","Image","Freehand"};drawingTool.SelectedIndex=0;
+            options.Children.Add(new TextBlock{Text="Drawing tool"});options.Children.Add(drawingTool);TextField("Annotation text","Note");TextField("Ink color","#FF5200");Field("Stroke width",3);Field("Font size",24);options.Children.Add(new TextBlock{Text="Drag to draw. One active tool per stroke.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)});
             options.Children.Add(MainWindow.Button("Undo last mark",()=>{if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
+        BuildPhotoOptions(inputs??[input]);BuildDocumentOptions();
         if(options.Children.Count==1)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
         var footer=new DockPanel{Margin=new(0,20,0,0),LastChildFill=false};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Primary;save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);var cancel=MainWindow.Button("Cancel",()=>DialogResult=false);DockPanel.SetDock(cancel,Dock.Left);footer.Children.Add(cancel);var reset=MainWindow.Button("↶ Reset",Reset);DockPanel.SetDock(reset,Dock.Left);footer.Children.Add(reset);var safe=new TextBlock{Text="Original stays safe",Foreground=Theme.Brush("Muted"),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new(0,0,16,0)};DockPanel.SetDock(safe,Dock.Right);footer.Children.Add(safe);
         var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
@@ -98,19 +100,21 @@ public sealed class ToolEditor:Window
     }
     private void BeginDraw(object sender,MouseButtonEventArgs e)
     {
-        if(tool is not ("crop" or "cropVideo" or "redactVideo" or "annotate"))return;
+        if(tool is not ("crop" or "cropVideo" or "redactVideo" or "redactImage" or "annotate"))return;
         drawing.Focus();origin=e.GetPosition(drawing);dragging=drawing.CaptureMouse();
+        if(tool=="annotate"){AnnotationStart();e.Handled=true;return;}
         if(tool=="annotate"&&drawingTool.SelectedIndex==0){activeStroke=new Polyline{Stroke=new SolidColorBrush(Color.FromArgb(160,234,181,40)),StrokeThickness=Math.Max(3,drawing.Width/100),StrokeLineJoin=PenLineJoin.Round};activeStroke.Points.Add(origin);drawing.Children.Add(activeStroke);}
         else
         {
-            if(tool!="annotate"&&selection is not null)drawing.Children.Remove(selection);
-            activeRectangle=new Rectangle{Stroke=tool=="annotate"?Brushes.OrangeRed:Brushes.Gold,StrokeThickness=Math.Max(2,drawing.Width/350),Fill=tool=="redactVideo"?Brushes.Black:new SolidColorBrush(Color.FromArgb(35,224,189,82)),IsHitTestVisible=false};drawing.Children.Add(activeRectangle);Canvas.SetLeft(activeRectangle,origin.X);Canvas.SetTop(activeRectangle,origin.Y);if(tool!="annotate")selection=activeRectangle;
+            if(tool is not ("annotate" or "redactImage")&&selection is not null)drawing.Children.Remove(selection);
+            activeRectangle=new Rectangle{Stroke=tool=="annotate"?Brushes.OrangeRed:Brushes.Gold,StrokeThickness=Math.Max(2,drawing.Width/350),Fill=tool is "redactVideo" or "redactImage"?Brushes.Black:new SolidColorBrush(Color.FromArgb(35,224,189,82)),IsHitTestVisible=false};drawing.Children.Add(activeRectangle);Canvas.SetLeft(activeRectangle,origin.X);Canvas.SetTop(activeRectangle,origin.Y);if(tool!="annotate")selection=activeRectangle;
         }
         e.Handled=true;
     }
     private void MoveDraw(object sender,MouseEventArgs e)
     {
         if(!dragging)return;var p=e.GetPosition(drawing);p.X=Math.Clamp(p.X,0,drawing.Width);p.Y=Math.Clamp(p.Y,0,drawing.Height);
+        if(tool=="annotate"){AnnotationMove(p);return;}
         if(activeStroke is not null){activeStroke.Points.Add(p);return;}
         if(activeRectangle is null)return;var dx=p.X-origin.X;var dy=p.Y-origin.Y;
         if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
@@ -121,7 +125,7 @@ public sealed class ToolEditor:Window
         Canvas.SetLeft(activeRectangle,x);Canvas.SetTop(activeRectangle,y);activeRectangle.Width=w;activeRectangle.Height=h;
         if(tool!="annotate"){fields["X"].Text=Number(Math.Floor(x));fields["Y"].Text=Number(Math.Floor(y));fields["Width"].Text=Number(Math.Max(1,Math.Floor(w)));fields["Height"].Text=Number(Math.Max(1,Math.Floor(h)));}
     }
-    private void EndDraw(object sender,MouseButtonEventArgs e){dragging=false;activeStroke=null;activeRectangle=null;drawing.ReleaseMouseCapture();e.Handled=true;}
+    private void EndDraw(object sender,MouseButtonEventArgs e){if(tool=="redactImage"&&activeRectangle is {Width:>=1,Height:>=1} r)photoRegions.Add(new Rect(Canvas.GetLeft(r),Canvas.GetTop(r),r.Width,r.Height));dragging=false;activeStroke=null;activeRectangle=null;annotationShape=null;drawing.ReleaseMouseCapture();e.Handled=true;}
     private void Seek(double seconds){player.Position=TimeSpan.FromSeconds(Math.Clamp(seconds,0,duration));time.Text=$"{player.Position:mm\\:ss\\.fff} / {TimeSpan.FromSeconds(duration):mm\\:ss\\.fff}";}
     private void OnKey(object sender,KeyEventArgs e)
     {
@@ -140,10 +144,10 @@ public sealed class ToolEditor:Window
             if(tool is "crop" or "cropVideo" or "redactVideo"&& (w<1||h<1))throw new ArgumentException("Drag an area first.");
             MediaOptions=new(){Start=Value("Start"),End=fields.ContainsKey("End")?Value("End"):null,Quality=Value("Quality (%)",80)/100,Speed=Value("Speed",1),Width=fields.ContainsKey("Width")?(int)w:null,Height=fields.ContainsKey("Height")?(int)h:null,Channels=(int)Value("Channels",2),LeftVolume=Value("Left volume",1),RightVolume=Value("Right volume",1),EqualClips=(int)Value("Number of clips",2),TargetLoudness=Value("Target LUFS",-16),TruePeak=Value("True peak dB",-1.5),Regions=tool is "cropVideo" or "redactVideo"?[new(x,y,w,h,Value("Start"),fields.ContainsKey("End")?Value("End"):null)]:[],AudioRedactions=tool=="redactAudio"?[new(Value("Start"),Value("End"))]:[],SnapshotTimes=tool=="videoSnapshots"?fields["Times (seconds)"].Text.Split(';',StringSplitOptions.RemoveEmptyEntries).Select(s=>double.Parse(s,CultureInfo.CurrentCulture)).ToArray():[0]};
             BitmapSource? annotated=null;if(tool=="annotate"){var target=new RenderTargetBitmap(bitmap!.PixelWidth,bitmap.PixelHeight,96,96,PixelFormats.Pbgra32);target.Render(drawing);target.Freeze();annotated=target;}
-            ImageOptions=new(fields.ContainsKey("Width")?(int)w:null,fields.ContainsKey("Height")?(int)h:null,(int)Value("Degrees",90),tool=="crop"?new Int32Rect((int)x,(int)y,(int)w,(int)h):null,(int)Value("Quality (%)",85),true,annotated);
+            ImageOptions=PhotoSettings(new(fields.ContainsKey("Width")?(int)w:null,fields.ContainsKey("Height")?(int)h:null,(int)Value("Degrees",90),tool=="crop"?new Int32Rect((int)x,(int)y,(int)w,(int)h):null,(int)Value("Quality (%)",85),true,annotated));
             Format=format.SelectedItem as string??"png";
             if(tool=="organizePDF")Pages=fields["Page numbers"].Text.Split(',',StringSplitOptions.RemoveEmptyEntries).Select(s=>int.Parse(s.Trim(),CultureInfo.InvariantCulture)).ToArray();
-            DialogResult=true;
+            DocumentOptions=new((int)Value("DPI",144),documentLayout.SelectedItem as string??"editable",epubLayout.SelectedItem as string??"reflowable",archivePassword.Password);DialogResult=true;
         }
         catch(Exception error)when(error is ArgumentException or FormatException or OverflowException){MessageBox.Show(this,error.Message,"Check your settings",MessageBoxButton.OK,MessageBoxImage.Information);}
     }

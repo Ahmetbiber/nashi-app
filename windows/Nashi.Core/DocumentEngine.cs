@@ -6,7 +6,7 @@ namespace Nashi.Core;
 
 public static class DocumentEngine
 {
-    public static IReadOnlyList<string> Pdf(string tool,IReadOnlyList<string> inputs,string destination,int[]? pages=null,CancellationToken token=default)
+    public static IReadOnlyList<string> Pdf(string tool,IReadOnlyList<string> inputs,string destination,int[]? pages=null,CancellationToken token=default,Dictionary<int,int>? rotations=null,int pagesPerFile=1)
     {
         using var tx=new ExportTransaction(destination);var outputs=new List<string>();
         if(tool=="mergePDFs")
@@ -21,17 +21,24 @@ public static class DocumentEngine
             token.ThrowIfCancellationRequested();using var source=PdfReader.Open(input,PdfDocumentOpenMode.Import);
             if(tool=="splitPDF")
             {
-                for(var i=0;i<source.PageCount;i++)
+                if(pagesPerFile<1||pagesPerFile>source.PageCount)throw new ArgumentException("Choose pages per file within the PDF page count.");
+                var selected=pages??Enumerable.Range(1,source.PageCount).ToArray();if(selected.Length==0||selected.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Choose valid PDF pages.");
+                for(var i=0;i<selected.Length;i+=pagesPerFile)
                 {
-                    token.ThrowIfCancellationRequested();using var part=new PdfDocument();part.AddPage(source.Pages[i]);
+                    token.ThrowIfCancellationRequested();using var part=new PdfDocument();foreach(var page in selected.Skip(i).Take(pagesPerFile))part.AddPage(source.Pages[page-1]);
                     var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+$" Page {i+1}.pdf");part.Save(output);outputs.Add(output);
                 }
             }
             else if(tool=="organizePDF")
             {
                 if(pages is null||pages.Length==0||pages.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Enter page numbers within this PDF, in the desired order.");
-                using var result=new PdfDocument();foreach(var page in pages)result.AddPage(source.Pages[page-1]);
+                using var result=new PdfDocument();foreach(var page in pages){var added=result.AddPage(source.Pages[page-1]);added.Rotate=(added.Rotate+(rotations?.GetValueOrDefault(page)??0))%360;}
                 var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+" Organized.pdf");result.Save(output);outputs.Add(output);
+            }
+            else if(tool is "compress" or "removeMetadata")
+            {
+                using var result=new PdfDocument();foreach(var page in source.Pages)result.AddPage(page);result.Options.CompressContentStreams=true;result.Info.Title="";result.Info.Author="";result.Info.Subject="";result.Info.Keywords="";
+                var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+(tool=="compress"?" Compressed.pdf":" Metadata.pdf"));result.Save(output);outputs.Add(output);
             }
             else throw new ArgumentException("Unknown PDF tool.");
         }

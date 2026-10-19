@@ -6,12 +6,18 @@ using PdfSharp.Pdf;
 using PdfSharp.Drawing;
 namespace Nashi.Windows;
 
-public sealed record ImageOptions(int? Width=null,int? Height=null,int Rotation=90,Int32Rect? Crop=null,int Quality=85,bool Horizontal=true,BitmapSource? Annotated=null);
-public static class ImageEngine
+public sealed record ImageOptions(int? Width=null,int? Height=null,int Rotation=90,Int32Rect? Crop=null,int Quality=85,bool Horizontal=true,BitmapSource? Annotated=null)
 {
-    public static readonly string[] Formats=["png","jpg","bmp","gif","tiff","pdf"];
+    public PhotoAdjustments Adjustments{get;init;}=new();public FrameOptions Frame{get;init;}=new();public CollageOptions Collage{get;init;}=new();
+    public string RedactionStyle{get;init;}="solid";public Rect[] Redactions{get;init;}=[];
+    public string? EncoderPath{get;init;}
+}
+public static partial class ImageEngine
+{
+    public static readonly string[] Formats=["png","jpg","webp","heic","avif","bmp","gif","tiff","pdf"];
     public static BitmapSource Load(string file)
     {
+        if(FeatureCatalog.Extension(file) is "webp" or "heic" or "avif" or "svg")return FromPng(PhotoCodec.Png(file));
         using var stream=File.OpenRead(file);var decoder=BitmapDecoder.Create(stream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);var frame=decoder.Frames[0];BitmapSource image=frame;
         if((long)image.PixelWidth*image.PixelHeight>100_000_000)throw new InvalidDataException("This image is too large (100 MP limit).");
         ushort orientation=1;
@@ -35,6 +41,16 @@ public static class ImageEngine
     public static IReadOnlyList<string> Apply(string tool,IReadOnlyList<string> inputs,string destination,ImageOptions options,string? format=null,CancellationToken token=default,IProgress<OperationProgress>? progress=null)
     {
         using var tx=new ExportTransaction(destination);var outputs=new List<string>();var completed=0;
+        if(tool=="createCollage")
+        {
+            var result=Collage(inputs,options.Collage,token);var file=Path.Combine(tx.StagingDirectory,"Collage.png");Save(result,file,"png");progress?.Report(new(.99,"Saving collage…"));return tx.Publish([file],token);
+        }
+        if(tool=="createPDF")
+        {
+            var file=Path.Combine(tx.StagingDirectory,"Images.pdf");using var pdf=new PdfDocument();
+            foreach(var input in inputs){token.ThrowIfCancellationRequested();var source=Load(input);using var png=new MemoryStream(PngBytes(source));using var image=XImage.FromStream(png);var page=pdf.AddPage();page.Width=XUnit.FromPoint(source.PixelWidth*72/96d);page.Height=XUnit.FromPoint(source.PixelHeight*72/96d);using var g=XGraphics.FromPdfPage(page);g.DrawImage(image,0,0,page.Width.Point,page.Height.Point);progress?.Report(new(++completed/(double)inputs.Count*.98,"Adding pages…"));}
+            pdf.Save(file);return tx.Publish([file],token);
+        }
         foreach(var input in inputs)
         {
             token.ThrowIfCancellationRequested();BitmapSource image=options.Annotated??Load(input);var ext=(format??Path.GetExtension(input).TrimStart('.')).ToLowerInvariant();if(ext=="jpeg")ext="jpg";if(ext=="tif")ext="tiff";
@@ -49,16 +65,19 @@ public static class ImageEngine
                 case "crop":if(options.Crop is not {} crop||crop.Width<1||crop.Height<1||crop.X<0||crop.Y<0||crop.X+crop.Width>image.PixelWidth||crop.Y+crop.Height>image.PixelHeight)throw new ArgumentException("Drag a crop inside the image.");image=new CroppedBitmap(image,crop);break;
                 case "rotate":image=new TransformedBitmap(image,new RotateTransform(options.Rotation));break;
                 case "flip":image=new TransformedBitmap(image,new ScaleTransform(options.Horizontal?-1:1,options.Horizontal?1:-1));break;
+                case "editImage":image=FromPng(PhotoCodec.Adjust(PngBytes(image),options.Adjustments));break;
+                case "frameImage":image=Frame(image,options.Frame);ext="png";break;
+                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);ext="png";break;
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;
                 default:throw new ArgumentException("Unsupported image tool.");
             }
             if(tool=="compress")ext="jpg";
             var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+(tool=="convert"?"":" "+tool)+"."+ext);
-            Save(image,output,ext,options.Quality);outputs.Add(output);progress?.Report(new(++completed/(double)inputs.Count*.98,"Saving images…"));
+            Save(image,output,ext,options.Quality,options.EncoderPath);outputs.Add(output);progress?.Report(new(++completed/(double)inputs.Count*.98,"Saving images…"));
         }
         return tx.Publish(outputs,token);
     }
-    public static void Save(BitmapSource image,string output,string format,int quality=85)
+    public static void Save(BitmapSource image,string output,string format,int quality=85,string? encoderPath=null)
     {
         // BitmapFrame.Create(source) can copy decoder metadata implicitly.
         // Materialize pixels into a fresh source, then create a metadata-free
@@ -67,6 +86,7 @@ public static class ImageEngine
         BitmapSource converted=image.Format==PixelFormats.Bgra32?image:new FormatConvertedBitmap(image,PixelFormats.Bgra32,null,0);
         var stride=checked(converted.PixelWidth*4);var pixels=new byte[checked(stride*converted.PixelHeight)];converted.CopyPixels(pixels,stride,0);
         image=BitmapSource.Create(converted.PixelWidth,converted.PixelHeight,96,96,PixelFormats.Bgra32,null,pixels,stride);image.Freeze();
+        if(format is "webp" or "heic" or "avif"){PhotoCodec.EncodePng(PngBytes(image),output,format,quality,encoderPath);return;}
         if(format=="pdf")
         {
             using var png=new MemoryStream();var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));encoder.Save(png);png.Position=0;

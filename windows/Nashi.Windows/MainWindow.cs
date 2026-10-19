@@ -10,7 +10,7 @@ using Microsoft.Win32;
 using Nashi.Core;
 namespace Nashi.Windows;
 
-public sealed class MainWindow:Window
+public sealed partial class MainWindow:Window
 {
     private readonly ObservableCollection<string> files=[];
     private readonly ListBox list=new(){MinHeight=0,MaxHeight=110};
@@ -64,7 +64,7 @@ public sealed class MainWindow:Window
         web.Children.Add(Text("Ctrl+Shift+D  Use a copied link  ·  Public, downloadable media",11,"Muted"));webContent.Margin=new(24);webContent.Children.Add(Text("Download from the web",27));webContent.Children.Add(Text("A link. A file. Yours to work with.",14,"Muted"));var webCard=Card(web);webCard.Margin=new(0,20,0,0);webContent.Children.Add(webCard);
         var webHeader=new DockPanel();var shortcut=Text("Ctrl+Shift+D",12,"Muted");DockPanel.SetDock(shortcut,Dock.Right);webHeader.Children.Add(shortcut);var arrow=Text("↓",28,"Gold");arrow.Margin=new(0,0,14,0);DockPanel.SetDock(arrow,Dock.Left);webHeader.Children.Add(arrow);var caption=new StackPanel();caption.SetValue(TextBlock.TextAlignmentProperty,TextAlignment.Left);caption.Children.Add(Text("Download a link",15));caption.Children.Add(Text("Video, audio, or an image. Straight into your tools.",12,"Muted"));webHeader.Children.Add(caption);var webButton=Button("",OpenDownload);webButton.Content=webHeader;webButton.HorizontalContentAlignment=HorizontalAlignment.Stretch;webButton.Margin=new(0);webButton.Padding=new(18);webButton.BorderThickness=new(0);var webLanding=Card(webButton);webLanding.Padding=new(0);workArea.Children.Add(webLanding);
         var recentHeading=new DockPanel{Margin=new(0,24,0,10)};var all=Button("See all  ↗",()=>ShowLibrary(true));DockPanel.SetDock(all,Dock.Right);recentHeading.Children.Add(all);recentHeading.Children.Add(Text("Freshly made",19));home.Children.Add(recentHeading);var recentCard=Card(recentRows);recentCard.Padding=new(7);home.Children.Add(recentCard);
-        var footer=new WrapPanel{Margin=new(0,14,0,0)};footer.Children.Add(Button("Set up media tools",async()=>await SetupAsync()));footer.Children.Add(Button("Features & shortcuts",ShowShortcuts));home.Children.Add(footer);
+        var footer=new WrapPanel{Margin=new(0,14,0,0)};footer.Children.Add(Button("Set up media tools",async()=>await SetupAsync()));footer.Children.Add(Button("Set up office tools",async()=>await SetupOfficeAsync()));footer.Children.Add(Button("Features & shortcuts",ShowShortcuts));home.Children.Add(footer);
         libraryPage.Children.Add(Text("Your Library",30));libraryPage.Children.Add(Text("Freshly made, pasted, and ready for another round.",14,"Muted"));
         var searchLabel=Text("Find a file or tool  ·  Ctrl+F",12,"Muted");searchLabel.Margin=new(4,20,4,0);libraryPage.Children.Add(searchLabel);libraryPage.Children.Add(search);libraryPage.Children.Add(libraryRows);search.TextChanged+=(_,_)=>RenderLibrary();
         AutomationProperties.SetAutomationId(search,"LibrarySearch");AutomationProperties.SetAutomationId(link,"DownloadLink");AutomationProperties.SetAutomationId(list,"SelectedFiles");
@@ -90,7 +90,7 @@ public sealed class MainWindow:Window
     public static void OpenUrl(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
     public static void Reveal(string path){var info=new ProcessStartInfo("explorer.exe"){UseShellExecute=false};info.ArgumentList.Add("/select,"+Path.GetFullPath(path));Process.Start(info);}
     private void Choose(){if(busy)return;var picker=new OpenFileDialog{Multiselect=true,Title="Choose files for Nashi"};if(picker.ShowDialog(this)==true){Add(picker.FileNames);ShowLibrary(false);}}
-    private void Add(IEnumerable<string> paths){foreach(var path in paths.Where(File.Exists)){var full=Path.GetFullPath(path);if(!files.Contains(full))files.Add(full);}Refresh();}
+    private void Add(IEnumerable<string> paths){foreach(var path in paths.Where(p=>File.Exists(p)||Directory.Exists(p))){var full=Path.GetFullPath(path);if(!files.Contains(full))files.Add(full);}Refresh();}
     internal void ShowLibrary(bool visible)
     {
         if(!busy)status.Text="Files stay on your computer.";
@@ -162,21 +162,17 @@ public sealed class MainWindow:Window
         public object ConvertBack(object value,Type type,object parameter,System.Globalization.CultureInfo culture)=>throw new NotSupportedException();
     }
     private bool All(string[] extensions)=>files.Count>0&&files.All(p=>extensions.Contains(Path.GetExtension(p).TrimStart('.').ToLowerInvariant()));
-    private bool Images=>All(["png","jpg","jpeg","bmp","gif","tiff","tif"]);
+    private bool Images=>files.Count>0&&files.All(FeatureCatalog.IsImage);
     private bool Video=>All(["mp4","mov","mkv","webm","avi","wmv","m4v"]);
     private bool Audio=>All(["mp3","m4a","wav","flac","ogg","opus","aiff","aif","wma","aac"]);
     private IReadOnlyList<ToolChoice> Choices()
     {
-        if(Images)return [new("resize","Resize","⤢"),new("crop","Crop","⌗"),new("rotate","Rotate","↻"),new("flip","Flip","⇆"),new("annotate","Annotate","✎"),new("compress","Compress","↘"),new("removeMetadata","Remove metadata","◇")];
-        if(Video)return [new("trimVideo","Trim video","✂"),new("cropVideo","Crop video","⌗"),new("compress","Compress","↘"),new("muteVideo","Remove audio","♫"),new("changeVideoSpeed","Speed","◴"),new("videoSnapshots","Snapshots","▣"),new("splitVideo","Split video","◫"),new("redactVideo","Redact video","▨"),new("removeMetadata","Metadata","◇"),..(files.Count>1?new[]{new ToolChoice("joinVideos","Join videos","⇥")}:[])];
-        if(Audio)return [new("trimAudio","Trim audio","✂"),new("normalizeAudio","Normalize","≋"),new("audioChannels","Channels","⇆"),new("redactAudio","Bleep audio","▨"),new("audioToVideo","Audio to video","▷"),new("compress","Compress","↘"),new("removeMetadata","Metadata","◇")];
-        if(All(["pdf"]))return [new("splitPDF","Split PDF","◫"),new("organizePDF","Organize PDF","▤"),..(files.Count>1?new[]{new ToolChoice("mergePDFs","Merge PDFs","▣")}:[])];
-        if(All(["zip"]))return [new("unzip","Extract ZIP","↗")];return [];
+        return FeatureCatalog.Tools(files).Select(id=>new ToolChoice(id switch{"cropImage"=>"crop","annotateImage"=>"annotate","mergePDF"=>"mergePDFs",_=>id},FeatureCatalog.ToolNames[id],ToolSymbol(id))).ToArray();
     }
     private void Refresh()
     {
         selection.Text=files.Count==0?"Drop something good.":$"{files.Count} {(files.Count==1?"file":"files")} selected";list.Visibility=manage.Visibility=files.Count==0?Visibility.Collapsed:Visibility.Visible;actions.Children.Clear();garden.SetSelected(files.Count>0);
-        if(files.Count>0){if(Images||Video||Audio)actions.Children.Add(Button("Convert ↗",async()=>await EditAsync(new("convert","Convert","↗"))));if(Choices().Count>0)actions.Children.Add(Button("Open tools wheel  ·  Ctrl+Space",ShowWheel));actions.Children.Add(Button("Create ZIP",async()=>await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>[DocumentEngine.Zip(files.ToArray(),destination,p,t)],t))));}
+        if(files.Count>0){if(FeatureCatalog.Formats(files).Length>0)actions.Children.Add(Button("Convert ↗",async()=>await EditAsync(new("convert","Convert","↗"))));if(Choices().Count>0)actions.Children.Add(Button("Open tools wheel  ·  Ctrl+Space",ShowWheel));actions.Children.Add(Button("File actions",ShowFileActions));actions.Children.Add(Button("Create ZIP",async()=>await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>[DocumentEngine.Zip(files.ToArray(),destination,p,t)],t))));}
     }
     private void ShowWheel(){if(!busy&&Choices().Count>0)new WheelWindow(this,Choices(),async choice=>await EditAsync(choice)).Show();}
     private async Task EditAsync(ToolChoice choice)
@@ -184,6 +180,9 @@ public sealed class MainWindow:Window
         if(busy||files.Count==0)return;string? temporary=null;try
         {
             SetBusy(true);var imageSelection=Images;var mediaSelection=Video||Audio;var selected=files.ToArray();MediaInfo? info=null;BitmapSource? preview=null;var input=selected[0];
+            if(choice.Id=="removeMetadata"){SetBusy(false);await EditMetadataAsync(selected);return;}
+            if(choice.Id=="readQRCode"){SetBusy(false);await ReadQrAsync(selected);return;}
+            if(!imageSelection&&!mediaSelection&&choice.Id is not ("extractArchive" or "unzip")){SetBusy(false);await EditDocumentAsync(choice,selected);return;}
             if(imageSelection)preview=ImageEngine.Load(input);
             else if(mediaSelection)
             {
@@ -195,11 +194,11 @@ public sealed class MainWindow:Window
                     await ProcessRunner.RunAsync(tools.Executable("ffmpeg"),["-v","error","-i",input,"-frames:v","1",temporary]);preview=ImageEngine.Load(temporary);
                 }
             }
-            SetBusy(false);var editor=new ToolEditor(this,choice.Id,choice.Title,input,info,preview);var accepted=editor.ShowDialog()==true;if(temporary is not null)File.Delete(temporary);if(!accepted)return;
-            var inputs=choice.Id is "crop" or "cropVideo" or "redactVideo" or "annotate"?new[]{input}:selected;
-            if(imageSelection)await RunAsync((destination,p,t)=>OnStaAsync(()=>ImageEngine.Apply(choice.Id,inputs,destination,editor.ImageOptions,choice.Id=="convert"?editor.Format:null,t,p)),choice.Title);
+            SetBusy(false);var editor=new ToolEditor(this,choice.Id,choice.Title,input,info,preview,selected,choice.Id=="convert"?FeatureCatalog.Formats(selected):null);var accepted=editor.ShowDialog()==true;if(temporary is not null)File.Delete(temporary);if(!accepted)return;
+            var inputs=choice.Id is "cropVideo" or "redactVideo" or "annotate"?new[]{input}:selected;
+            if(imageSelection)await RunAsync((destination,p,t)=>OnStaAsync(()=>ImageEngine.Apply(choice.Id,inputs,destination,editor.ImageOptions with{EncoderPath=tools.Ready?tools.Executable("ffmpeg"):null},choice.Id=="convert"?editor.Format:null,t,p)),choice.Title);
             else if(mediaSelection)await RunAsync((destination,p,t)=>{var engine=new MediaEngine(tools.Executable("ffmpeg"),tools.Executable("ffprobe"));return choice.Id=="convert"?engine.ConvertAsync(inputs,editor.Format,destination,editor.MediaOptions,p,t):engine.ToolAsync(choice.Id,inputs,destination,editor.MediaOptions,p,t);},choice.Title);
-            else if(choice.Id=="unzip")await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>{using var tx=new ExportTransaction(destination);var outputs=inputs.SelectMany(file=>DocumentEngine.Unzip(file,tx.StagingDirectory,p,t)).ToList();return tx.Publish(outputs,t);},t));
+            else if(choice.Id is "unzip" or "extractArchive")await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>{using var tx=new ExportTransaction(destination);var outputs=inputs.SelectMany(file=>ArchiveEngine.Extract(file,tx.StagingDirectory,editor.DocumentOptions.Password,p,t)).ToList();return tx.Publish(outputs,t);},t));
             else await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf(choice.Id,inputs,destination,editor.Pages,t),t),choice.Title);
         }
         catch(Exception error){MessageBox.Show(this,error.Message,"Couldn’t open this tool",MessageBoxButton.OK,MessageBoxImage.Information);}

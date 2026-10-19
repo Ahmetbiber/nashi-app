@@ -22,6 +22,7 @@ internal static class SmokeTests
     {
         Application.Current.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         var root=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY")??Path.Combine(Path.GetTempPath(),"Nashi-Smoke-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var checks=0;
+        var testTools=ParitySmokeTests.Tools(root);
         void Check(bool value,string reason){if(!value)throw new Exception(reason);checks++;}
         var visual=new DrawingVisual();using(var dc=visual.RenderOpen()){dc.DrawRectangle(Brushes.DarkOliveGreen,null,new Rect(0,0,320,180));dc.DrawRectangle(Brushes.Gold,null,new Rect(20,20,120,80));}
         var bitmap=new RenderTargetBitmap(320,180,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var source=Path.Combine(root,"Source.png");ImageEngine.Save(bitmap,source,"png");
@@ -48,7 +49,7 @@ internal static class SmokeTests
         var crop=ImageEngine.Apply("crop",[source],root,new(Crop:new Int32Rect(10,10,80,60)));Check(ImageEngine.Load(crop[0]).PixelWidth==80,"Crop width mismatch");
         var resized=ImageEngine.Apply("resize",[source],root,new(Width:160));Check(ImageEngine.Load(resized[0]).PixelHeight==90,"Resize aspect mismatch");
         var rotated=ImageEngine.Apply("rotate",[source],root,new(Rotation:90));Check(ImageEngine.Load(rotated[0]).PixelWidth==180,"Rotate mismatch");
-        foreach(var ext in ImageEngine.Formats){var converted=ImageEngine.Apply("convert",[source],root,new(),ext);Check(new FileInfo(converted[0]).Length>0,"Empty "+ext);}
+        foreach(var ext in ImageEngine.Formats){var converted=ImageEngine.Apply("convert",[source],root,new(){EncoderPath=testTools.Ready?testTools.Executable("ffmpeg"):null},ext);Check(new FileInfo(converted[0]).Length>0,"Empty "+ext);}
         var pdfs=Directory.GetFiles(root,"*.pdf");var merged=DocumentEngine.Pdf("mergePDFs",[pdfs[0],pdfs[0]],root);var parts=DocumentEngine.Pdf("splitPDF",merged,root);Check(parts.Count==2,"PDF page count mismatch");
         var zip=DocumentEngine.Zip([source],root);var extracted=DocumentEngine.Unzip(zip,root);Check(File.Exists(Path.Combine(extracted[0],"Source.png")),"ZIP output missing");
         var library=new LibraryStore(Path.Combine(root,"UserData"));library.SetAppearance("dark");
@@ -111,6 +112,7 @@ internal static class SmokeTests
         DesktopInput.Key(audioEditor,Key.I);DesktopInput.Key(audioEditor,Key.Right);DesktopInput.Key(audioEditor,Key.O);Check(audioEditor.Timeline.End>audioEditor.Timeline.Start&&audioEditor.Timeline.End<5,"I/O did not synchronize trim range");
         audioEditor.FieldForTest("Start").Focus();position=audioEditor.PreviewSeconds;DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Arrow in trim text field incorrectly sought media");DesktopInput.Key(audioEditor,Key.Escape);Check(!audioEditor.IsVisible,"Escape did not close trim editor");
         var appearance=Descendants(window).OfType<ComboBox>().Single(c=>c.Items.Contains("Dark"));appearance.Focus();DesktopInput.Key(window,Key.Home);DesktopInput.Key(window,Key.Down);Check(!Theme.Dark&&library.Appearance=="light","Appearance keyboard selection did not apply and persist light theme");window.UpdateLayout();Capture(window,"windows-home-light.png");DesktopInput.Key(window,Key.End);Check(Theme.Dark&&library.Appearance=="dark","Dark theme selection failed");
+        if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true")checks+=ParitySmokeTests.Run(root,window,source,bitmap,testTools);
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");Capture(restarted,"windows-home-empty.png");restarted.Close();

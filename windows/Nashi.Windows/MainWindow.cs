@@ -79,10 +79,10 @@ public sealed class MainWindow:Window
                 }
             }
             var editor=new ToolEditor(this,choice.Id,choice.Title,input,info,preview);var accepted=editor.ShowDialog()==true;if(temporary is not null)File.Delete(temporary);if(!accepted)return;
-            var inputs=files.ToArray();
-            if(Images)await RunAsync((destination,p,t)=>Task.FromResult(ImageEngine.Apply(choice.Id,inputs,destination,editor.ImageOptions,choice.Id=="convert"?editor.Format:null,t)));
+            var inputs=choice.Id is "crop" or "cropVideo" or "redactVideo" or "annotate"?new[]{files[0]}:files.ToArray();
+            if(Images)await RunAsync((destination,p,t)=>OnStaAsync(()=>ImageEngine.Apply(choice.Id,inputs,destination,editor.ImageOptions,choice.Id=="convert"?editor.Format:null,t,p)));
             else if(Video||Audio)await RunAsync((destination,p,t)=>{var engine=new MediaEngine(tools.Executable("ffmpeg"),tools.Executable("ffprobe"));return choice.Id=="convert"?engine.ConvertAsync(inputs,editor.Format,destination,editor.MediaOptions,p,t):engine.ToolAsync(choice.Id,inputs,destination,editor.MediaOptions,p,t);});
-            else if(choice.Id=="unzip")await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>inputs.SelectMany(file=>DocumentEngine.Unzip(file,destination,p,t)).ToList(),t));
+            else if(choice.Id=="unzip")await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>{using var tx=new ExportTransaction(destination);var outputs=inputs.SelectMany(file=>DocumentEngine.Unzip(file,tx.StagingDirectory,p,t)).ToList();return tx.Publish(outputs,t);},t));
             else await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf(choice.Id,inputs,destination,editor.Pages,t),t));
         }
         catch(Exception error){MessageBox.Show(this,error.Message,"Couldn’t open this tool",MessageBoxButton.OK,MessageBoxImage.Information);}
@@ -95,6 +95,11 @@ public sealed class MainWindow:Window
         catch(OperationCanceledException){toast.Close();status.Text="Cancelled. Originals kept.";}
         catch(Exception error){toast.Close();MessageBox.Show(this,error.Message,"Couldn’t finish",MessageBoxButton.OK,MessageBoxImage.Information);}
         finally{busy=false;}
+    }
+    private static Task<IReadOnlyList<string>> OnStaAsync(Func<IReadOnlyList<string>> work)
+    {
+        var completion=new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread=new Thread(()=>{try{completion.SetResult(work());}catch(Exception error){completion.SetException(error);}}){IsBackground=true};thread.SetApartmentState(ApartmentState.STA);thread.Start();return completion.Task;
     }
     private async Task DownloadAsync()
     {

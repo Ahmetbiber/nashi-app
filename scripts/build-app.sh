@@ -33,21 +33,30 @@ fi
 mkdir -p "$application/Contents/Frameworks"
 if [[ -d "$application/Contents/Frameworks/Sparkle.framework" ]]; then rm -rf "$application/Contents/Frameworks/Sparkle.framework"; fi
 ditto "$sparkle_framework" "$application/Contents/Frameworks/Sparkle.framework"
+if [[ "$nashi_public_build" == true ]]; then
+  if [[ -e "$application/Contents/Resources/Tools/ffmpeg" || -d "$application/Contents/Resources/Tools/LibreOffice.app" ]]; then
+    print -u2 'Public packages require a fresh output directory without bundled third-party runtimes.'; exit 1
+  fi
+  plutil -replace NashiExternalTools -bool true "$application/Contents/Info.plist"
+else
 for component in ffmpeg ffprobe yt-dlp deno; do
   if [[ ! -x "Tools/$component" ]]; then print -u2 "Missing Tools/$component; see scripts/setup-tools.sh and scripts/setup-web-download-tools.py"; exit 1; fi
   cp "Tools/$component" "$application/Contents/Resources/Tools/$component"
 done
+fi
 if [[ -f Tools/ExifTool/exiftool ]]; then
   ditto Tools/ExifTool "$application/Contents/Resources/Tools/ExifTool"
 else
   print -u2 "Missing Tools/ExifTool; run scripts/setup-exiftool.sh"
   exit 1
 fi
+if [[ "$nashi_public_build" == false ]]; then
 if [[ -d Tools/LibreOffice.app ]]; then
   ditto Tools/LibreOffice.app "$application/Contents/Resources/Tools/LibreOffice.app"
 else
   print -u2 "Missing Tools/LibreOffice.app; see scripts/setup-tools.sh"
   exit 1
+fi
 fi
 ditto Resources/Sounds "$application/Contents/Resources/Sounds"
 cp Resources/PagesInterop.js "$application/Contents/Resources/PagesInterop.js"
@@ -63,10 +72,12 @@ codesign "${nashi_signing_flags[@]}" --preserve-metadata=entitlements "$sparkle_
 codesign "${nashi_signing_flags[@]}" "$sparkle_embedded/Autoupdate"
 codesign "${nashi_signing_flags[@]}" "$sparkle_embedded/Updater.app"
 codesign "${nashi_signing_flags[@]}" "$application/Contents/Frameworks/Sparkle.framework"
+if [[ "$nashi_public_build" == false ]]; then
 codesign "${nashi_signing_flags[@]}" "$application/Contents/Resources/Tools/ffmpeg"
 codesign "${nashi_signing_flags[@]}" "$application/Contents/Resources/Tools/ffprobe"
 codesign "${nashi_signing_flags[@]}" "$application/Contents/Resources/Tools/yt-dlp"
 codesign "${nashi_signing_flags[@]}" --entitlements Configuration/Deno.entitlements "$application/Contents/Resources/Tools/deno"
+fi
 codesign "${nashi_signing_flags[@]}" "$application"
 codesign --verify --deep --strict "$application"
 nashi_verify_signing_identity "$application"

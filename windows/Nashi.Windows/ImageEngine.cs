@@ -15,9 +15,9 @@ public static class ImageEngine
         using var stream=File.OpenRead(file);var decoder=BitmapDecoder.Create(stream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);var image=decoder.Frames[0];
         if((long)image.PixelWidth*image.PixelHeight>100_000_000)throw new InvalidDataException("This image is too large (100 MP limit).");image.Freeze();return image;
     }
-    public static IReadOnlyList<string> Apply(string tool,IReadOnlyList<string> inputs,string destination,ImageOptions options,string? format=null,CancellationToken token=default)
+    public static IReadOnlyList<string> Apply(string tool,IReadOnlyList<string> inputs,string destination,ImageOptions options,string? format=null,CancellationToken token=default,IProgress<OperationProgress>? progress=null)
     {
-        using var tx=new ExportTransaction(destination);var outputs=new List<string>();
+        using var tx=new ExportTransaction(destination);var outputs=new List<string>();var completed=0;
         foreach(var input in inputs)
         {
             token.ThrowIfCancellationRequested();BitmapSource image=options.Annotated??Load(input);var ext=(format??Path.GetExtension(input).TrimStart('.')).ToLowerInvariant();if(ext=="jpeg")ext="jpg";if(ext=="tif")ext="tiff";
@@ -37,7 +37,7 @@ public static class ImageEngine
             }
             if(tool=="compress")ext="jpg";
             var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+(tool=="convert"?"":" "+tool)+"."+ext);
-            Save(image,output,ext,options.Quality);outputs.Add(output);
+            Save(image,output,ext,options.Quality);outputs.Add(output);progress?.Report(new(++completed/(double)inputs.Count*.98,"Saving images…"));
         }
         return tx.Publish(outputs,token);
     }

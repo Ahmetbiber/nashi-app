@@ -7,7 +7,11 @@ enum ArchiveCodec {
     private static let api = ArchiveAPI()
     private struct DeferredLink { let destination: URL; let target: String; let hard: Bool }
 
-    static func extract(_ input: URL, into root: URL, password: String = "", token: CancellationToken) throws {
+    struct ExtractionLimits {
+        var maximumEntries=100_000
+        var maximumBytes:Int64=20*1024*1024*1024
+    }
+    static func extract(_ input: URL, into root: URL, password: String = "", token: CancellationToken, limits:ExtractionLimits=ExtractionLimits()) throws {
         let a = try api.get()
         guard let reader = a.readNew() else { throw NashiError.failed("Could not initialize the archive reader.") }
         defer { _ = a.readFree(reader) }
@@ -24,6 +28,7 @@ enum ArchiveCodec {
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         var links: [DeferredLink] = []
         var entries = 0
+        var expandedBytes:Int64=0
         var buffer = [UInt8](repeating: 0, count: 128 * 1024)
         while true {
             try token.check()
@@ -38,12 +43,13 @@ enum ArchiveCodec {
                 name = input.deletingPathExtension().lastPathComponent
                 if ["tgz", "gzip"].contains(input.pathExtension.lowercased()) && name.isEmpty { name = "data" }
             }
+            entries += 1
+            guard entries<=limits.maximumEntries else {throw NashiError.invalidInput("The archive has too many entries (100,000 limit).")}
             let destination = try safeURL(name, inside: root)
             if destination.standardizedFileURL == root.standardizedFileURL {
                 _ = a.readSkip(reader)
                 continue
             }
-            entries += 1
             if let link = a.entryHardlink(entry) {
                 _ = try safeURL(String(cString: link), inside: root)
                 links.append(.init(destination: destination, target: String(cString: link), hard: true))
@@ -77,6 +83,8 @@ enum ArchiveCodec {
                     let count = buffer.withUnsafeMutableBytes { a.readData(reader, $0.baseAddress, $0.count) }
                     if count == 0 { break }
                     guard count > 0 else { throw a.failure(reader) }
+                    guard Int64(count)<=limits.maximumBytes-expandedBytes else {throw NashiError.invalidInput("The archive expands beyond the 20 GB safety limit.")}
+                    expandedBytes += Int64(count)
                     try file.write(contentsOf: Data(buffer[0..<count]))
                 }
                 try file.close()

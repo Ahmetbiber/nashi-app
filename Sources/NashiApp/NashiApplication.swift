@@ -27,6 +27,7 @@ enum NashiApplication {
     var settings:NSWindow?
     var updateConnection:NSWindow?
     private let progressToast=ProgressToastController()
+    var toolSetupWindow:NSWindow?
     var downloadWindow:NSWindow?
     lazy var downloadModel=WebDownloadModel(state:state)
     private var downloadHotKey:EventHotKeyRef?
@@ -84,6 +85,7 @@ enum NashiApplication {
         }
         updater.start()
         NotificationCenter.default.publisher(for:.showUpdateConnection).sink { [weak self] _ in self?.showUpdateConnection() }.store(in:&updateObservations)
+        NotificationCenter.default.publisher(for:.showToolSetup).sink { [weak self] _ in self?.showToolSetup() }.store(in:&updateObservations)
         wheel=WheelController(state:state)
         monitor=DragMonitor(onEnd:{ [weak self] in self?.wheel.endDrag() }) { [weak self] urls,mode,point in self?.wheel.show(inputs:urls,mode:mode,at:point) }
         state.onOpenWheel = { [weak self] in self?.wheel.show(inputs:self?.state.inputs ?? [],mode:.convert,at:NSEvent.mouseLocation,keyboard:true) }
@@ -110,6 +112,10 @@ enum NashiApplication {
         if home == nil { home=makeWindow(title:"Nashi",size:NSSize(width:820,height:780),view:HomeView(state:state,updater:updater)) }
         home?.contentMinSize=NSSize(width:700,height:580)
         home?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
+    }
+    @objc func showToolSetup() {
+        if toolSetupWindow == nil {toolSetupWindow=makeWindow(title:"Set up Nashi tools",size:NSSize(width:646,height:620),view:ToolSetupView())}
+        toolSetupWindow?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
     @objc func showDownloadLink() { showWebDownload(WebLinkPayload.clipboardLink(),mode:.video) }
     func showWebDownload(_ url:URL?,mode:WebDownloadMode) {

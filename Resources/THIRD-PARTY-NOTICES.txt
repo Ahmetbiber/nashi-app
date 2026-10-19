@@ -1,15 +1,15 @@
 Nashi for Mac. Independent implementation; not affiliated with LEAP STUDIO or its Tangerine product.
 
 FFmpeg 9.0 and ffprobe 9.0, Copyright FFmpeg contributors, GPL v2 or later.
-Static Apple Silicon builds distributed by OSXExperts: https://www.osxexperts.net/
+Public packages download the Apple Silicon tools directly from OSXExperts during setup: https://www.osxexperts.net/
 Build configuration is available with ffmpeg -version. Source repository:
 https://github.com/FFmpeg/FFmpeg ; build recipes https://www.osxexperts.net/
 ffmpeg SHA256 591260c945d0eef150e3bf82b0ef988bd36a9cecc18ff05d6679617159f0a95e
 ffprobe SHA256 e11c17e8200b3ee4c4c186d245e2b4053f01d56957336c1817fca0b997469106
 
-LibreOfficeDev 26.8.0.0.alpha0, The Document Foundation and contributors.
-MPL 2.0. Existing bundled headless build supplied by the local workspace runtime.
-Its complete license notices and third party notices remain inside LibreOffice.app.
+LibreOffice 26.8.1, The Document Foundation and contributors.
+MPL 2.0. This upstream runtime is downloaded separately; it is not in the public app archive.
+Public setup acquires LibreOffice 26.8.1 directly from The Document Foundation. Its complete license notices and third party notices remain inside LibreOffice.app.
 https://www.libreoffice.org/ ; https://www.libreoffice.org/about-us/licenses/
 
 cupertino-files 0.4.0, Copyright 2026 Ole Kristensen and contributors, MIT.
@@ -48,7 +48,7 @@ See licenses/Tendedero-MIT.txt. No Tendedero name or icon artwork is included.
 
 Web downloads
 yt-dlp 2026.08.19, contributors: https://github.com/yt-dlp/yt-dlp/tree/2026.08.19
-The bundled official yt-dlp_macos executable includes Python, yt-dlp-ejs and
+The separately downloaded official yt-dlp_macos executable includes Python, yt-dlp-ejs and
 other dependencies. The standalone PyInstaller distribution is GPLv3+ in
 combination. Individual source and dependency licenses are reproduced in
 licenses/web-download/; corresponding official release/source references:

@@ -292,7 +292,7 @@ final class PDFPreservationRegressionTests: XCTestCase {
                 let name = [prefix, partial].filter { !$0.isEmpty }.joined(separator: ".")
                 var kids: CGPDFArrayRef?
                 if CGPDFDictionaryGetArray(dictionary, "Kids", &kids), let kids { visitFields(kids, prefix: name) }
-                else if !partial.isEmpty { fields.append(Field(name: name, value: string(dictionary, "V") ?? "", address: UInt(bitPattern: dictionary.rawValue))) }
+                else if !partial.isEmpty { fields.append(Field(name: name, value: string(dictionary, "V") ?? "", address: unsafeBitCast(dictionary, to: UInt.self))) }
             }
         }
         var form: CGPDFDictionaryRef?, array: CGPDFArrayRef?
@@ -326,7 +326,7 @@ final class PDFPreservationRegressionTests: XCTestCase {
         private var arrays = Set<UInt>()
 
         func visit(_ dictionary: CGPDFDictionaryRef) {
-            guard dictionaries.insert(UInt(bitPattern: dictionary.rawValue)).inserted else { return }
+            guard dictionaries.insert(unsafeBitCast(dictionary, to: UInt.self)).inserted else { return }
             var type: UnsafePointer<CChar>?
             if CGPDFDictionaryGetName(dictionary, "Type", &type), let type, String(cString: type) == "Page" { pageCount += 1 }
             CGPDFDictionaryApplyFunction(dictionary, { _, object, pointer in
@@ -342,7 +342,7 @@ final class PDFPreservationRegressionTests: XCTestCase {
                 if CGPDFObjectGetValue(object, .dictionary, &dictionary), let dictionary { visit(dictionary) }
             case .array:
                 var array: CGPDFArrayRef?
-                if CGPDFObjectGetValue(object, .array, &array), let array, arrays.insert(UInt(bitPattern: array.rawValue)).inserted {
+                if CGPDFObjectGetValue(object, .array, &array), let array, arrays.insert(unsafeBitCast(array, to: UInt.self)).inserted {
                     for index in 0..<CGPDFArrayGetCount(array) {
                         var child: CGPDFObjectRef?
                         if CGPDFArrayGetObject(array, index, &child), let child { visitObject(child) }

@@ -25,6 +25,10 @@ struct HomeView:View {
                 NashiMark(size:40)
                 Text("Nashi").font(.system(size:19,weight:.bold,design:.rounded)).tracking(-0.5)
                 Spacer()
+                if Bundle.main.object(forInfoDictionaryKey:"NashiExternalTools") as? Bool == true {
+                    Button("Set up tools") {NotificationCenter.default.post(name:.showToolSetup,object:nil)}
+                        .buttonStyle(NashiButtonStyle(.secondary,compact:true))
+                }
                 NashiPill(title:"On your Mac",symbol:"lock.fill")
                 Button { state.onSettings?() } label:{Image(systemName:"slider.horizontal.3").font(.system(size:15))}
                     .buttonStyle(NashiButtonStyle(.quiet,compact:true)).help("Settings").accessibilityLabel("Settings")

@@ -33,5 +33,5 @@ jobs:
         run: python3 scripts/audit-public-tree.py
       - name: Build native macOS app
         run: swift build --product Nashi
-      - name: Update trust and credential boundaries
-        run: swift test --filter NashiUpdatesTests
+      - name: Update trust and web photo regression checks
+        run: swift test --filter 'NashiUpdatesTests|WebMediaDragPayloadTests|InstagramPhotosTests|YouTubeThumbnailTests'

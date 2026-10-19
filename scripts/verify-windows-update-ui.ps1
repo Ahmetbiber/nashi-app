@@ -44,6 +44,7 @@ try {
             $processCondition,
             (Property-Equals ([System.Windows.Automation.AutomationElement]::NameProperty) 'Nashi update')
         )
+        if ($null -eq $dialog) { $dialog = Find-Element $root ([System.Windows.Automation.TreeScope]::Descendants) @($processCondition,(Property-Equals ([System.Windows.Automation.AutomationElement]::NameProperty) 'Nashi update')) }
         if ($null -ne $dialog) { break }
         Start-Sleep -Milliseconds 200
     }

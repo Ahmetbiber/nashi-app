@@ -7,6 +7,7 @@ import AppKit
             let rep=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:width,pixelsHigh:height,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:0,bitsPerPixel:0)!
             NSGraphicsContext.saveGraphicsState();NSGraphicsContext.current=NSGraphicsContext(bitmapImageRep:rep);draw(NSRect(x:0,y:0,width:width,height:height));NSGraphicsContext.restoreGraphicsState();return rep
         }
+        for happy in [false,true] { let mark=bitmap(256,256) { rect in NashiArtwork.draw(in:rect,happy:happy) };try mark.representation(using:.png,properties:[:])!.write(to:output.appendingPathComponent(happy ? "NashiMarkHappy.png":"NashiMark.png")) }
         let icon=bitmap(1024,1024) { _ in
             let background=NSBezierPath(roundedRect:NSRect(x:48,y:48,width:928,height:928),xRadius:205,yRadius:205)
             NSGradient(starting:NSColor(srgbRed:0.19,green:0.29,blue:0.21,alpha:1),ending:NSColor(srgbRed:0.07,green:0.15,blue:0.10,alpha:1))!.draw(in:background,angle:-90)

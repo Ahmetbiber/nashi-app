@@ -1,6 +1,6 @@
 # Nashi for Windows (x64 preview)
 
-Source target: **0.7.4**, awaiting native Windows verification. The official download remains **0.7.1** until those checks finish.
+Windows **0.7.4** uses the same pear artwork, file garden, rounded cards, gold actions and light/dark palette as macOS. Windows keyboard conventions and native window controls are retained.
 
 Native WPF / .NET 10 port. The Home, file cards, Library, gold actions and light/dark palettes follow the macOS design. Appearance can follow Windows or be selected explicitly. Build with `dotnet publish windows/Nashi.Windows -c Release -o build/windows/Nashi`. The resulting folder is self-contained; users do not install .NET.
 

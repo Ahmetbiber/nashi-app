@@ -3,6 +3,7 @@
  <SolidColorBrush x:Key="Ink" Color="#E7EBE6"/><SolidColorBrush x:Key="Paper" Color="#111A14"/>
  <SolidColorBrush x:Key="Surface" Color="#1C281F"/><SolidColorBrush x:Key="Inset" Color="#151F18"/>
  <SolidColorBrush x:Key="Muted" Color="#A9B5A8"/><SolidColorBrush x:Key="Line" Color="#344237"/>
+ <SolidColorBrush x:Key="Sand" Color="#3C3421"/>
  <SolidColorBrush x:Key="Sage" Color="#243928"/><SolidColorBrush x:Key="Gold" Color="#E8BF59"/>
  <Style TargetType="Window"><Setter Property="Background" Value="{DynamicResource Paper}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="FontSize" Value="14"/></Style>
  <Style TargetType="Button">

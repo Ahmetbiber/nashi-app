@@ -9,6 +9,8 @@
   <ItemGroup><ProjectReference Include="../Nashi.Core/Nashi.Core.csproj" /></ItemGroup>
   <ItemGroup>
     <Resource Include="../../Resources/Brand/NashiIcon.png" Link="Assets/NashiIcon.png" />
+    <Resource Include="../../Resources/Brand/NashiMark.png" Link="Assets/NashiMark.png" />
+    <Resource Include="../../Resources/Brand/NashiMarkHappy.png" Link="Assets/NashiMarkHappy.png" />
     <Resource Include="../../Resources/Sounds/WheelSelection.wav" Link="Assets/WheelSelection.wav" />
     <Content Include="../licenses/**" Link="licenses/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />

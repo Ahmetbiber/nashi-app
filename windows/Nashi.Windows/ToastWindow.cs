@@ -22,7 +22,7 @@ public sealed class ToastWindow:Window
     public void Update(Nashi.Core.OperationProgress progress){label.Text=progress.Label;bar.IsIndeterminate=progress.Fraction is null;if(progress.Fraction is {} fraction)bar.Value=Math.Clamp(fraction,0,1);detail.Text=progress.Fraction is {} value?$"{value:P0}":"Working…";}
     public void Complete(IReadOnlyList<string> outputs)
     {
-        complete=true;label.Text=$"Nicely done. {outputs.Count} {(outputs.Count==1?"file is":"files are")} ready.";detail.Text=outputs.Count>0?Path.GetFileName(outputs[0]):"Ready.";bar.Visibility=Visibility.Collapsed;action.Content="Show in Explorer";action.IsEnabled=true;
+        complete=true;label.Text=outputs.Count==0?"All set. You’re ready to go.":$"Nicely done. {outputs.Count} {(outputs.Count==1?"file is":"files are")} ready.";detail.Text=outputs.Count>0?Path.GetFileName(outputs[0]):"Ready.";bar.Visibility=Visibility.Collapsed;action.Content="Show in Explorer";action.IsEnabled=true;
         // Replace the cancel handler by disabling its callback after completion.
         action.Click+=(_,_)=>{if(outputs.Count>0&&(File.Exists(outputs[0])||Directory.Exists(outputs[0])))MainWindow.Reveal(outputs[0]);};
         var timer=new DispatcherTimer{Interval=TimeSpan.FromSeconds(3)};timer.Tick+=(_,_)=>{timer.Stop();if(WheelPresentation.Preferences.Animations&&SystemParameters.ClientAreaAnimation){var fade=new DoubleAnimation(0,TimeSpan.FromMilliseconds(280));fade.Completed+=(_,_)=>Close();BeginAnimation(OpacityProperty,fade);}else Close();};timer.Start();

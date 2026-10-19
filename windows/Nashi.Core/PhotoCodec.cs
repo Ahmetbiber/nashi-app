@@ -29,7 +29,7 @@ public static class PhotoCodec
         if(FeatureCatalog.Extension(path)=="svg")ValidateSvg(path);
         var ext=FeatureCatalog.Extension(path);var settings=new MagickReadSettings{FrameCount=1,Format=ext=="svg"?MagickFormat.Msvg:Format(ext)};
         using var stream=File.OpenRead(path);var info=new MagickImageInfo(stream,settings);if((ulong)info.Width*info.Height>100_000_000)throw new InvalidDataException("This image exceeds 100 MP.");stream.Position=0;
-        var image=new MagickImage(stream,settings);image.AutoOrient();image.ColorSpace=ColorSpace.sRGB;return image;
+        var image=new MagickImage(stream,settings);image.AutoOrient();if(image.GetColorProfile() is not null)image.TransformColorSpace(ColorProfiles.SRGB);else image.ColorSpace=ColorSpace.sRGB;return image;
     }
     private static void ValidateSvg(string path)
     {

@@ -39,12 +39,15 @@ public static class ArchiveEngine
         if(format is not ("zip" or "tar" or "gz"))throw new ArgumentException("Choose ZIP, TAR or GZIP.");
         using var tx=new ExportTransaction(destination);var work=Path.Combine(tx.StagingDirectory,"contents");Directory.CreateDirectory(work);
         var extracted=Extract(input,work,password,progress,token)[0];var output=Path.Combine(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);
-        if(format=="zip")ZipFile.CreateFromDirectory(extracted,output,CompressionLevel.Optimal,false);
+        if(format=="zip")
+        {
+            using var zip=ZipFile.Open(output,ZipArchiveMode.Create);foreach(var path in Directory.EnumerateFileSystemEntries(extracted,"*",SearchOption.AllDirectories)){token.ThrowIfCancellationRequested();var name=Path.GetRelativePath(extracted,path).Replace('\\','/');if(Directory.Exists(path)){zip.CreateEntry(name+"/");continue;}using var source=File.OpenRead(path);using var entry=zip.CreateEntry(name,CompressionLevel.Optimal).Open();var buffer=new byte[81920];int read;while((read=source.Read(buffer))>0){token.ThrowIfCancellationRequested();entry.Write(buffer,0,read);}}
+        }
         else
         {
             using var file=new FileStream(output,FileMode.CreateNew);using Stream stream=format=="gz"?new GZipStream(file,CompressionLevel.Optimal,true):file;
             using var writer=new TarWriter(stream,TarEntryFormat.Pax,true);
-            foreach(var path in Directory.EnumerateFiles(extracted,"*",SearchOption.AllDirectories)){token.ThrowIfCancellationRequested();writer.WriteEntry(path,Path.GetRelativePath(extracted,path).Replace('\\','/'));}
+            foreach(var path in Directory.EnumerateFileSystemEntries(extracted,"*",SearchOption.AllDirectories)){token.ThrowIfCancellationRequested();writer.WriteEntry(path,Path.GetRelativePath(extracted,path).Replace('\\','/'));}
         }
         progress?.Report(new(.99,"Saving archive…"));return tx.Publish([output],token);
     }

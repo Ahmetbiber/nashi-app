@@ -22,6 +22,7 @@ internal static class SmokeTests
     {
         Application.Current.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         var root=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY")??Path.Combine(Path.GetTempPath(),"Nashi-Smoke-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var checks=0;
+        using var watchdog=new System.Threading.Timer(_=>{File.WriteAllText(Path.Combine(root,"suite-timeout.txt"),"Native desktop verification exceeded 15 minutes.");DesktopInput.HoldMouse(false);Environment.Exit(1);},null,TimeSpan.FromMinutes(15),System.Threading.Timeout.InfiniteTimeSpan);
         var testTools=ParitySmokeTests.Tools(root);
         void Check(bool value,string reason){if(!value)throw new Exception(reason);checks++;}
         var visual=new DrawingVisual();using(var dc=visual.RenderOpen()){dc.DrawRectangle(Brushes.DarkOliveGreen,null,new Rect(0,0,320,180));dc.DrawRectangle(Brushes.Gold,null,new Rect(20,20,120,80));}

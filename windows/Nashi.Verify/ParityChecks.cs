@@ -38,6 +38,8 @@ internal static class ParityChecks
             var converted=ArchiveEngine.Convert(zip,format,root)[0];var restored=ArchiveEngine.Extract(converted,root)[0];check(File.ReadAllText(Path.Combine(restored,"Archive source.txt"))==File.ReadAllText(input),"Archive round trip changed contents: "+format);
         }
         var nested=Directory.CreateDirectory(Path.Combine(root,"Zip folder","Nested"));File.WriteAllText(Path.Combine(nested.FullName,"Fruit.txt"),"Pear");var folderZip=DocumentEngine.Zip([nested.Parent!.FullName],root);var folderRestored=ArchiveEngine.Extract(folderZip,root)[0];check(File.ReadAllText(Path.Combine(folderRestored,"Zip folder","Nested","Fruit.txt"))=="Pear","Folder ZIP lost nested files");
+        Directory.CreateDirectory(Path.Combine(nested.FullName,"Empty"));var withEmpty=DocumentEngine.Zip([nested.Parent!.FullName],root);foreach(var format in new[]{"tar","gz","zip"}){var restored=ArchiveEngine.Extract(ArchiveEngine.Convert(withEmpty,format,root)[0],root)[0];check(Directory.Exists(Path.Combine(restored,"Zip folder","Nested","Empty")),"Archive conversion lost an empty folder: "+format);}
+        var rar=Path.Combine(root,"Stored.rar");StoredRar(rar);var rarOutput=ArchiveEngine.Extract(rar,root)[0];check(File.ReadAllText(Path.Combine(rarOutput,"Fruit.txt"))=="Nashi pear fixture","Stored RAR extraction failed");
         var attack=Path.Combine(root,"Unsafe second.zip");using(var archive=ZipFile.Open(attack,ZipArchiveMode.Create)){using var stream=archive.CreateEntry("../outside.txt").Open();stream.WriteByte(1);}
         try{ArchiveEngine.Extract(attack,root);throw new Exception("Traversal archive accepted");}catch(InvalidDataException){check(true,"New archive traversal protection");}
         var svg=Path.Combine(root,"Static.svg");File.WriteAllText(svg,"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"96\" height=\"64\"><rect width=\"96\" height=\"64\" fill=\"#E5BC59\"/></svg>");
@@ -46,9 +48,18 @@ internal static class ParityChecks
         foreach(var format in new[]{"png","jpg","webp","heic","avif","tiff","bmp"})
         {if(format=="heic"&&Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is null)continue;var output=Path.Combine(root,"Image codec."+format);PhotoCodec.EncodePng(png,output,format,encoder:Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG"));using var decoded=PhotoCodec.Read(output);check(decoded.Width==96&&decoded.Height==64,"Image codec round trip failed: "+format);}
         if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder){using var oddImage=new MagickImage(MagickColors.Gold,97,65);var odd=Path.Combine(root,"Odd.heic");PhotoCodec.EncodePng(oddImage.ToByteArray(MagickFormat.Png),odd,"heic",encoder:encoder);using var decodedOdd=PhotoCodec.Read(odd);check(decodedOdd.Width==97&&decodedOdd.Height==65,"HEIC odd dimensions changed");}
+        var taggedColor=Path.Combine(root,"Wide gamut.webp");using(var wide=new MagickImage(new MagickColor(100,128,30),16,16)){wide.SetProfile(ColorProfiles.AdobeRGB1998);wide.Write(taggedColor,MagickFormat.WebP);}using(var expectedColor=new MagickImage(taggedColor))using(var actualColor=PhotoCodec.Read(taggedColor)){expectedColor.TransformColorSpace(ColorProfiles.SRGB);check(expectedColor.Compare(actualColor,ErrorMetric.Absolute)==0,"Wide-gamut image profile was ignored");}
         var neutral=PhotoCodec.Adjust(png,new());using(var decoded=new MagickImage(neutral))check(decoded.Width==96&&decoded.Height==64,"Neutral photo adjustment changed dimensions");
         var changed=PhotoCodec.Adjust(png,new(){Brightness=.2,Saturation=.3,Temperature=.2,Shadows=.1});using(var a=new MagickImage(png))using(var b=new MagickImage(changed))check(a.Compare(b,ErrorMetric.Absolute)>0,"Photo adjustments did not change pixels");
         foreach(var effect in new[]{new PhotoAdjustments{Blur=2},new(){Sharpen=1},new(){NoiseReduction=.5},new(){Grain=.3},new(){Vignette=.4},new(){Gamma=1.2},new(){Exposure=.5},new(){Hue=50},new(){Dehaze=.2}})check(PhotoCodec.Adjust(png,effect).Length>0,"Photo effect failed");
         try{PhotoCodec.Adjust(png,new(){Gamma=double.NaN});throw new Exception("Invalid adjustment accepted");}catch(ArgumentException){check(true,"Photo finite validation");}
     }
+    private static void StoredRar(string output)
+    {
+        static uint Crc(byte[] data){var crc=uint.MaxValue;foreach(var b in data){crc^=b;for(var i=0;i<8;i++)crc=(crc&1)!=0?(crc>>1)^0xedb88320:crc>>1;}return ~crc;}
+        using var file=new BinaryWriter(File.Create(output));file.Write(new byte[]{0x52,0x61,0x72,0x21,0x1a,0x07,0x00});
+        void Header(byte type,ushort flags,byte[] payload){using var memory=new MemoryStream();using(var header=new BinaryWriter(memory,Encoding.UTF8,true)){header.Write(type);header.Write(flags);header.Write((ushort)(7+payload.Length));header.Write(payload);}var bytes=memory.ToArray();file.Write((ushort)Crc(bytes));file.Write(bytes);}
+        Header(0x73,0,new byte[6]);var data=Encoding.UTF8.GetBytes("Nashi pear fixture");var name=Encoding.ASCII.GetBytes("Fruit.txt");using var content=new MemoryStream();using(var header=new BinaryWriter(content,Encoding.UTF8,true)){header.Write((uint)data.Length);header.Write((uint)data.Length);header.Write((byte)2);header.Write(Crc(data));header.Write(0u);header.Write((byte)20);header.Write((byte)0x30);header.Write((ushort)name.Length);header.Write(0x20u);header.Write(name);}Header(0x74,0x8000,content.ToArray());file.Write(data);Header(0x7b,0,[]);
+    }
+
 }

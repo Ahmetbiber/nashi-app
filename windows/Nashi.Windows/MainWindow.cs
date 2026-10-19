@@ -38,6 +38,7 @@ public sealed class MainWindow:Window
         DragOver+=(_,e)=>{e.Effects=!busy&&e.Data.GetDataPresent(DataFormats.FileDrop)?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};Drop+=(_,e)=>{if(!busy&&e.Data.GetData(DataFormats.FileDrop) is string[] paths)Add(paths);};
         PreviewKeyDown+=(_,e)=>{if(e.Key==Key.O&&Keyboard.Modifiers.HasFlag(ModifierKeys.Control)){Choose();e.Handled=true;}else if(e.Key==Key.Space&&Keyboard.Modifiers.HasFlag(ModifierKeys.Control)){ShowWheel();e.Handled=true;}};
         if(initial is not null)Add(initial);else Refresh();Loaded+=async(_,_)=>await CheckUpdatesAsync(false);
+        var updateTimer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromHours(1)};updateTimer.Tick+=async(_,_)=>await CheckUpdatesAsync(false);Closed+=(_,_)=>updateTimer.Stop();updateTimer.Start();
     }
     public static Button Button(string title,Action action){var button=new Button{Content=title};button.Click+=(_,_)=>action();return button;}
     public static void OpenUrl(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
@@ -119,6 +120,7 @@ public sealed class MainWindow:Window
         if(busy)return;try
         {
             if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)status.Text="You have the latest published Windows version.";return;}updateButton.Content="Update to "+update.Version;if(!user)return;}
+            if(busy)return;
             if(MessageBox.Show(this,"Download, verify and install Nashi "+update.Version+"? The app will restart. No account or token is needed.","Nashi update",MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
             busy=true;using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();
             try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);Application.Current.Shutdown();}finally{toast.Close();busy=false;}

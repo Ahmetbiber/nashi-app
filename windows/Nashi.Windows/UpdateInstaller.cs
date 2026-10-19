@@ -17,12 +17,13 @@ internal static class UpdateInstaller
             progress.Report(new(.86,"Verifying update signature…"));await PublicUpdates.VerifyAsync(archive,update,token);
             var payload=Path.Combine(stage,"payload");Directory.CreateDirectory(payload);PublicUpdates.ExtractVerified(archive,payload,token);
             var version=FileVersionInfo.GetVersionInfo(Path.Combine(payload,"Nashi.dll")).FileVersion;
-            if(!Version.TryParse(version,out var parsed)||parsed!=Version.Parse(update.Version))throw new InvalidDataException("The signed package version does not match this update.");
+            var expected=Version.Parse(update.Version);var expectedFileVersion=new Version(expected.Major,expected.Minor,Math.Max(0,expected.Build),Math.Max(0,expected.Revision));
+            if(!Version.TryParse(version,out var parsed)||parsed!=expectedFileVersion)throw new InvalidDataException("The signed package version does not match this update.");
             var worker=Path.Combine(stage,"worker");Directory.CreateDirectory(worker);
             foreach(var file in Directory.EnumerateFiles(payload))File.Copy(file,Path.Combine(worker,Path.GetFileName(file)));
             var request=new InstallRequest(Environment.ProcessId,target,payload,stage);
             var fileName=Path.Combine(stage,"request.json");await File.WriteAllTextAsync(fileName,JsonSerializer.Serialize(request),token);
-            token.ThrowIfCancellationRequested();var start=new ProcessStartInfo(Path.Combine(worker,"Nashi.exe")){UseShellExecute=false};start.ArgumentList.Add("--apply-update");start.ArgumentList.Add(fileName);_ = Process.Start(start)??throw new IOException("Cannot start update installer.");
+            token.ThrowIfCancellationRequested();var start=new ProcessStartInfo(Path.Combine(worker,"Nashi.exe")){UseShellExecute=false,WorkingDirectory=worker};start.ArgumentList.Add("--apply-update");start.ArgumentList.Add(fileName);_ = Process.Start(start)??throw new IOException("Cannot start update installer.");
         }
         catch{Directory.Delete(stage,true);throw;}
     }
@@ -35,7 +36,7 @@ internal static class UpdateInstaller
         var backup=target+".backup-"+Guid.NewGuid().ToString("N");
         Directory.Move(target,backup);
         try{Directory.Move(payload,target);}catch{Directory.Move(backup,target);throw;}
-        Process.Start(new ProcessStartInfo(Path.Combine(target,"Nashi.exe")){UseShellExecute=true});
+        Process.Start(new ProcessStartInfo(Path.Combine(target,"Nashi.exe")){UseShellExecute=true,WorkingDirectory=target});
         // Backups remain recoverable; the app never recursively deletes a user's
         // portable directory merely because an update succeeded.
         return 0;

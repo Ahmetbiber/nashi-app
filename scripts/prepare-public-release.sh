@@ -12,7 +12,7 @@ archive="$feed_directory/Nashi-macOS-arm64-$1-$2.zip"
 if [[ -e "$archive" ]]; then print -u2 'This release archive already exists. Keep it immutable and increment the version.'; exit 1; fi
 scripts/build-app.sh release
 python3 scripts/audit-release.py "$NASHI_APP_OUTPUT"
-ditto -c -k --sequesterRsrc --keepParent "$NASHI_APP_OUTPUT" "$archive"
+python3 scripts/archive-app.py "$NASHI_APP_OUTPUT" "$archive"
 key_options=(--account "${NASHI_UPDATE_KEY_ACCOUNT:-local.tangerine.replica}")
 if [[ -n "${NASHI_UPDATE_KEY_FILE:-}" ]]; then key_options=(--ed-key-file "$NASHI_UPDATE_KEY_FILE"); fi
 sparkle="$PWD/.build/artifacts/sparkle/Sparkle/bin"

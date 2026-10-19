@@ -106,7 +106,16 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
     finally{Directory.Delete(directory,true);}
 }
 
+if(Environment.GetEnvironmentVariable("NASHI_VERIFY_UPDATE_MANIFEST") is {} manifestPath&&Environment.GetEnvironmentVariable("NASHI_VERIFY_UPDATE_ARCHIVE") is {} archivePath)
+{
+    var update=JsonSerializer.Deserialize<WindowsUpdate>(await File.ReadAllTextAsync(manifestPath),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new Exception("Missing update manifest.");
+    await PublicUpdates.VerifyAsync(archivePath,update);
+    var extracted=Path.Combine(Path.GetTempPath(),"Nashi-Update-Verify-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(extracted);
+    try{PublicUpdates.ExtractVerified(archivePath,extracted);Console.WriteLine("PASS signed public Windows archive and safe extraction");}finally{Directory.Delete(extracted,true);}
+}
+
 sealed class InlineProgress(Action<OperationProgress> report):IProgress<OperationProgress>
 {
     public void Report(OperationProgress value)=>report(value);
 }
+

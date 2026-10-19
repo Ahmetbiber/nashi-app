@@ -59,16 +59,16 @@ internal static class GlobalGestureChecks
         {
             Drag(Key.LeftCtrl,"tools","compress");Drag(Key.LeftAlt,"actions","share");Drag(Key.LeftShift,"convert","convert:"+FeatureCatalog.Formats([file])[0]);
             if(controller.LinkShortcutRegistered){DesktopInput.Key(owner,Key.D,control:true,shift:true);check(selected=="link-shortcut","Global copied-link shortcut Ctrl+Shift+D");}
-            var modal=new Window{Owner=owner,Width=300,Height=200,WindowStartupLocation=WindowStartupLocation.CenterOwner,Content=new System.Windows.Controls.Border{Background=System.Windows.Media.Brushes.DarkOliveGreen}};Exception? modalError=null;
+            var main=owner as MainWindow;var beforeLaunch=main?.SelectedFiles.ToArray();var modal=new Window{Owner=owner,Width=300,Height=200,WindowStartupLocation=WindowStartupLocation.CenterOwner,Content=new System.Windows.Controls.Border{Background=System.Windows.Media.Brushes.DarkOliveGreen}};Exception? modalError=null;
             modal.Dispatcher.BeginInvoke(()=>
             {
                 try
                 {
-                    var p=modal.PointToScreen(new Point(60,70));DesktopInput.MovePointer(p);DesktopInput.HoldMouse(true);DesktopInput.Pump(80);DesktopInput.MovePointer(new(p.X+50,p.Y));DesktopInput.Hold(Key.LeftShift,true);DesktopInput.Pump(220);check(controller.ActiveWheel is null,"Modal Shift-drag did not open a competing global wheel");DesktopInput.HoldMouse(false);DesktopInput.Hold(Key.LeftShift,false);var before=selected;DesktopInput.Key(modal,Key.D,control:true,shift:true);check(selected==before,"Modal editor kept its keyboard focus during the global link shortcut");
+                    var p=modal.PointToScreen(new Point(60,70));DesktopInput.MovePointer(p);DesktopInput.HoldMouse(true);DesktopInput.Pump(80);DesktopInput.MovePointer(new(p.X+50,p.Y));DesktopInput.Hold(Key.LeftShift,true);DesktopInput.Pump(220);check(controller.ActiveWheel is null,"Modal Shift-drag did not open a competing global wheel");DesktopInput.HoldMouse(false);DesktopInput.Hold(Key.LeftShift,false);var before=selected;DesktopInput.Key(modal,Key.D,control:true,shift:true);check(selected==before,"Modal editor kept its keyboard focus during the global link shortcut");if(main is not null){main.AcceptLaunch([file]);main.AcceptLaunch([]);check(main.SelectedFiles.SequenceEqual(beforeLaunch!),"Second launch kept the modal editor's original file selection");}
                 }
                 catch(Exception error){modalError=error;}
                 finally{DesktopInput.HoldMouse(false);DesktopInput.Hold(Key.LeftShift,false);modal.Close();}
-            });modal.ShowDialog();if(modalError is not null)throw modalError;
+            });modal.ShowDialog();if(modalError is not null)throw modalError;if(main is not null){DesktopInput.Pump(300);check(main.SelectedFiles.SequenceEqual(new[]{file}),"Queued launch opened its file after the modal editor closed");main.AcceptLaunch(beforeLaunch!);}
             settings.Save(settings.Value with{Enabled=false});selected="disabled";DesktopInput.Key(owner,Key.D,control:true,shift:true);check(selected=="disabled","Disabled global shortcuts ignored copied-link input");
             var data=new DataObject();using var stream=new MemoryStream(System.Text.Encoding.Unicode.GetBytes("https://www.instagram.com/p/FixtureCode/\0"));data.SetData("UniformResourceLocatorW",stream);check(DragPayload.Parse(data) is {Kind:"instagramPhotos"},"Browser URL stream was decoded as a photo post");
             data.SetData(DataFormats.Html,"<a href=\"https://www.instagram.com/reel/FixtureCode/\"><img src=\"https://cdn.example/preview.jpg\"></a>");check(DragPayload.Parse(data) is {Kind:"instagramReel"},"Browser HTML identified a reel without thumbnail actions");

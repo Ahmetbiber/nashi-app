@@ -11,8 +11,10 @@ internal static class DesktopGeometry
     [DllImport("user32.dll")]private static extern IntPtr MonitorFromWindow(IntPtr window,uint flags);
     [DllImport("user32.dll")]private static extern bool GetMonitorInfo(IntPtr monitor,ref MonitorInfo info);
     [DllImport("user32.dll")]private static extern bool GetWindowRect(IntPtr window,out Rect rect);
+    [DllImport("user32.dll")]private static extern bool IsWindowEnabled(IntPtr window);
     [DllImport("user32.dll")]private static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
     [DllImport("shcore.dll")]private static extern int GetDpiForMonitor(IntPtr monitor,int type,out uint x,out uint y);
+    internal static bool IsInteractive(Window window){var handle=new WindowInteropHelper(window).Handle;return window.IsEnabled&&(handle==IntPtr.Zero||IsWindowEnabled(handle));}
     internal static void PlaceWheel(Window window,int x,int y,double logicalSize)
     {
         var monitor=MonitorFromPoint(new(){X=x,Y=y},2);var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};if(!GetMonitorInfo(monitor,ref info))return;

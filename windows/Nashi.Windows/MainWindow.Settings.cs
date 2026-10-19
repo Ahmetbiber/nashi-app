@@ -6,9 +6,9 @@ public sealed partial class MainWindow
     private string[]? pendingLaunch;private System.Windows.Threading.DispatcherTimer? launchTimer;
     internal void AcceptLaunch(string[] paths)
     {
-        ShowMain();if(paths.Length==0)return;if(busy||!IsEnabled){pendingLaunch=paths;launchTimer??=new(){Interval=TimeSpan.FromMilliseconds(200)};launchTimer.Stop();launchTimer.Tick-=AcceptPending;launchTimer.Tick+=AcceptPending;launchTimer.Start();return;}files.Clear();Add(paths);ShowLibrary(false);
+        ShowMain();if(paths.Length==0)return;if(busy||!DesktopGeometry.IsInteractive(this)){pendingLaunch=paths;launchTimer??=new(){Interval=TimeSpan.FromMilliseconds(200)};launchTimer.Stop();launchTimer.Tick-=AcceptPending;launchTimer.Tick+=AcceptPending;launchTimer.Start();return;}files.Clear();Add(paths);ShowLibrary(false);
     }
-    private void AcceptPending(object? sender,EventArgs e){if(busy||!IsEnabled)return;launchTimer?.Stop();if(pendingLaunch is {} paths){pendingLaunch=null;AcceptLaunch(paths);}}
+    private void AcceptPending(object? sender,EventArgs e){if(busy||!DesktopGeometry.IsInteractive(this))return;launchTimer?.Stop();if(pendingLaunch is {} paths){pendingLaunch=null;AcceptLaunch(paths);}}
     private TrayHost? tray;private bool quitting;
     private void SetupDesktop()
     {

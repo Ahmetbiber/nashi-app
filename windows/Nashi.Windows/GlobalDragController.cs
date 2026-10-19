@@ -18,7 +18,6 @@ public sealed class GlobalDragController:IDisposable
     [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")]private static extern bool GetCursorPos(out NativePoint point);
     [DllImport("user32.dll")]private static extern IntPtr GetForegroundWindow();
-    [DllImport("user32.dll")]private static extern bool IsWindowEnabled(IntPtr window);
     [DllImport("user32.dll")]private static extern bool RegisterHotKey(IntPtr window,int id,uint modifiers,uint key);
     [DllImport("user32.dll")]private static extern bool UnregisterHotKey(IntPtr window,int id);
     [DllImport("oleacc.dll")]private static extern int AccessibleObjectFromPoint(NativePoint point,[MarshalAs(UnmanagedType.Interface)]out object accessible,[MarshalAs(UnmanagedType.Struct)]out object child);
@@ -26,7 +25,7 @@ public sealed class GlobalDragController:IDisposable
     private NativePoint start;private bool down,opened;private Task<string?>? hint;private GlobalDropWheel? wheel;private HwndSource? source;private IntPtr handle;private bool? shortcutEnabled;
     internal GlobalDropWheel? ActiveWheel=>wheel;
     public bool LinkShortcutRegistered{get;private set;}
-    private bool OwnerAvailable=>owner.IsEnabled&&(handle==IntPtr.Zero||IsWindowEnabled(handle));
+    private bool OwnerAvailable=>DesktopGeometry.IsInteractive(owner);
     public GlobalDragController(Window owner,PreferencesStore preferences,Action<string,IDataObject,string?> dropped,Action link)
     {
         this.owner=owner;this.preferences=preferences;this.dropped=dropped;this.link=link;timer=new(){Interval=TimeSpan.FromMilliseconds(40)};timer.Tick+=(_,_)=>Poll();

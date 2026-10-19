@@ -66,8 +66,11 @@ enum PagesCodec {
             }
             let cancelled: @convention(block) () -> Bool = { token.isCancelled }
             for (name, block) in [("_nashiBase64Encode", base64Encode as AnyObject), ("_nashiBase64Decode", base64Decode as AnyObject), ("_nashiUTF8Encode", utf8Encode as AnyObject), ("_nashiUTF8Decode", utf8Decode as AnyObject), ("_nashiRandom", random as AnyObject), ("_nashiCheckCancelled", cancelled as AnyObject)] { context.setObject(block, forKeyedSubscript: name as NSString) }
+            var candidates: [URL] = [Bundle.main.resourceURL?.appendingPathComponent("PagesInterop.js")].compactMap{$0}
+            #if DEBUG
             let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources/PagesInterop.js")
-            let candidates = [Bundle.main.resourceURL?.appendingPathComponent("PagesInterop.js"), source].compactMap { $0 }
+            candidates.append(source)
+            #endif
             guard let script = candidates.first(where: { FileManager.default.fileExists(atPath: $0.path) }) else { throw NashiError.missingDependency("the bundled native Pages library") }
             context.evaluateScript(try String(contentsOf: script, encoding: .utf8), withSourceURL: script)
             if let diagnostic { throw NashiError.failed("The native Pages runtime could not load: \(diagnostic)") }

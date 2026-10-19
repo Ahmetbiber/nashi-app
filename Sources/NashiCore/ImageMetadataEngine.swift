@@ -191,11 +191,13 @@ public enum ImageMetadataEngine {
         return first
     }
     private static func run(_ args:[String],token:CancellationToken) throws -> ProcessResult {
-        let root=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         var paths:[URL]=[]
         if let override=ProcessInfo.processInfo.environment["NASHI_EXIFTOOL"] { paths.append(URL(fileURLWithPath:override)) }
         if let resource=Bundle.main.resourceURL { paths.append(resource.appendingPathComponent("Tools/ExifTool/exiftool")) }
+        #if DEBUG
+        let root=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         paths.append(root.appendingPathComponent("Tools/ExifTool/exiftool"))
+        #endif
         guard let script=paths.first(where:{FileManager.default.fileExists(atPath:$0.path)}) else { throw NashiError.missingDependency("ExifTool; run scripts/setup-exiftool.sh") }
         // Empty config disables executable user configuration. Values remain argv,
         // never shell code, and the source is only read or copied.

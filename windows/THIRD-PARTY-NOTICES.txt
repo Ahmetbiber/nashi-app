@@ -5,7 +5,7 @@ Independent app inspired by Tangerine; not affiliated with LEAP STUDIO.
 https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
 https://github.com/dotnet/wpf/blob/main/LICENSE.TXT
 
-PDFsharp 6.5.0, empira and contributors, MIT.
+PDFsharp 6.2.4, empira and contributors, MIT.
 https://github.com/empira/PDFsharp/blob/master/LICENSE
 BouncyCastle.Cryptography 2.7.0, The Legion of the Bouncy Castle Inc., MIT.
 https://github.com/bcgit/bc-csharp/blob/master/LICENSE.md

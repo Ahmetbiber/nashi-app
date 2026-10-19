@@ -9,7 +9,7 @@ nashi_public_build=false
 if [[ -f "$nashi_selected_update_config" ]] && plutil -type PublicRepository "$nashi_selected_update_config" >/dev/null 2>&1; then nashi_public_build=true; fi
 if [[ "$nashi_signing_mode" != ad-hoc && "$nashi_public_build" == false ]]; then python3 scripts/build-credential-broker.py; fi
 # Release binaries do not embed the builder's home-directory/source paths.
-swift build -c "$configuration" --product Nashi -Xswiftc -file-prefix-map -Xswiftc "$PWD=."
+swift build -c "$configuration" --product Nashi -Xswiftc -file-prefix-map -Xswiftc "$PWD=/nashi" -Xswiftc -file-compilation-dir -Xswiftc /nashi
 binary_dir=$(swift build -c "$configuration" --show-bin-path)
 application=${NASHI_APP_OUTPUT:-"$PWD/build/Nashi.app"}
 sparkle_root="$PWD/.build/artifacts/sparkle/Sparkle"
@@ -22,6 +22,7 @@ if [[ -f "$application/Contents/Info.plist" ]]; then
 fi
 mkdir -p "$application/Contents/MacOS" "$application/Contents/Resources/Tools"
 cp "$binary_dir/Nashi" "$application/Contents/MacOS/Nashi"
+if [[ "$configuration" == release ]]; then /usr/bin/strip -S "$application/Contents/MacOS/Nashi"; fi
 cp Resources/Info.plist "$application/Contents/Info.plist"
 python3 scripts/configure-updates.py "$application/Contents/Info.plist" "${NASHI_UPDATE_CONFIG:-Configuration/Updates.plist}"
 if [[ "$nashi_signing_mode" != ad-hoc && "$nashi_public_build" == false ]]; then

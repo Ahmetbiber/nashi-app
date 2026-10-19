@@ -64,8 +64,11 @@ enum PDFPreservingCodec {
             context.setObject(cancelled, forKeyedSubscript: "_nashiPDFCancelled" as NSString)
             context.setObject(complete, forKeyedSubscript: "_nashiPDFComplete" as NSString)
             context.setObject(failed, forKeyedSubscript: "_nashiPDFFailed" as NSString)
+            var roots: [URL] = [Bundle.main.resourceURL].compactMap{$0}
+            #if DEBUG
             let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
-            let roots = [Bundle.main.resourceURL, source].compactMap { $0 }
+            roots.append(source)
+            #endif
             guard let root = roots.first(where: { root in
                 ["PDFLib.js", "PDFInterop.js"].allSatisfy { FileManager.default.fileExists(atPath: root.appendingPathComponent($0).path) }
             }) else { throw NashiError.missingDependency("the bundled preserving PDF library") }

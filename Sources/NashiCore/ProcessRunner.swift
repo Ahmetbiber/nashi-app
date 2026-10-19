@@ -77,10 +77,12 @@ public enum Dependencies {
             if name == "soffice" { paths.append(resource.appendingPathComponent("Tools/LibreOffice.app/Contents/MacOS/soffice").path) }
         }
         if let external=ExternalToolSetup.executable(name) { paths.append(external.path) }
+        #if DEBUG
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         paths.append(root.appendingPathComponent("Tools/\(name)").path)
         if name == "exiftool" { paths.append(root.appendingPathComponent("Tools/ExifTool/exiftool").path) }
         if name == "soffice" { paths.append(root.appendingPathComponent("Tools/LibreOffice.app/Contents/MacOS/soffice").path) }
+        #endif
         paths += ["/opt/homebrew/bin/\(name)", "/usr/local/bin/\(name)", "/usr/bin/\(name)"]
         if name == "soffice" { paths.append("/Applications/LibreOffice.app/Contents/MacOS/soffice") }
         guard let found = paths.first(where: { path in

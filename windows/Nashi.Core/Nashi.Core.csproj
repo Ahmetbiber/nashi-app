@@ -2,7 +2,7 @@
   <PropertyGroup><RootNamespace>Nashi.Core</RootNamespace><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
-    <PackageReference Include="PDFsharp" Version="6.5.0" />
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
   </ItemGroup>
 </Project>

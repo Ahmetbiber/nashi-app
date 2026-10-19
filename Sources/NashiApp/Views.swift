@@ -38,22 +38,7 @@ struct SettingsView:View {
     }
     var body:some View {
         HStack(spacing:0) {
-            VStack(alignment:.leading,spacing:24) {
-                HStack(spacing:9) { NashiMark(size:32);Text("Make it yours").font(.system(size:14,weight:.bold,design:.rounded)) }.padding(.top,20)
-                VStack(spacing:5) {
-                    ForEach(SettingsSection.allCases) { item in
-                        Button { section=item } label:{
-                            HStack(spacing:10) { Image(systemName:item.symbol).frame(width:19);Text(item.rawValue);Spacer() }
-                                .font(.system(size:12,weight:section==item ? .semibold:.medium,design:.rounded))
-                                .foregroundStyle(section==item ? NashiPalette.forest:Color.secondary)
-                                .padding(.horizontal,13).padding(.vertical,12)
-                                .background(section==item ? NashiPalette.sage:Color.clear,in:RoundedRectangle(cornerRadius:12))
-                        }.buttonStyle(.plain).accessibilityAddTraits(section==item ? .isSelected:[])
-                    }
-                }
-                Spacer()
-                Label("Local by design",systemImage:"lock.shield").font(.system(size:10,weight:.medium,design:.rounded)).foregroundStyle(.secondary).padding(.bottom,17)
-            }.padding(.horizontal,16).frame(width:180).background(NashiPalette.inset.opacity(0.6))
+            sidebar
             Divider()
             Group {
                 switch section {
@@ -73,6 +58,24 @@ struct SettingsView:View {
         .onChange(of:feedback) { UserDefaults.standard.set($0,forKey:"sound") }
         .onChange(of:appAppearance) { NashiAppearance.apply($0) }
         .onChange(of:terminalApplication) { UserDefaults.standard.set($0=="com.googlecode.iterm2" ? "iTerm2":"Terminal",forKey:"terminalApp") }
+    }
+    private var sidebar:some View {
+            VStack(alignment:.leading,spacing:24) {
+                HStack(spacing:9) { NashiMark(size:32);Text("Make it yours").font(.system(size:14,weight:.bold,design:.rounded)) }.padding(.top,20)
+                VStack(spacing:5) {
+                    ForEach(SettingsSection.allCases) { item in
+                        Button { section=item } label:{
+                            HStack(spacing:10) { Image(systemName:item.symbol).frame(width:19);Text(item.rawValue);Spacer() }
+                                .font(.system(size:12,weight:section==item ? .semibold:.medium,design:.rounded))
+                                .foregroundStyle(section==item ? NashiPalette.forest:Color.secondary)
+                                .padding(.horizontal,13).padding(.vertical,12)
+                                .background(section==item ? NashiPalette.sage:Color.clear,in:RoundedRectangle(cornerRadius:12))
+                        }.buttonStyle(.plain).accessibilityAddTraits(section==item ? .isSelected:[])
+                    }
+                }
+                Spacer()
+                Label("Local by design",systemImage:"lock.shield").font(.system(size:10,weight:.medium,design:.rounded)).foregroundStyle(.secondary).padding(.bottom,17)
+            }.padding(.horizontal,16).frame(width:180).background(NashiPalette.inset.opacity(0.6))
     }
     private var general:some View {
         ScrollView { VStack(alignment:.leading,spacing:20) {

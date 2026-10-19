@@ -1,0 +1,15 @@
+Nashi for Windows. Copyright 2026 Nashi contributors. MIT.
+Independent app inspired by Tangerine; not affiliated with LEAP STUDIO.
+
+.NET 10 / WPF, Microsoft and contributors, MIT.
+https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+https://github.com/dotnet/wpf/blob/main/LICENSE.TXT
+
+PDFsharp 6.5.0, empira and contributors, MIT.
+https://github.com/empira/PDFsharp/blob/master/LICENSE
+BouncyCastle.Cryptography 2.7.0, The Legion of the Bouncy Castle Inc., MIT.
+https://github.com/bcgit/bc-csharp/blob/master/LICENSE.md
+Exact NuGet packages and transitive dependency licenses are recorded in the
+committed packages.lock.json files and Windows dependency inventory.
+Media tools are downloaded separately from pinned upstream releases after the
+user chooses setup; their licenses and source references are shown by setup.

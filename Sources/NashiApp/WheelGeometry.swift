@@ -22,19 +22,26 @@ struct WheelGeometry {
             ? 4 * sin(sweep/2) * (pow(radius,3)-pow(inner,3)) / (3*sweep*(radius*radius-inner*inner))
             : (radius+inner)/2
         let preferred = centroid/radius
-        let nearby = [preferred] + (1...12).flatMap { step in
-            [preferred+CGFloat(step)*0.02, preferred-CGFloat(step)*0.02]
+        var nearby: [CGFloat] = [preferred]
+        for step in 1...12 {
+            let distance = CGFloat(step) * CGFloat(0.02)
+            nearby.append(preferred + distance)
+            nearby.append(preferred - distance)
         }
-        // Keep the previous safe positions as fallbacks for long labels in
-        // narrow petals, after trying positions near the actual center.
-        let fractions = nearby.filter { $0 > inner/radius && $0 < 0.86 }
-            + [0.73,0.75,0.71,0.77,0.69,0.79,0.67,0.81]
-        return fractions.flatMap { fraction in
-            [CGFloat(0), -4, 4, -8, 8].map { offset in
-                NSPoint(x: center.x + radius*fraction*cos(angle) - offset*scale*sin(angle),
-                        y: center.y + radius*fraction*sin(angle) + offset*scale*cos(angle))
+        var fractions: [CGFloat] = nearby.filter { $0 > inner/radius && $0 < 0.86 }
+        fractions.append(contentsOf: [0.73,0.75,0.71,0.77,0.69,0.79,0.67,0.81])
+        var result: [NSPoint] = []
+        let cosine = cos(angle), sine = sin(angle)
+        let offsets: [CGFloat] = [0, -4, 4, -8, 8]
+        for fraction in fractions {
+            let radial = radius * fraction
+            for offset in offsets {
+                let tangent = offset * scale
+                result.append(NSPoint(x: center.x + radial*cosine - tangent*sine,
+                                      y: center.y + radial*sine + tangent*cosine))
             }
         }
+        return result
     }
     func petal(_ index: Int) -> NSBezierPath {
         let delta = 360 / CGFloat(max(1,count)), gap: CGFloat = 0.9

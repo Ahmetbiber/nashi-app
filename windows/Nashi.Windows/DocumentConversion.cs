@@ -24,6 +24,7 @@ public sealed class DocumentConversion(OfficeRuntime runtime,Toolchain tools)
             if(ext=="pages"){if(engine is null||!tools.Ready)throw new InvalidOperationException("Set up office and media tools once to enable native Pages interoperability.");source=await engine.PagesReadAsync(input,work,token);}
             if(ext=="rtfd"){var rtf=Path.Combine(input,"TXT.rtf");if(!File.Exists(rtf))throw new InvalidDataException("Choose a complete RTFD folder containing TXT.rtf.");source=rtf;}
             if(ext=="textclipping")source=await MaterializeClipping(input,work,token);
+            if(ext is "txt" or "md"){var normalized=Path.Combine(work,Path.GetFileName(input));await File.WriteAllTextAsync(normalized,LegacyTextCodec.Decode(await File.ReadAllBytesAsync(input,token)),new UTF8Encoding(false),token);source=normalized;}
             if(ext=="epub")source=EpubToHtml(input,work,token);
             if(ext=="pdf"&&format is "txt" or "md")
             {var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);await File.WriteAllTextAsync(output,OfficeDocuments.PdfText(input,options.Password),new UTF8Encoding(false),token);outputs.Add(output);continue;}
@@ -77,9 +78,8 @@ public sealed class DocumentConversion(OfficeRuntime runtime,Toolchain tools)
     private static XDocument ReadXml(string path){using var reader=System.Xml.XmlReader.Create(path,new(){DtdProcessing=System.Xml.DtdProcessing.Ignore,XmlResolver=null,MaxCharactersInDocument=20_000_000});return XDocument.Load(reader);}
     private static async Task<string> MaterializeClipping(string input,string work,CancellationToken token)
     {
-        var bytes=await File.ReadAllBytesAsync(input,token);var text=Encoding.UTF8.GetString(bytes);if(text.StartsWith("bplist",StringComparison.Ordinal))throw new InvalidDataException("Copy the text from this legacy macOS clipping, then paste it into Nashi to convert it.");
-        if(text.TrimStart().StartsWith("<?xml",StringComparison.Ordinal)){var xml=ReadXml(input);text=xml.Descendants("string").OrderByDescending(e=>e.Value.Length).FirstOrDefault()?.Value??"";}
-        var output=Path.Combine(work,"Clipping.txt");await File.WriteAllTextAsync(output,text,new UTF8Encoding(false),token);return output;
+        var bytes=await File.ReadAllBytesAsync(input,token);byte[]? resource=null;var sidecar=Path.Combine(Path.GetDirectoryName(input)!,"._"+Path.GetFileName(input));if(File.Exists(sidecar)&&new FileInfo(sidecar).Length<200_000_000)resource=LegacyTextCodec.AppleDoubleResource(await File.ReadAllBytesAsync(sidecar,token));
+        var content=LegacyTextCodec.Clipping(bytes,resource);var output=Path.Combine(work,"Clipping."+content.Extension);await File.WriteAllBytesAsync(output,content.Bytes,token);return output;
     }
     private static void EpubFixed(byte[][] pages,string output,string title)
     {

@@ -3,13 +3,19 @@ using Nashi.Core;
 namespace Nashi.Windows;
 public sealed partial class MainWindow
 {
+    private string[]? pendingLaunch;private System.Windows.Threading.DispatcherTimer? launchTimer;
+    internal void AcceptLaunch(string[] paths)
+    {
+        ShowMain();if(paths.Length==0)return;if(busy||!IsEnabled){pendingLaunch=paths;launchTimer??=new(){Interval=TimeSpan.FromMilliseconds(200)};launchTimer.Stop();launchTimer.Tick-=AcceptPending;launchTimer.Tick+=AcceptPending;launchTimer.Start();return;}files.Clear();Add(paths);ShowLibrary(false);
+    }
+    private void AcceptPending(object? sender,EventArgs e){if(busy||!IsEnabled)return;launchTimer?.Stop();if(pendingLaunch is {} paths){pendingLaunch=null;AcceptLaunch(paths);}}
     private TrayHost? tray;private bool quitting;
     private void SetupDesktop()
     {
         globalDrag=new(this,preferences,OnGlobalDrop,OpenCopiedLink);
         try{tray=new(this,ShowMain,TrayMenu);}catch(InvalidOperationException error){status.Text=error.Message;}
         Closing+=(_,e)=>{if(!e.Cancel&&tray is not null&&preferences.Value.KeepInTray&&!quitting){e.Cancel=true;Hide();}};
-        Closed+=(_,_)=>tray?.Dispose();if(Environment.GetCommandLineArgs().Contains("--background"))Hide();
+        Closed+=(_,_)=>{launchTimer?.Stop();tray?.Dispose();};if(Environment.GetCommandLineArgs().Contains("--background"))Hide();
     }
     private void ShowMain(){Show();WindowState=WindowState.Normal;Activate();}
     private System.Windows.Controls.ContextMenu TrayMenu()

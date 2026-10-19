@@ -68,9 +68,21 @@ internal sealed class GlobalDropWheel:Window
     public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
     {
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=540*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Loaded+=(_,_)=>WheelPresentation.Animate(this);
-        DragEnter+=(_,e)=>{entered++;var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];choices=Choices(files,Payload(e.Data));Build(choices);e.Effects=choices.Count>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
-        DragOver+=(_,e)=>{over++;if(!e.Data.GetDataPresent(DataFormats.FileDrop)){var updated=Choices([],Payload(e.Data));if(!updated.Select(c=>c.Id).SequenceEqual(choices.Select(c=>c.Id))){choices=updated;Build(choices);}}var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;if(distance<106||distance>255||choices.Count==0){selection="";Highlight(-1);}else{var angle=(Math.Atan2(p.Y-270,p.X-270)*180/Math.PI+90+360+180d/choices.Count)%360;var index=(int)(angle/(360d/choices.Count));var id=choices[index].Id;if(id!=selection){selection=id;Feedback.Play();}Highlight(index);}e.Effects=selection.Length>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
-        Drop+=(_,e)=>{dropCount++;var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
+        DragEnter+=(_,e)=>{entered++;Track(e);};
+        DragOver+=(_,e)=>{over++;Track(e);};
+        Drop+=(_,e)=>{dropCount++;Track(e);var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
+    }
+    private void Track(DragEventArgs e)
+    {
+        var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];var updated=Choices(files,Payload(e.Data));
+        // Replacing the hit-test target during DragEnter causes OLE to enter
+        // again instead of advancing to DragOver. Keep the visual tree stable
+        // until the payload actually changes, and select on entry as well.
+        if(!updated.SequenceEqual(choices)){choices=updated;Build(choices);}
+        var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;
+        if(distance<108||distance>250||choices.Count==0){selection="";Highlight(-1);}
+        else{var angle=(Math.Atan2(p.Y-270,p.X-270)*180/Math.PI+90+360+180d/choices.Count)%360;var index=(int)(angle/(360d/choices.Count));var id=choices[index].Id;if(id!=selection){selection=id;Feedback.Play();}Highlight(index);}
+        e.Effects=selection.Length>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;
     }
     private WebMediaPayload? Payload(IDataObject data)=>DragPayload.Parse(data,hint());
     private IReadOnlyList<ToolChoice> Choices(string[] files,WebMediaPayload? web)
@@ -79,11 +91,11 @@ internal sealed class GlobalDropWheel:Window
         {
             if(mode=="convert")return FeatureCatalog.Formats(files).Select(f=>new ToolChoice("convert:"+f,f.ToUpperInvariant(),"↗")).ToArray();
             if(mode=="actions")return [new("share","Share","◉"),new("float","Float","▣"),new("copy","Copy","▱"),new("move","Move","↗"),new("copyPath","Copy Path","↪"),new("terminal","Terminal",">_")];
-            return FeatureCatalog.Tools(files).Select(t=>new ToolChoice(t,FeatureCatalog.ToolNames[t],"✦")).ToArray();
+            return FeatureCatalog.Tools(files).Select(t=>new ToolChoice(t,FeatureCatalog.ToolNames[t],MainWindow.ToolSymbol(t))).ToArray();
         }
         if(web is null)return [];return web.Kind switch{"youtube"=>[new("download:video","Download Video","↓"),new("download:thumbnail","Download Thumbnail","▣"),new("download:audio","Download Audio","♫")],"instagramPhotos"=>[new("download:photos","Download Images","▣")],"instagramReel"=>[new("download:video","Download Video","↓"),new("download:audio","Download Audio","♫")],"image"=>[new("download:image","Download Image","↓")],_=>[new("download:video","Download Video","↓"),new("download:audio","Download Audio","♫") ]};
     }
-    private void Highlight(int index){var paths=canvas.Children.OfType<System.Windows.Shapes.Path>().ToArray();for(var n=0;n<paths.Length;n++)paths[n].Fill=Theme.Brush(n==index?"Sage":"Inset");}
+    private void Highlight(int index){var paths=canvas.Children.OfType<System.Windows.Shapes.Path>().ToArray();for(var n=0;n<paths.Length;n++){paths[n].Fill=Theme.Brush(n==index?"Sage":"Inset");paths[n].Stroke=Theme.Brush(n==index?"Gold":"Line");}}
     private void Build(IReadOnlyList<ToolChoice> tools)
     {
         canvas.Children.Clear();canvas.Children.Add(new Ellipse{Width=540,Height=540,Fill=WheelPresentation.Backdrop});var count=tools.Count;

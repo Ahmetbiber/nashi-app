@@ -9,6 +9,37 @@ if ([IO.Path]::GetFileName($AppPath) -ne 'Nashi.exe' -or !(Test-Path $AppPath)) 
 if ($ExpectedVersion -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw 'Choose a numeric update version.' }
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class NashiIsolatedUpdateUi {
+    private delegate bool WindowVisitor(IntPtr window, IntPtr parameter);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(WindowVisitor visitor, IntPtr parameter);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int capacity);
+    [DllImport("user32.dll")] private static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool IsWindowEnabled(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    public static bool Confirm(int processId) {
+        bool confirmed = false;
+        EnumWindows(delegate(IntPtr window, IntPtr ignored) {
+            uint owner; GetWindowThreadProcessId(window, out owner);
+            if (owner != (uint)processId || !IsWindowVisible(window)) return true;
+            var title = new StringBuilder(256); GetWindowText(window, title, title.Capacity);
+            if (title.ToString() != "Nashi update") return true;
+            var button = GetDlgItem(window, 1); // Native IDOK, only in this app's exact update dialog.
+            if (button == IntPtr.Zero || !IsWindowVisible(button) || !IsWindowEnabled(button)) return true;
+            var name = new StringBuilder(64); GetWindowText(button, name, name.Capacity);
+            if (name.ToString().Replace("&", "").Trim() != "OK") return true;
+            confirmed = PostMessage(button, 0x00F5, IntPtr.Zero, IntPtr.Zero); // BM_CLICK
+            return !confirmed;
+        }, IntPtr.Zero);
+        return confirmed;
+    }
+}
+'@
 
 function Find-Element($Root, $Scope, $Conditions) {
     $condition = New-Object System.Windows.Automation.AndCondition -ArgumentList (,$Conditions)
@@ -63,11 +94,16 @@ try {
         if ($null -ne $confirm) { break }
         Start-Sleep -Milliseconds 200
     }
-    if ($null -eq $confirm) { throw ('The update confirmation had no OK action. Buttons: '+($observed | ConvertTo-Json -Compress)) }
-    $confirm.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $confirmationMethod = 'UI Automation InvokePattern'
+    if ($null -ne $confirm) {
+        $confirm.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    } elseif ([NashiIsolatedUpdateUi]::Confirm($app.Id)) {
+        # Some hosted desktop providers expose the dialog title but omit its native buttons.
+        $confirmationMethod = 'Native visible IDOK button'
+    } else { throw ('The update confirmation had no visible OK action. Buttons: '+($observed | ConvertTo-Json -Compress)) }
     if (!$app.WaitForExit(120000)) { throw 'The real update did not close the original app within two minutes.' }
     if ($app.ExitCode -ne 0) { throw 'The original app exited with an update error.' }
-    @{ availableUpdateObserved=$true; updateButtonInvoked=$true; confirmationInvoked=$true; originalProcessId=$app.Id; expectedVersion=$ExpectedVersion } | ConvertTo-Json | Set-Content -Encoding utf8 $ProofPath
+    @{ availableUpdateObserved=$true; updateButtonInvoked=$true; confirmationInvoked=$true; confirmationMethod=$confirmationMethod; originalProcessId=$app.Id; expectedVersion=$ExpectedVersion } | ConvertTo-Json | Set-Content -Encoding utf8 $ProofPath
 } catch {
     @{ error=$_.Exception.Message } | ConvertTo-Json | Set-Content -Encoding utf8 $ProofPath
     Write-Error $_

@@ -49,11 +49,21 @@ try {
         Start-Sleep -Milliseconds 200
     }
     if ($null -eq $dialog) { throw 'The update confirmation did not appear.' }
-    $confirm = Find-Element $dialog ([System.Windows.Automation.TreeScope]::Descendants) @(
-        (Property-Equals ([System.Windows.Automation.AutomationElement]::NameProperty) 'OK'),
-        (Property-Equals ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::Button))
-    )
-    if ($null -eq $confirm) { throw 'The update confirmation had no OK action.' }
+    $confirm = $null
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    $observed = @()
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $buttons = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, (Property-Equals ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::Button)))
+        $observed = @()
+        foreach ($candidate in $buttons) {
+            $info = $candidate.Current
+            $observed += @{ name=$info.Name; id=$info.AutomationId; enabled=$info.IsEnabled }
+            if ($info.IsEnabled -and ($info.AutomationId -eq '1' -or $info.Name.Replace('&','').Trim() -eq 'OK')) { $confirm = $candidate; break }
+        }
+        if ($null -ne $confirm) { break }
+        Start-Sleep -Milliseconds 200
+    }
+    if ($null -eq $confirm) { throw ('The update confirmation had no OK action. Buttons: '+($observed | ConvertTo-Json -Compress)) }
     $confirm.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
     if (!$app.WaitForExit(120000)) { throw 'The real update did not close the original app within two minutes.' }
     if ($app.ExitCode -ne 0) { throw 'The original app exited with an update error.' }

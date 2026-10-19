@@ -1,0 +1,22 @@
+{
+  "exportFileCount": 175,
+  "secretScanner": "gitleaks 8.30.1",
+  "secretFindings": 0,
+  "historyIncluded": false,
+  "excluded": [
+    "Local signing material",
+    "Git history",
+    "Personal home paths",
+    "Raw QA reports",
+    "Reference-app screenshots and binary analysis",
+    "Developer cache/runtime paths",
+    "Browser state and cookies"
+  ],
+  "updaterTestsPassed": 17,
+  "knownRisks": [
+    "OS-trusted publisher signing is not yet available.",
+    "Complex media/document parsers and external dependencies remain part of the attack surface.",
+    "Windows port and release packaging are in progress."
+  ],
+  "publicationStatus": "Source reviewed; binary redistribution and platform delivery checks still pending."
+}

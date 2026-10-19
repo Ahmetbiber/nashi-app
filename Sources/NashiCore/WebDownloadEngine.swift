@@ -15,6 +15,8 @@ public struct WebMediaInfo:Sendable {
     public let direct:Bool
     public let filename:String?
     public let byteCount:Int64?
+    public var imageWidth:Int? = nil
+    public var imageHeight:Int? = nil
     public var modes:[WebDownloadMode] { direct ? (kind == .image ? [.original]:[.original,.audioMP3]):kind == .audio ? [.original,.audioMP3]:[.video,.audioMP3] }
 }
 
@@ -32,6 +34,16 @@ public enum WebDownloadEngine {
         let url=try link(url.absoluteString);try token.check()
         let session=URLSession(configuration:.ephemeral)
         defer { session.invalidateAndCancel() }
+        if let cover=try await YouTubeThumbnail.resolve(url,token:token,fetch:{ candidate in
+            var request=URLRequest(url:candidate);request.timeoutInterval=12
+            let (data,response)=try await session.data(for:request)
+            guard let response=response as? HTTPURLResponse,(200...299).contains(response.statusCode),
+                  response.mimeType?.lowercased().hasPrefix("image/")==true else { return nil }
+            return data
+        }) {
+            return WebMediaInfo(url:cover.url,title:"YouTube thumbnail",kind:.image,site:"YouTube",duration:nil,heights:[],direct:true,
+                                filename:cover.url.lastPathComponent,byteCount:Int64(cover.byteCount),imageWidth:cover.width,imageHeight:cover.height)
+        }
         var request=URLRequest(url:url);request.httpMethod="HEAD";request.timeoutInterval=15
         if let (_,response)=try? await session.data(for:request),let http=response as? HTTPURLResponse,(200...299).contains(http.statusCode),
            let kind=directKind(mime:response.mimeType,extension:url.pathExtension) {

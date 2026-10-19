@@ -50,6 +50,7 @@ import NashiCore
                 let found=try await WebDownloadEngine.inspect(url,token:token)
                 guard let self,self.revision==current,!Task.isCancelled else { return }
                 self.info=found;self.maximumHeight=0
+                if found.kind == .image { self.linkText=found.url.absoluteString }
                 self.mode=found.modes.contains(self.pendingMode ?? .video) ? (self.pendingMode ?? .video):(found.modes.first ?? .original)
                 self.pendingMode=nil;self.inspecting=false
             } catch {
@@ -162,6 +163,7 @@ struct WebDownloadView:View {
     }
     func details(_ info:WebMediaInfo)->String {
         var details=[info.site,info.kind.rawValue.capitalized]
+        if let width=info.imageWidth,let height=info.imageHeight { details.append("\(width) × \(height)") }
         if let duration=info.duration { details.append("\(Int(duration)/60):\(String(format:"%02d",Int(duration)%60))") }
         if let height=info.heights.max() { details.append("\(height)p") }
         if let bytes=info.byteCount { details.append(ByteCountFormatter.string(fromByteCount:bytes,countStyle:.file)) }

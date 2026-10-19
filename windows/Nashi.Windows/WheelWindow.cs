@@ -26,7 +26,7 @@ public sealed class WheelWindow:Window
     private void Highlight(int index)
     {
         if(selected==index)return;selected=index;
-        for(var i=0;i<sectors.Count;i++)sectors[i].Fill=i==index?Theme.Brush("Sage"):Theme.Brush("Inset");
+        for(var i=0;i<sectors.Count;i++){sectors[i].Fill=i==index?Theme.Brush("Sage"):Theme.Brush("Inset");sectors[i].Stroke=i==index?Theme.Brush("Gold"):Theme.Brush("Line");sectors[i].StrokeThickness=i==index?2:1;}
         Feedback.Play();
     }
     public WheelWindow(Window owner,IReadOnlyList<ToolChoice> tools,Action<ToolChoice> select)
@@ -43,11 +43,12 @@ public sealed class WheelWindow:Window
             var path=new System.Windows.Shapes.Path{Data=geometry,Fill=Theme.Brush("Inset"),Stroke=Theme.Brush("Line"),StrokeThickness=1};canvas.Children.Add(path);sectors.Add(path);
             var radial=4*Math.Sin(half)*(Math.Pow(250,3)-Math.Pow(108,3))/(6*half*(250*250-108*108));
             var label=new StackPanel{Width=112};label.Children.Add(new TextBlock{Text=choice.Symbol,FontSize=25,Foreground=Theme.Brush("Ink"),HorizontalAlignment=HorizontalAlignment.Center});label.Children.Add(new TextBlock{Text=choice.Title,FontSize=13,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center,TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Ink")});
-            var button=new Button{Content=label,Width=126,Height=86,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink"),Padding=new(0),BorderThickness=new(0)};Canvas.SetLeft(button,270+radial*Math.Cos(angle)-63);Canvas.SetTop(button,270+radial*Math.Sin(angle)-43);canvas.Children.Add(button);buttons.Add(button);var index=i;
+            var button=new Button{Style=(Style)Application.Current.FindResource("WheelLabelButton"),Content=label,Width=126,Height=86,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink"),Padding=new(0),BorderThickness=new(0)};Canvas.SetLeft(button,270+radial*Math.Cos(angle)-63);Canvas.SetTop(button,270+radial*Math.Sin(angle)-43);canvas.Children.Add(button);buttons.Add(button);var index=i;
             button.Click+=(_,_)=>{Close();select(choice);};button.MouseEnter+=(_,_)=>Highlight(index);button.GotKeyboardFocus+=(_,_)=>Highlight(index);
             path.MouseLeftButtonUp+=(_,_)=>{Close();select(choice);};path.MouseEnter+=(_,_)=>Highlight(index);
         }
-        var center=new Button{Focusable=false,Content=new TextBlock{Text="Tools\nEsc to close",TextAlignment=TextAlignment.Center,FontSize=16,FontWeight=FontWeights.SemiBold},Width=180,Height=180,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink")};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();PreviewKeyDown+=(_,e)=>{e.Handled=Navigate(e.Key);};Loaded+=(_,_)=>{if(buttons.Count>0)buttons[0].Focus();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
+        var centerLabel=new StackPanel();centerLabel.Children.Add(new TextBlock{Text="Tools",FontSize=20,FontWeight=FontWeights.SemiBold,TextAlignment=TextAlignment.Center});centerLabel.Children.Add(new TextBlock{Text="Esc to close",FontSize=11,TextAlignment=TextAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(0,6,0,0)});
+        var center=new Button{Style=(Style)Application.Current.FindResource("WheelLabelButton"),Focusable=false,Content=centerLabel,Width=180,Height=180,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink")};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();PreviewKeyDown+=(_,e)=>{e.Handled=Navigate(e.Key);};Loaded+=(_,_)=>{if(buttons.Count>0)buttons[0].Focus();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
     }
 }
 internal static class Feedback

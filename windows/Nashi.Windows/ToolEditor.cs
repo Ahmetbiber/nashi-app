@@ -11,7 +11,7 @@ namespace Nashi.Windows;
 public sealed class ToolEditor:Window
 {
     public MediaOptions MediaOptions{get;private set;}=new();public ImageOptions ImageOptions{get;private set;}=new();public string Format{get;private set;}="png";public int[] Pages{get;private set;}=[];
-    private readonly string tool;private readonly BitmapSource? bitmap;private readonly Dictionary<string,TextBox> fields=[];
+    private readonly string tool;private readonly BitmapSource? bitmap;private readonly Dictionary<string,TextBox> fields=[];private readonly Dictionary<string,string> defaults=[];
     private readonly ComboBox format=new();private readonly ComboBox drawingTool=new(){ItemsSource=new[]{"Marker","Rectangle"},SelectedIndex=0};
     private readonly Canvas drawing=new(){Background=Brushes.Transparent,Focusable=true};private Rectangle? selection,activeRectangle;private Polyline? activeStroke;private Point origin;private bool dragging;
     private readonly MediaElement player=new(){LoadedBehavior=MediaState.Manual,UnloadedBehavior=MediaState.Close,Stretch=Stretch.Uniform,Height=260};private bool playing;
@@ -28,12 +28,12 @@ public sealed class ToolEditor:Window
         var grid=new Grid{Margin=new(28)};grid.RowDefinitions.Add(new(){Height=GridLength.Auto});grid.RowDefinitions.Add(new(){Height=new(1,GridUnitType.Star)});grid.RowDefinitions.Add(new(){Height=GridLength.Auto});Content=grid;
         var heading=new StackPanel();heading.Children.Add(new TextBlock{Text=title,FontSize=30,FontWeight=FontWeights.Bold});heading.Children.Add(new TextBlock{Text=Path.GetFileName(input)+"  ·  Original stays safe",Foreground=Theme.Brush("Muted"),Margin=new(0,5,0,22)});grid.Children.Add(heading);
         var body=new Grid();body.ColumnDefinitions.Add(new(){Width=new(1.6,GridUnitType.Star)});body.ColumnDefinitions.Add(new(){Width=new(1,GridUnitType.Star)});Grid.SetRow(body,1);grid.Children.Add(body);
-        var previewStack=new StackPanel();body.Children.Add(new ScrollViewer{Content=previewStack,VerticalScrollBarVisibility=ScrollBarVisibility.Auto});Grid.SetColumn(options,1);body.Children.Add(new ScrollViewer{Content=options,VerticalScrollBarVisibility=ScrollBarVisibility.Auto});Grid.SetColumn(body.Children[^1],1);
+        var previewStack=new StackPanel();previewStack.Children.Add(new TextBlock{Text="PREVIEW",FontSize=11,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,0,0,16)});options.Children.Add(new TextBlock{Text="MAKE IT YOURS",FontSize=11,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,0,0,16)});body.Children.Add(new ScrollViewer{Content=previewStack,VerticalScrollBarVisibility=ScrollBarVisibility.Auto});Grid.SetColumn(options,1);body.Children.Add(new ScrollViewer{Content=options,VerticalScrollBarVisibility=ScrollBarVisibility.Auto});Grid.SetColumn(body.Children[^1],1);
         if(bitmap is not null)
         {
             drawing.Width=bitmap.PixelWidth;drawing.Height=bitmap.PixelHeight;
             drawing.Children.Add(new Image{Source=bitmap,Width=bitmap.PixelWidth,Height=bitmap.PixelHeight});
-            var viewbox=new Viewbox{Child=drawing,Stretch=Stretch.Uniform,MaxHeight=420};previewStack.Children.Add(viewbox);
+            var viewbox=new Viewbox{Child=drawing,Stretch=Stretch.Uniform,MaxHeight=420};viewbox.SizeChanged+=(_,_)=>viewbox.Clip=new RectangleGeometry(new Rect(0,0,viewbox.ActualWidth,viewbox.ActualHeight),14,14);previewStack.Children.Add(viewbox);
             drawing.MouseLeftButtonDown+=BeginDraw;drawing.MouseMove+=MoveDraw;drawing.MouseLeftButtonUp+=EndDraw;
         }
         else if(media is not null)
@@ -80,8 +80,8 @@ public sealed class ToolEditor:Window
             options.Children.Add(new TextBlock{Text="Drawing tool"});options.Children.Add(drawingTool);options.Children.Add(new TextBlock{Text="Drag to draw. Marker and rectangle are mutually exclusive.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)});
             options.Children.Add(MainWindow.Button("Undo last mark",()=>{if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
-        if(options.Children.Count==0)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
-        var footer=new DockPanel{Margin=new(0,20,0,0)};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Brush("Gold");save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);footer.Children.Add(MainWindow.Button("Cancel",()=>DialogResult=false));
+        if(options.Children.Count==1)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
+        var footer=new DockPanel{Margin=new(0,20,0,0),LastChildFill=false};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Brush("Gold");save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);var cancel=MainWindow.Button("Cancel",()=>DialogResult=false);DockPanel.SetDock(cancel,Dock.Left);footer.Children.Add(cancel);var reset=MainWindow.Button("↶ Reset",Reset);DockPanel.SetDock(reset,Dock.Left);footer.Children.Add(reset);var safe=new TextBlock{Text="Original stays safe",Foreground=Theme.Brush("Muted"),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new(0,0,16,0)};DockPanel.SetDock(safe,Dock.Right);footer.Children.Add(safe);
         var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
         clock.Tick+=(_,_)=>{if(playing)time.Text=$"{player.Position:mm\\:ss\\.fff} / {TimeSpan.FromSeconds(duration):mm\\:ss\\.fff}";};
         player.MediaEnded+=(_,_)=>{playing=false;player.Pause();};clock.Start();
@@ -89,7 +89,8 @@ public sealed class ToolEditor:Window
     }
     private static string Number(double n)=>n.ToString("0.###",CultureInfo.CurrentCulture);
     private void Field(string name,double value)=>TextField(name,Number(value));
-    private void TextField(string name,string value){options.Children.Add(new TextBlock{Text=name,Margin=new(4,12,4,0)});var box=new TextBox{Text=value};System.Windows.Automation.AutomationProperties.SetAutomationId(box,name);if(name is "Start" or "End")box.LostKeyboardFocus+=(_,_)=>{try{SyncTimeline();}catch(ArgumentException){}};fields.Add(name,box);options.Children.Add(box);}
+    private void TextField(string name,string value){options.Children.Add(new TextBlock{Text=name,Margin=new(4,12,4,0)});var box=new TextBox{Text=value};System.Windows.Automation.AutomationProperties.SetAutomationId(box,name);if(name is "Start" or "End")box.LostKeyboardFocus+=(_,_)=>{try{SyncTimeline();}catch(ArgumentException){}};fields.Add(name,box);defaults.Add(name,value);options.Children.Add(box);}
+    private void Reset(){foreach(var pair in defaults)fields[pair.Key].Text=pair.Value;while(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);selection=null;activeRectangle=null;activeStroke=null;timeline.Set(duration,0,duration);if(media is not null)Seek(0);}
     private double Value(string key,double fallback=0)
     {
         if(!fields.TryGetValue(key,out var box))return fallback;

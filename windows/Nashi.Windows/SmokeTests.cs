@@ -77,7 +77,7 @@ internal static class SmokeTests
         Check(window.LinkField.Text.Contains("ordinary field paste")&&library.Entries.Count==3,"Link field paste was intercepted");
         Clipboard.Clear();window.Import(new DataObject());Check(library.Entries.Count==3,"Empty clipboard created a Library item");
         var reloaded=new LibraryStore(library.DirectoryPath);Check(reloaded.Entries.Count==3&&reloaded.Appearance=="dark","Library or appearance did not survive reload");
-        var remove=ImageEngine.Apply("resize",[source],root,new(Width:120))[0];reloaded.Record("Resize",[remove]);File.Delete(remove);
+        var remove=ImageEngine.Apply("resize",[source],root,new(Width:120))[0];library.Record("Resize",[remove]);File.Delete(remove);reloaded=new LibraryStore(library.DirectoryPath);
         Check(reloaded.Search("Resize").Single().AvailablePaths.Length==0,"Moved/deleted Library file treated as available");
         window.ShowLibrary(true);window.SearchField.Clear();window.UpdateLayout();DesktopInput.Pump();
         Capture(window,"windows-library.png");
@@ -90,6 +90,7 @@ internal static class SmokeTests
         var wheelImage=new RenderTargetBitmap((int)wheel.ActualWidth,(int)wheel.ActualHeight,96,96,PixelFormats.Pbgra32);wheelImage.Render(wheel);ImageEngine.Save(wheelImage,Path.Combine(root,"windows-wheel.png"),"png");DesktopInput.Key(wheel,Key.Escape);Check(!wheel.IsVisible,"Escape did not close wheel");
         ToolChoice? chosen=null;var enterWheel=new WheelWindow(window,[new("crop","Crop","⌗"),new("resize","Resize","⤢")],choice=>chosen=choice);enterWheel.Show();DesktopInput.Pump();DesktopInput.Key(enterWheel,Key.Tab);DesktopInput.Key(enterWheel,Key.Enter);Check(chosen?.Id=="resize","Tab/Enter did not activate the focused wheel tool");
         var editor=new ToolEditor(window,"crop","Crop",source,preview:bitmap);editor.Show();editor.UpdateLayout();DesktopInput.Pump();
+        var cancel=Descendants(editor).OfType<Button>().Single(b=>b.Content as string=="Cancel");Check(cancel.ActualWidth<180,"Editor Cancel button stretched across the footer");Check(editor.FieldForTest("Width").ActualHeight<48,"Text box padding doubled its height");
         var canvas=Descendants(editor).OfType<Canvas>().First();
         DesktopInput.Drag(canvas,new Point(20,20),new Point(180,130),shift:true);
         var cw=double.Parse(editor.FieldForTest("Width").Text);var ch=double.Parse(editor.FieldForTest("Height").Text);
@@ -109,7 +110,7 @@ internal static class SmokeTests
         DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Left arrow did not seek back one second");
         DesktopInput.Key(audioEditor,Key.I);DesktopInput.Key(audioEditor,Key.Right);DesktopInput.Key(audioEditor,Key.O);Check(audioEditor.Timeline.End>audioEditor.Timeline.Start&&audioEditor.Timeline.End<5,"I/O did not synchronize trim range");
         audioEditor.FieldForTest("Start").Focus();position=audioEditor.PreviewSeconds;DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Arrow in trim text field incorrectly sought media");DesktopInput.Key(audioEditor,Key.Escape);Check(!audioEditor.IsVisible,"Escape did not close trim editor");
-        Theme.Apply("light");window.UpdateLayout();Capture(window,"windows-home-light.png");Theme.Apply("dark");
+        var appearance=Descendants(window).OfType<ComboBox>().Single(c=>c.Items.Contains("Dark"));appearance.Focus();DesktopInput.Key(window,Key.Home);DesktopInput.Key(window,Key.Down);Check(!Theme.Dark&&library.Appearance=="light","Appearance keyboard selection did not apply and persist light theme");window.UpdateLayout();Capture(window,"windows-home-light.png");DesktopInput.Key(window,Key.End);Check(Theme.Dark&&library.Appearance=="dark","Dark theme selection failed");
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");restarted.Close();

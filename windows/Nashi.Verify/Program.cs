@@ -42,6 +42,19 @@ try
         catch (OperationCanceledException) { checks++; }
     }
     Check(!Directory.EnumerateDirectories(root).Any(), "Staging files survived cancellation");
+    var libraryDirectory=Path.Combine(root,"LibraryData");var library=new LibraryStore(libraryDirectory);
+    var unicodeFile=Path.Combine(root,"Türkçe 🍐.txt");File.WriteAllText(unicodeFile,"original");library.Record("Pasted text",[unicodeFile]);library.SetAppearance("dark");
+    var reopened=new LibraryStore(libraryDirectory);Check(reopened.Entries.Single().Paths.Single()==unicodeFile&&reopened.Appearance=="dark","Library restart lost paths or settings");
+    Check(reopened.Search("Türkçe").Count()==1&&reopened.Search("PASTED").Count()==1&&reopened.Search("absent").Count()==0,"Library search failed");
+    File.Delete(unicodeFile);Check(reopened.Entries.Single().AvailablePaths.Length==0,"Missing Library file was available");
+    for(var i=0;i<55;i++)library.Record("ZIP "+i,[Path.Combine(root,"Output.txt")]);Check(library.Entries.Count==LibraryStore.Limit,"Library retention limit failed");
+    Check(new LibraryStore(libraryDirectory).Entries.Count==LibraryStore.Limit,"Persisted Library limit failed");
+    var broken=Path.Combine(libraryDirectory,"library.json");File.WriteAllText(broken,"{broken");var recovered=new LibraryStore(libraryDirectory);
+    Check(recovered.Entries.Count==0&&recovered.RecoveryNotice is not null,"Corrupt Library crashed or did not report recovery");
+    Check(Directory.GetFiles(libraryDirectory,"*.recovered-*").Length==1&&File.ReadAllText(Directory.GetFiles(libraryDirectory,"*.recovered-*")[0])=="{broken","Corrupt Library recovery copy missing");
+    recovered.Record("Recovered",[Path.Combine(root,"Output.txt")]);Check(new LibraryStore(libraryDirectory).Entries.Count==1,"Library did not recover after corrupt data");
+    Directory.Delete(libraryDirectory,true);
+    Check(PublicUpdates.Normalize(new Version("0.7.4"))==PublicUpdates.Normalize(new Version("0.7.4.0")),"Equivalent update versions compared differently");
     var updates = new List<double?>(); var parser = new FFmpegProgress(10, p => updates.Add(p.Fraction), "Encoding");
     foreach (var line in new[] { "out_time_us=N/A", "out_time_us=nan", "out_time_us=-1", "out_time_us=1000000", "out_time_us=5000000", "out_time_us=2000000", "out_time_us=20000000" }) parser.ReadLine(line);
     Check(updates.SequenceEqual(new double?[] { .1, .5, .995 }), "Encoder progress parser regressed or completed early");

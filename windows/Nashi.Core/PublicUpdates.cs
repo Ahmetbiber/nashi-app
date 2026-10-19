@@ -13,14 +13,15 @@ public static class PublicUpdates
     private const string PublicKey="VPJpPpgXKda4c3ZOvP4zH8koa3ht1jm6lJWNBr+2saU=";
     public static async Task<WindowsUpdate?> CheckAsync(Version current,CancellationToken token=default)
     {
-        using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(30)};client.DefaultRequestHeaders.UserAgent.ParseAdd("Nashi/0.7.0");
+        using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(30)};client.DefaultRequestHeaders.UserAgent.ParseAdd("Nashi/"+current.ToString());
         using var response=await client.GetAsync(Feed,HttpCompletionOption.ResponseHeadersRead,token);
         if(response.StatusCode==System.Net.HttpStatusCode.NotFound)return null;response.EnsureSuccessStatusCode();
         await using var stream=await response.Content.ReadAsStreamAsync(token);using var memory=new MemoryStream();var buffer=new byte[8192];int count;
         while((count=await stream.ReadAsync(buffer,token))>0){if(memory.Length+count>65536)throw new InvalidDataException("Update manifest is too large.");memory.Write(buffer,0,count);}
         var update=JsonSerializer.Deserialize<WindowsUpdate>(memory.ToArray(),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Invalid update manifest.");
-        Validate(update);return Version.Parse(update.Version)>current?update:null;
+        Validate(update);return Normalize(Version.Parse(update.Version))>Normalize(current)?update:null;
     }
+    public static Version Normalize(Version value)=>new(value.Major,value.Minor,Math.Max(0,value.Build),Math.Max(0,value.Revision));
     public static void Validate(WindowsUpdate update)
     {
         if(!Version.TryParse(update.Version,out _)||!Uri.TryCreate(update.Url,UriKind.Absolute,out var uri)||uri.Scheme!="https"||uri.Host!="github.com"||!uri.AbsolutePath.StartsWith("/"+Repository+"/releases/download/",StringComparison.Ordinal)||!string.IsNullOrEmpty(uri.UserInfo)||uri.Query.Length>0||update.Length<1||update.Length>1024L*1024*1024)throw new InvalidDataException("Invalid public update location or size.");

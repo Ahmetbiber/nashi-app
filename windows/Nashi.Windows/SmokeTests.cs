@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Nashi.Core;
@@ -8,6 +10,7 @@ internal static class SmokeTests
 {
     public static void Run()
     {
+        Application.Current.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         var root=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY")??Path.Combine(Path.GetTempPath(),"Nashi-Smoke-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var checks=0;
         void Check(bool value,string reason){if(!value)throw new Exception(reason);checks++;}
         var visual=new DrawingVisual();using(var dc=visual.RenderOpen()){dc.DrawRectangle(Brushes.DarkOliveGreen,null,new Rect(0,0,320,180));dc.DrawRectangle(Brushes.Gold,null,new Rect(20,20,120,80));}
@@ -38,12 +41,53 @@ internal static class SmokeTests
         foreach(var ext in ImageEngine.Formats){var converted=ImageEngine.Apply("convert",[source],root,new(),ext);Check(new FileInfo(converted[0]).Length>0,"Empty "+ext);}
         var pdfs=Directory.GetFiles(root,"*.pdf");var merged=DocumentEngine.Pdf("mergePDFs",[pdfs[0],pdfs[0]],root);var parts=DocumentEngine.Pdf("splitPDF",merged,root);Check(parts.Count==2,"PDF page count mismatch");
         var zip=DocumentEngine.Zip([source],root);var extracted=DocumentEngine.Unzip(zip,root);Check(File.Exists(Path.Combine(extracted[0],"Source.png")),"ZIP output missing");
-        var window=new MainWindow([source]);window.Show();window.UpdateLayout();
+        var library=new LibraryStore(Path.Combine(root,"UserData"));library.SetAppearance("dark");
+        var window=new MainWindow([source],library,checkForUpdates:false);window.Show();window.UpdateLayout();DesktopInput.Pump();
+        Button FindButton(string name)=>Descendants(window).OfType<Button>().First(b=>b.Content as string==name);
+        var clipboardText="Nashi clipboard · Türkçe ıİşğü 🍐\r\nSecond line";
+        Clipboard.SetText(clipboardText);FindButton("Home").Focus();DesktopInput.Key(window,Key.V,control:true);
+        Check(window.SelectedFiles.Count==1&&Path.GetExtension(window.SelectedFiles[0])==".txt","Native Ctrl+V did not import text");
+        Check(File.ReadAllText(window.SelectedFiles[0])==clipboardText,"Unicode or line breaks changed while pasting text");
+        var importedText=window.SelectedFiles[0];Check(library.Entries.Count==1,"Pasted text missing from Library");
+        DesktopInput.Key(window,Key.F,control:true);Check(window.LibraryVisible&&window.SearchField.IsKeyboardFocused,"Ctrl+F did not focus Library search");
+        Clipboard.SetText("Pasted text");DesktopInput.Key(window,Key.V,control:true);
+        Check(window.SearchField.Text=="Pasted text"&&library.Entries.Count==1,"Ctrl+V in a text field imported a new file or failed normal paste");
+        DesktopInput.Key(window,Key.D1,control:true);Check(!window.LibraryVisible,"Ctrl+1 did not switch Home");
+        Clipboard.SetImage(bitmap);FindButton("Home").Focus();DesktopInput.Key(window,Key.V,control:true);
+        var importedImage=window.SelectedFiles.Single();var pasted=ImageEngine.Load(importedImage);
+        Check(pasted.PixelWidth==320&&pasted.PixelHeight==180,"Native image paste changed image dimensions");
+        Check(library.Entries.Count==2&&File.Exists(importedText),"Pasting an image replaced previous imported text");
+        var imagePixel=new byte[4];new FormatConvertedBitmap(pasted,PixelFormats.Bgra32,null,0).CopyPixels(new Int32Rect(30,30,1,1),imagePixel,4,0);
+        Check(imagePixel[2]>200&&imagePixel[1]>150&&imagePixel[0]<50,"Clipboard image pixels changed");
+        var drops=new System.Collections.Specialized.StringCollection{source,tagged};Clipboard.SetFileDropList(drops);FindButton("Home").Focus();DesktopInput.Key(window,Key.V,control:true);
+        Check(window.SelectedFiles.Count==2&&window.SelectedFiles.Contains(source),"File-list paste failed");
+        Clipboard.SetText("https://www.youtube.com/watch?v=fixture");FindButton("Home").Focus();DesktopInput.Key(window,Key.D,control:true,shift:true);
+        Check(window.LinkField.Text.Contains("watch?v=fixture")&&window.LinkField.IsKeyboardFocused,"Copied-link shortcut failed");
+        Clipboard.SetText("ordinary field paste");DesktopInput.Key(window,Key.V,control:true);
+        Check(window.LinkField.Text.Contains("ordinary field paste")&&library.Entries.Count==3,"Link field paste was intercepted");
+        Clipboard.Clear();window.Import(new DataObject());Check(library.Entries.Count==3,"Empty clipboard created a Library item");
+        var reloaded=new LibraryStore(library.DirectoryPath);Check(reloaded.Entries.Count==3&&reloaded.Appearance=="dark","Library or appearance did not survive reload");
+        var remove=ImageEngine.Apply("resize",[source],root,new(Width:120))[0];reloaded.Record("Resize",[remove]);File.Delete(remove);
+        Check(reloaded.Search("Resize").Single().AvailablePaths.Length==0,"Moved/deleted Library file treated as available");
+        window.ShowLibrary(true);window.SearchField.Clear();window.UpdateLayout();DesktopInput.Pump();
+        Capture(window,"windows-library.png");
+        window.ShowLibrary(false);window.LinkField.Clear();window.UpdateLayout();DesktopInput.Pump();
         var screenshot=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);screenshot.Render(window);ImageEngine.Save(screenshot,Path.Combine(root,"windows-home.png"),"png");
-        var wheel=new WheelWindow(window,[new("crop","Crop","⌗"),new("resize","Resize","⤢"),new("annotate","Annotate","✎")],_=>{});wheel.Show();wheel.UpdateLayout();
-        var wheelImage=new RenderTargetBitmap((int)wheel.ActualWidth,(int)wheel.ActualHeight,96,96,PixelFormats.Pbgra32);wheelImage.Render(wheel);ImageEngine.Save(wheelImage,Path.Combine(root,"windows-wheel.png"),"png");wheel.Close();
+        var wheel=new WheelWindow(window,[new("crop","Crop","⌗"),new("resize","Resize","⤢"),new("annotate","Annotate","✎")],_=>{});wheel.Show();wheel.UpdateLayout();DesktopInput.Pump();
+        DesktopInput.Key(wheel,Key.Right);Check(wheel.SelectedIndex==1,"Wheel Right arrow failed");
+        DesktopInput.Key(wheel,Key.Left);Check(wheel.SelectedIndex==0,"Wheel Left arrow failed");
+        DesktopInput.Key(wheel,Key.Left);Check(wheel.SelectedIndex==2,"Wheel did not wrap to last tool");
+        var wheelImage=new RenderTargetBitmap((int)wheel.ActualWidth,(int)wheel.ActualHeight,96,96,PixelFormats.Pbgra32);wheelImage.Render(wheel);ImageEngine.Save(wheelImage,Path.Combine(root,"windows-wheel.png"),"png");DesktopInput.Key(wheel,Key.Escape);Check(!wheel.IsVisible,"Escape did not close wheel");
         var editor=new ToolEditor(window,"crop","Crop",source,preview:bitmap);editor.Show();editor.UpdateLayout();var editorImage=new RenderTargetBitmap((int)editor.ActualWidth,(int)editor.ActualHeight,96,96,PixelFormats.Pbgra32);editorImage.Render(editor);ImageEngine.Save(editorImage,Path.Combine(root,"windows-crop.png"),"png");editor.Close();
-        var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Close();window.Close();
-        File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Windows WPF render and real image/PDF/ZIP operations. No physical mouse/global Explorer gesture claimed."}));
+        Theme.Apply("light");window.UpdateLayout();Capture(window,"windows-home-light.png");Theme.Apply("dark");
+        var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
+        var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
+        Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");restarted.Close();
+        File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations. No global Explorer gesture claimed."}));
+        void Capture(Window view,string name){view.UpdateLayout();var capture=new RenderTargetBitmap((int)view.ActualWidth,(int)view.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(view);ImageEngine.Save(capture,Path.Combine(root,name),"png");}
+    }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for(var i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var child=VisualTreeHelper.GetChild(root,i);yield return child;foreach(var nested in Descendants(child))yield return nested;}
     }
 }

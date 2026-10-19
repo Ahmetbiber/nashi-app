@@ -12,6 +12,12 @@ internal static class SmokeTests
         void Check(bool value,string reason){if(!value)throw new Exception(reason);checks++;}
         var visual=new DrawingVisual();using(var dc=visual.RenderOpen()){dc.DrawRectangle(Brushes.DarkOliveGreen,null,new Rect(0,0,320,180));dc.DrawRectangle(Brushes.Gold,null,new Rect(20,20,120,80));}
         var bitmap=new RenderTargetBitmap(320,180,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var source=Path.Combine(root,"Source.png");ImageEngine.Save(bitmap,source,"png");
+        const string query="/tEXt/{str=Comment}";
+        var tagged=Path.Combine(root,"Tagged.png");var metadata=new BitmapMetadata("png");metadata.SetQuery(query,"Nashi metadata fixture");
+        var taggedEncoder=new PngBitmapEncoder();taggedEncoder.Frames.Add(BitmapFrame.Create(bitmap,null,metadata,null));using(var taggedFile=File.Create(tagged))taggedEncoder.Save(taggedFile);
+        Check(ImageEngine.Load(tagged) is BitmapFrame taggedFrame&&taggedFrame.Metadata is BitmapMetadata originalMetadata&&originalMetadata.ContainsQuery(query),"Metadata fixture was not tagged");
+        var cleaned=ImageEngine.Apply("removeMetadata",[tagged],root,new());
+        Check(ImageEngine.Load(cleaned[0]) is BitmapFrame cleanedFrame&&(cleanedFrame.Metadata is not BitmapMetadata remaining||!remaining.ContainsQuery(query)),"Metadata removal retained the source comment");
         var crop=ImageEngine.Apply("crop",[source],root,new(Crop:new Int32Rect(10,10,80,60)));Check(ImageEngine.Load(crop[0]).PixelWidth==80,"Crop width mismatch");
         var resized=ImageEngine.Apply("resize",[source],root,new(Width:160));Check(ImageEngine.Load(resized[0]).PixelHeight==90,"Resize aspect mismatch");
         var rotated=ImageEngine.Apply("rotate",[source],root,new(Rotation:90));Check(ImageEngine.Load(rotated[0]).PixelWidth==180,"Rotate mismatch");

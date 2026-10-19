@@ -6,6 +6,22 @@
 
 Nashi is an independent, open-source file conversion and editing app inspired by [Tangerine](https://tangerineformac.com/)'s drag-and-wheel interaction. It adds public web-media downloads, QR reading, refined crop/annotation workflows, keyboard media editing, live progress and signed automatic updates. Nashi is not affiliated with Tangerine or LEAP STUDIO and includes no proprietary reference-app binaries or artwork.
 
+## See Nashi in action
+
+[![Nashi guided tour: choose a file, convert with the wheel, crop and find the results](docs/assets/showcase/nashi-demo.gif)](https://orkunisitmak.github.io/nashi-app/#demo)
+
+**[Watch the 23-second demo](https://orkunisitmak.github.io/nashi-app/#demo)** · **[Türkçe demo](https://orkunisitmak.github.io/nashi-app/tr/#demo)** · [MP4](https://orkunisitmak.github.io/nashi-app/assets/showcase/nashi-demo.mp4)
+
+A guided tour assembled from real macOS 0.7.3 app captures: choose an image, convert it to JPG, crop it and find the outputs. English and Turkish captions are available in the video player.
+
+| macOS · Home | macOS · Crop image |
+| :---: | :---: |
+| [![Nashi Mac Home with file selection and quick actions](docs/assets/showcase/mac-home.png)](docs/assets/showcase/mac-home.png) | [![Nashi Mac crop editor with a square selection and aspect ratio controls](docs/assets/showcase/mac-crop.png)](docs/assets/showcase/mac-crop.png) |
+| **macOS · Conversion wheel** | **Windows · Development preview** |
+| [![Nashi conversion wheel with JPG highlighted](docs/assets/showcase/mac-wheel.png)](docs/assets/showcase/mac-wheel.png) | [![Nashi native Windows Home in the light theme](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
+
+Windows screenshot: native UI test capture from the development build in [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1), ahead of the current public Windows release. Demo files contain Nashi's own artwork; no personal files or account details are shown.
+
 ## Download and use
 
 - **[macOS ZIP · Apple Silicon, macOS 13+](https://github.com/orkunisitmak/nashi-app/releases/latest/download/Nashi-macOS-arm64.zip):** extract, move Nashi.app to your Applications folder and open it. The full macOS catalog has 27 tools, 45 input formats and 275 conversion routes.

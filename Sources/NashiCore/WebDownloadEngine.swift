@@ -17,7 +17,9 @@ public struct WebMediaInfo:Sendable {
     public let byteCount:Int64?
     public var imageWidth:Int? = nil
     public var imageHeight:Int? = nil
-    public var modes:[WebDownloadMode] { direct ? (kind == .image ? [.original]:[.original,.audioMP3]):kind == .audio ? [.original,.audioMP3]:[.video,.audioMP3] }
+    public var photos:[WebPhoto] = []
+    public var skippedVideoCount:Int = 0
+    public var modes:[WebDownloadMode] { kind == .image ? [.original]:direct || kind == .audio ? [.original,.audioMP3]:[.video,.audioMP3] }
 }
 
 public enum WebDownloadEngine {
@@ -34,6 +36,12 @@ public enum WebDownloadEngine {
         let url=try link(url.absoluteString);try token.check()
         let session=URLSession(configuration:.ephemeral)
         defer { session.invalidateAndCancel() }
+        if WebMediaDragPayload.isInstagramPhotoPost(url) {
+            let args=try baseArguments(photoPost:true)+["--ignore-no-formats-error","--skip-download","--dump-single-json","--no-progress","--",url.absoluteString]
+            let data=try await Task.detached { try WebDownloadProcess.run(Dependencies.executable("yt-dlp"),args,token:token,timeout:100) }.value
+            try token.check();try Task.checkCancellation()
+            return try InstagramPhotos.parse(data,url:url)
+        }
         if let cover=try await YouTubeThumbnail.resolve(url,token:token,fetch:{ candidate in
             var request=URLRequest(url:candidate);request.timeoutInterval=12
             let (data,response)=try await session.data(for:request)
@@ -73,7 +81,7 @@ public enum WebDownloadEngine {
         return WebMediaInfo(url:url,title:String((item["title"] as? String ?? "Web media").prefix(300)),kind:video ? .video:.audio,site:item["extractor_key"] as? String ?? url.host ?? "Web",duration:duration,heights:heights,direct:false,filename:nil,byteCount:nil)
     }
 
-    public static func download(_ info:WebMediaInfo,mode:WebDownloadMode,maximumHeight:Int?,destination:URL,
+    public static func download(_ info:WebMediaInfo,mode:WebDownloadMode,maximumHeight:Int?,destination:URL,selectedPhotos:Set<Int>? = nil,
                                 token:CancellationToken = .init(),progress:@escaping ProgressHandler) async throws -> [URL] {
         _=try link(info.url.absoluteString)
         guard destination.isFileURL,info.modes.contains(mode) else { throw NashiError.invalidInput("Choose an available media type and a local destination folder.") }
@@ -82,7 +90,9 @@ public enum WebDownloadEngine {
         let transaction=ExportTransaction();let area=try transaction.makeArea(destination:destination)
         defer { transaction.cleanUp() }
         let results:[URL]
-        if info.direct {
+        if !info.photos.isEmpty {
+            results=try await InstagramPhotos.download(info,selected:selectedPhotos,directory:area.directory,token:token,progress:progress)
+        } else if info.direct {
             results=try await downloadDirect(info,mode:mode,directory:area.directory,token:token,progress:progress)
         } else {
             let arguments=try downloadArguments(info,mode:mode,maximumHeight:maximumHeight,directory:area.directory)
@@ -127,11 +137,12 @@ public enum WebDownloadEngine {
         }
     }
 
-    static func baseArguments() throws -> [String] {
+    static func baseArguments(photoPost:Bool=false) throws -> [String] {
         ["--ignore-config","--no-plugin-dirs","--no-update","--no-cache-dir","--no-remote-components",
          "--no-js-runtimes","--js-runtimes","deno:\(try Dependencies.executable("deno").path)",
          "--ffmpeg-location",try Dependencies.executable("ffmpeg").deletingLastPathComponent().path,
-         "--no-playlist","--playlist-items","1","--socket-timeout","20","--retries","2","--extractor-retries","1","--no-colors"]
+         "--socket-timeout","20","--retries","2","--extractor-retries","1","--no-colors"] +
+        (photoPost ? ["--yes-playlist","--playlist-end","51"]:["--no-playlist","--playlist-items","1"])
     }
     static func downloadArguments(_ info:WebMediaInfo,mode:WebDownloadMode,maximumHeight:Int?,directory:URL) throws -> [String] {
         var args=try baseArguments()+["--no-simulate","--no-overwrites","--windows-filenames","--trim-filenames","180",
@@ -149,7 +160,7 @@ public enum WebDownloadEngine {
         return args+["--",info.url.absoluteString]
     }
 
-    private static func downloadDirect(_ info:WebMediaInfo,mode:WebDownloadMode,directory:URL,token:CancellationToken,
+    static func downloadDirect(_ info:WebMediaInfo,mode:WebDownloadMode,directory:URL,token:CancellationToken,
                                        progress:@escaping ProgressHandler) async throws -> [URL] {
         let delegate=TransferDelegate(token:token,progress:progress)
         let configuration=URLSessionConfiguration.ephemeral;configuration.timeoutIntervalForRequest=45;configuration.timeoutIntervalForResource=21_600

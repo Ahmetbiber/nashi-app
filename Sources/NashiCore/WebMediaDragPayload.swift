@@ -6,6 +6,11 @@ public struct WebMediaDragPayload:Equatable,Sendable {
     public let primaryURL:URL
     public let videoURL:URL?
     public let imageURL:URL?
+    public var isInstagramPhotoPost:Bool { Self.isInstagramPhotoPost(primaryURL) }
+    public static func isInstagramPhotoPost(_ url:URL)->Bool {
+        guard let page=videoPage(url) else { return false }
+        return page.host=="www.instagram.com" && page.path.hasPrefix("/p/")
+    }
     public var urls:[URL] { if let imageURL,imageURL != primaryURL { return [primaryURL,imageURL] };return [primaryURL] }
 
     public static func parse(urls:[String],html:[String]=[],baseURLs:[String]=[])->Self? {
@@ -30,6 +35,9 @@ public struct WebMediaDragPayload:Equatable,Sendable {
         guard pages.count<=1 else { return nil }
         let image=unique(images+explicit.filter(isImage)).first
         if let page=pages.first {
+            if isInstagramPhotoPost(page) { return .init(primaryURL:page,videoURL:nil,imageURL:image) }
+            // Instagram reel posters are not separate photo downloads.
+            if page.host=="www.instagram.com" { return .init(primaryURL:page,videoURL:page,imageURL:nil) }
             return .init(primaryURL:page,videoURL:page,imageURL:image ?? youtubeThumbnail(page))
         }
         if let image,let page=youtubePageFromThumbnail(image) {

@@ -11,6 +11,7 @@ import NashiCore
     @Published var downloading=false
     @Published var error:String?
     @Published var completed:[URL]=[]
+    @Published var selectedPhotos=Set<Int>()
     @Published var shortcutAvailable=false
     @Published var destination:URL
     let state:AppState
@@ -49,7 +50,7 @@ import NashiCore
             do {
                 let found=try await WebDownloadEngine.inspect(url,token:token)
                 guard let self,self.revision==current,!Task.isCancelled else { return }
-                self.info=found;self.maximumHeight=0
+                self.info=found;self.maximumHeight=0;self.selectedPhotos=Set(found.photos.map(\.id))
                 if found.kind == .image { self.linkText=found.url.absoluteString }
                 self.mode=found.modes.contains(self.pendingMode ?? .video) ? (self.pendingMode ?? .video):(found.modes.first ?? .original)
                 self.pendingMode=nil;self.inspecting=false
@@ -61,6 +62,7 @@ import NashiCore
     }
     func cancelInspection() { inspection?.cancel();inspectionToken.cancel();revision=UUID();inspecting=false }
     func configurationChanged() { guard !downloading else { return };completed=[];error=nil }
+    func selectPhotos(_ ids:Set<Int>) { guard !downloading else { return };selectedPhotos=ids;configurationChanged() }
     func chooseDestination() {
         guard !downloading else { return }
         let panel=NSOpenPanel();panel.canChooseFiles=false;panel.canChooseDirectories=true;panel.canCreateDirectories=true;panel.directoryURL=destination;panel.prompt="Save Downloads Here"
@@ -69,13 +71,14 @@ import NashiCore
     func download() {
         guard let info,!downloading,!state.working else { return }
         let mode=mode,maximum=maximumHeight>0 ? maximumHeight:nil,folder=destination
+        let selection=info.photos.isEmpty ? nil:selectedPhotos
         downloading=true;error=nil;completed=[]
         state.beginJob("Starting download…")
         let token=state.token
         Task { [state] in
             defer { downloading=false;state.finishJob() }
             do {
-                let files=try await WebDownloadEngine.download(info,mode:mode,maximumHeight:maximum,destination:folder,token:token) { [weak state] fraction,label in
+                let files=try await WebDownloadEngine.download(info,mode:mode,maximumHeight:maximum,destination:folder,selectedPhotos:selection,token:token) { [weak state] fraction,label in
                     Task { @MainActor in state?.receiveProgress(fraction,label:label,token:token) }
                 }
                 state.stopProgressUpdates();state.outputs=files;state.inputs=files;state.progress=1;completed=files
@@ -122,6 +125,31 @@ struct WebDownloadView:View {
                                 Text(details(info)).font(.caption).foregroundStyle(.secondary)
                             };Spacer(minLength:0)
                         }.padding(17).nashiCard()
+                        if !info.photos.isEmpty {
+                            VStack(alignment:.leading,spacing:12) {
+                                HStack {
+                                    Text("Select photos").font(.headline);Spacer()
+                                    Button("All") { model.selectPhotos(Set(info.photos.map(\.id))) }
+                                    Button("None") { model.selectPhotos([]) }
+                                }
+                                if info.skippedVideoCount>0 { Text("\(info.skippedVideoCount) video items are not included. Only photos will be saved.").font(.caption).foregroundStyle(.secondary) }
+                                Text("Saved in post order in a new Instagram folder.").font(.caption).foregroundStyle(.secondary)
+                                ForEach(info.photos) { photo in
+                                    Toggle(isOn:Binding(get:{model.selectedPhotos.contains(photo.id)},set:{ selected in
+                                        var ids=model.selectedPhotos;if selected { ids.insert(photo.id) } else { ids.remove(photo.id) };model.selectPhotos(ids)
+                                    })) {
+                                        HStack(spacing:12) {
+                                            AsyncImage(url:photo.url) { image in image.resizable().scaledToFit() } placeholder:{Image(systemName:"photo").foregroundStyle(.secondary)}
+                                                .frame(width:88,height:76).background(NashiPalette.sand,in:RoundedRectangle(cornerRadius:8))
+                                            VStack(alignment:.leading,spacing:4) {
+                                                Text("Photo \(photo.id)").font(.callout.weight(.semibold))
+                                                if let width=photo.width,let height=photo.height { Text("\(width) × \(height)").font(.caption).foregroundStyle(.secondary) }
+                                            };Spacer()
+                                        }
+                                    }.toggleStyle(.checkbox)
+                                }
+                            }.padding(17).nashiCard().disabled(model.downloading)
+                        }
                         if info.modes.count>1 {
                             Picker("Save as",selection:$model.mode) { ForEach(info.modes,id:\.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented).disabled(model.downloading)
                         }
@@ -146,7 +174,7 @@ struct WebDownloadView:View {
                     if state.working,!model.downloading { Text("Another task is running. Your link is ready when it finishes.").font(.caption).foregroundStyle(.secondary) }
                     VStack(alignment:.leading,spacing:7) {
                         Text(model.shortcutAvailable ? "Copy a link → ⌃⇧D, or drag it with ⌘.":"Copy a link, then choose Download Link from the Nashi menu.").font(.caption)
-                        Text("For YouTube or Instagram, use the video's share link. For photos, drag the image or use Copy Image Address. Public media only; login-required and protected items may be unavailable.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                        Text("Instagram photo posts open a photo selection. For videos, use the share link; for other photos, drag the image or use Copy Image Address. Public media only; login-required and protected items may be unavailable.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                     }
                 }.padding(24)
             }
@@ -156,13 +184,14 @@ struct WebDownloadView:View {
                 else if !model.completed.isEmpty { Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting(model.completed) } }
                 Spacer()
                 if !model.completed.isEmpty { Button("Use in Nashi") { model.onUseFiles?() }.buttonStyle(NashiButtonStyle(.primary)) }
-                else if model.info != nil { Button(model.mode == .audioMP3 ? "Download MP3":model.info?.kind == .image ? "Download image":"Download") { model.download() }.buttonStyle(NashiButtonStyle(.primary)).disabled(model.downloading || state.working) }
+                else if let info=model.info { Button(!info.photos.isEmpty ? "Download \(model.selectedPhotos.count) \(model.selectedPhotos.count==1 ? "photo":"photos")":model.mode == .audioMP3 ? "Download MP3":info.kind == .image ? "Download image":"Download") { model.download() }.buttonStyle(NashiButtonStyle(.primary)).disabled(model.downloading || state.working || (!info.photos.isEmpty && model.selectedPhotos.isEmpty)) }
                 else { Button("Check link") { model.inspect() }.buttonStyle(NashiButtonStyle(.primary)).disabled(model.linkText.isEmpty || model.inspecting) }
             }.padding(20)
         }.onChange(of:model.mode) { _ in model.configurationChanged() }.onChange(of:model.maximumHeight) { _ in model.configurationChanged() }.frame(minWidth:620,minHeight:520).background(NashiPalette.canvas).tint(.nashi).buttonStyle(NashiButtonStyle(.secondary,compact:true))
     }
     func details(_ info:WebMediaInfo)->String {
         var details=[info.site,info.kind.rawValue.capitalized]
+        if !info.photos.isEmpty { details.append("\(info.photos.count) \(info.photos.count==1 ? "photo":"photos")") }
         if let width=info.imageWidth,let height=info.imageHeight { details.append("\(width) × \(height)") }
         if let duration=info.duration { details.append("\(Int(duration)/60):\(String(format:"%02d",Int(duration)%60))") }
         if let height=info.heights.max() { details.append("\(height)p") }

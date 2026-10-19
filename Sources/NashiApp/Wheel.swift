@@ -34,9 +34,10 @@ struct WheelItem {
         if inputs.first?.isFileURL == false {
             let media=WebMediaDragPayload.parse(urls:inputs.map(\.absoluteString))
             let video=media?.videoURL != nil
-            items=[WheelItem(title:video ? "Download video…":media?.imageURL != nil ? "Download image…":"Download…",symbol:video ? "play.rectangle":"arrow.down.circle",webAction:.download)]
+            let photos=media?.isInstagramPhotoPost == true
+            items=[WheelItem(title:photos ? "Download photos…":video ? "Download video…":media?.imageURL != nil ? "Download image…":"Download…",symbol:photos ? "photo.on.rectangle":video ? "play.rectangle":"arrow.down.circle",webAction:.download)]
             if video,media?.imageURL != nil { items.append(WheelItem(title:"Download thumbnail…",symbol:"photo",webAction:.thumbnail)) }
-            if video || media?.imageURL == nil { items.append(WheelItem(title:"Audio MP3…",symbol:"waveform",webAction:.audio)) }
+            if !photos,(video || media?.imageURL == nil) { items.append(WheelItem(title:"Audio MP3…",symbol:"waveform",webAction:.audio)) }
             items += [WheelItem(title:"Copy link",symbol:"link",webAction:.copy),WheelItem(title:"Open link",symbol:"safari",webAction:.open)]
         } else { switch mode {
         case .convert: items=FeatureCatalog.formats(for:inputs).map{WheelItem(title:$0 == "gz" ? "GZIP":$0.uppercased(),operation:.convert($0))}
@@ -85,7 +86,7 @@ struct WheelItem {
         hide()
         if let action=item.webAction,let media=WebMediaDragPayload.parse(urls:inputs.map(\.absoluteString)) {
             switch action {
-            case .download:state.onWebDownload?(media.primaryURL,media.videoURL == nil && media.imageURL != nil ? .original:.video)
+            case .download:state.onWebDownload?(media.primaryURL,media.isInstagramPhotoPost || (media.videoURL == nil && media.imageURL != nil) ? .original:.video)
             case .thumbnail:if let image=media.imageURL { state.onWebDownload?(image,.original) }
             case .audio:state.onWebDownload?(media.videoURL ?? media.primaryURL,.audioMP3)
             case .copy:NSPasteboard.general.clearContents();NSPasteboard.general.writeObjects([media.primaryURL as NSURL])

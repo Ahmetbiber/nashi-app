@@ -35,9 +35,9 @@ public sealed partial class MainWindow
         }
         if(choice.Id=="organizePDF")
         {
-            var organizer=await PdfOrganizer.CreateAsync(this,selected[0]);if(organizer.ShowDialog()!=true)return;await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf("organizePDF",selected,destination,organizer.Pages,t,organizer.Rotations,pageRotations:organizer.PageRotations),t),"Organize PDF");return;
+            var organizer=await PdfOrganizer.CreateAsync(this,selected[0]);if(organizer.ShowDialog()!=true)return;await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf("organizePDF",selected,destination,organizer.Pages,t,organizer.Rotations,pageRotations:organizer.PageRotations,uniformWidth:organizer.UniformWidth),t),"Organize PDF");return;
         }
-        var dialog=new ToolEditor(this,choice.Id,choice.Title,selected[0],inputs:selected);if(dialog.ShowDialog()!=true)return;await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf(choice.Id,dialog.OrderedInputs,destination,null,t,pagesPerFile:dialog.PagesPerFile,password:dialog.DocumentOptions.Password),t),choice.Title);
+        var dialog=new ToolEditor(this,choice.Id,choice.Title,selected[0],inputs:selected);if(dialog.ShowDialog()!=true)return;if(choice.Id=="compress"){await RunAsync((destination,p,t)=>PdfCompression.RunAsync(selected,destination,dialog.ImageOptions,dialog.DocumentOptions.Password,p,t),"Compress PDF");return;}await RunAsync((destination,p,t)=>Task.Run(()=>DocumentEngine.Pdf(choice.Id,dialog.OrderedInputs,destination,null,t,pagesPerFile:dialog.PagesPerFile,password:dialog.DocumentOptions.Password,pageRanges:dialog.PageRanges),t),choice.Title);
     }
     private async Task ReadQrAsync(IReadOnlyList<string> inputs)
     {

@@ -10,6 +10,7 @@ public sealed record ImageOptions(int? Width=null,int? Height=null,int Rotation=
 {
     public PhotoAdjustments Adjustments{get;init;}=new();public FrameOptions Frame{get;init;}=new();public CollageOptions Collage{get;init;}=new();
     public string RedactionStyle{get;init;}="solid";public Rect[] Redactions{get;init;}=[];
+    public long? TargetBytes{get;init;}public double? ReductionPercent{get;init;}
     public bool FlipHorizontal{get;init;}public bool FlipVertical{get;init;}
     public string? EncoderPath{get;init;}
 }
@@ -74,9 +75,9 @@ public static partial class ImageEngine
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;
                 default:throw new ArgumentException("Unsupported image tool.");
             }
-            if(tool=="compress")ext="jpg";
+            if(tool=="compress"&&!new[]{"jpg","png","heic","webp","avif"}.Contains(ext))ext="jpg";
             var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+(tool=="convert"?"":" "+tool)+"."+ext);
-            Save(image,output,ext,options.Quality,options.EncoderPath,token);outputs.Add(output);progress?.Report(new(++completed/(double)inputs.Count*.98,"Saving images…"));
+            if(tool=="compress")CompressImage(image,input,output,ext,options,token,progress);else Save(image,output,ext,options.Quality,options.EncoderPath,token);outputs.Add(output);progress?.Report(new(++completed/(double)inputs.Count*.98,"Saving images…"));
         }
         return tx.Publish(outputs,token);
     }

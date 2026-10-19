@@ -80,11 +80,11 @@ public sealed partial class ToolEditor:Window
         }
         if(tool=="annotate")
         {
-            drawingTool.ItemsSource=new[]{"Marker","Rectangle","Arrow","Line","Ellipse","Text","Number","Callout","Magnifier","Image","Freehand"};drawingTool.SelectedIndex=0;
+            drawingTool.ItemsSource=new[]{"Marker","Rectangle","Arrow","Line","Ellipse","Text","Number","Callout","Magnifier","Image","Freehand","Select / Move"};drawingTool.SelectedIndex=0;
             options.Children.Add(new TextBlock{Text="Drawing tool"});options.Children.Add(drawingTool);TextField("Annotation text","Note");TextField("Ink color","#FF5200");Field("Stroke width",3);Field("Font size",24);options.Children.Add(new TextBlock{Text="Drag to draw. One active tool per stroke.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)});
-            options.Children.Add(MainWindow.Button("Undo last mark",()=>{if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
+            options.Children.Add(MainWindow.Button("Undo last mark",()=>{UndoAnnotation();}));
         }
-        BuildPhotoOptions(inputs??[input]);BuildInputOrder(inputs??[input]);BuildCropOptions();BuildDocumentOptions();BuildMediaOptions();
+        BuildPhotoOptions(inputs??[input]);BuildInputOrder(inputs??[input]);BuildCropOptions();BuildCompressionOptions();BuildDocumentOptions();BuildMediaOptions();
         if(options.Children.Count==1)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
         var footer=new DockPanel{Margin=new(0,20,0,0),LastChildFill=false};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Primary;save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);var cancel=MainWindow.Button("Cancel",()=>DialogResult=false);DockPanel.SetDock(cancel,Dock.Left);footer.Children.Add(cancel);var reset=MainWindow.Button("↶ Reset",Reset);DockPanel.SetDock(reset,Dock.Left);footer.Children.Add(reset);var safe=new TextBlock{Text="Original stays safe",Foreground=Theme.Brush("Muted"),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new(0,0,16,0)};DockPanel.SetDock(safe,Dock.Right);footer.Children.Add(safe);
         var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
@@ -135,7 +135,7 @@ public sealed partial class ToolEditor:Window
     private void OnKey(object sender,KeyEventArgs e)
     {
         if(e.Key==Key.Escape){Close();e.Handled=true;return;}
-        if(ClipboardImport.IsEditing(Keyboard.FocusedElement as DependencyObject))return;if(e.Key==Key.Enter){Save();e.Handled=true;return;}
+        if(ClipboardImport.IsEditing(Keyboard.FocusedElement as DependencyObject))return;if(tool=="annotate"&&e.Key==Key.Z&&Keyboard.Modifiers==ModifierKeys.Control){UndoAnnotation();e.Handled=true;return;}if(tool=="annotate"&&e.Key==Key.Delete&&selectedAnnotation is not null){drawing.Children.Remove(selectedAnnotation);selectedAnnotation=null;e.Handled=true;return;}if(e.Key==Key.Enter){Save();e.Handled=true;return;}
         if(media is null||Keyboard.Modifiers is not (ModifierKeys.None or ModifierKeys.Shift))return;
         switch(e.Key){case Key.Space:if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)){PlayRange();break;}playingRange=false;if(playing)player.Pause();else player.Play();playing=!playing;break;case Key.Left:Seek(player.Position.TotalSeconds-(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?1d/30:1));break;case Key.Right:Seek(player.Position.TotalSeconds+(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?1d/30:1));break;case Key.I:if(fields.TryGetValue("Start",out var start)&&player.Position.TotalSeconds<Value("End",duration))start.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;case Key.O:if(fields.TryGetValue("End",out var end)&&player.Position.TotalSeconds>Value("Start"))end.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;default:return;}e.Handled=true;
     }

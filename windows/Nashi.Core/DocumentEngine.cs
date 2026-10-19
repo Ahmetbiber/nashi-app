@@ -4,9 +4,9 @@ using PdfSharp.Pdf.IO;
 
 namespace Nashi.Core;
 
-public static class DocumentEngine
+public static partial class DocumentEngine
 {
-    public static IReadOnlyList<string> Pdf(string tool,IReadOnlyList<string> inputs,string destination,int[]? pages=null,CancellationToken token=default,Dictionary<int,int>? rotations=null,int pagesPerFile=1,int[]? pageRotations=null,string password="")
+    public static IReadOnlyList<string> Pdf(string tool,IReadOnlyList<string> inputs,string destination,int[]? pages=null,CancellationToken token=default,Dictionary<int,int>? rotations=null,int pagesPerFile=1,int[]? pageRotations=null,string password="",bool uniformWidth=false,string pageRanges="")
     {
         using var tx=new ExportTransaction(destination);var outputs=new List<string>();
         if(tool=="mergePDFs")
@@ -22,7 +22,7 @@ public static class DocumentEngine
             if(tool=="splitPDF")
             {
                 if(pagesPerFile<1||pagesPerFile>source.PageCount)throw new ArgumentException("Choose pages per file within the PDF page count.");
-                var selected=pages??Enumerable.Range(1,source.PageCount).ToArray();if(selected.Length==0||selected.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Choose valid PDF pages.");
+                var selected=pages??PageRange(pageRanges,source.PageCount);if(selected.Length==0||selected.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Choose valid PDF pages.");
                 for(var i=0;i<selected.Length;i+=pagesPerFile)
                 {
                     token.ThrowIfCancellationRequested();using var part=new PdfDocument();foreach(var page in selected.Skip(i).Take(pagesPerFile))part.AddPage(source.Pages[page-1]);
@@ -32,8 +32,9 @@ public static class DocumentEngine
             else if(tool=="organizePDF")
             {
                 if(pages is null||pages.Length==0||pages.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Enter page numbers within this PDF, in the desired order.");
+                if(uniformWidth&&(source.Internals.Catalog.Elements.ContainsKey("/AcroForm")||source.Internals.Catalog.Elements.ContainsKey("/Names")||source.Internals.Catalog.Elements.ContainsKey("/Outlines")||source.Pages.Cast<PdfPage>().Any(p=>p.Elements.ContainsKey("/Annots"))))throw new ArgumentException("Turn off uniform width to preserve this PDF’s form fields, attachments, links or navigation.");
                 using var result=new PdfDocument();for(var n=0;n<pages.Length;n++){var page=pages[n];var added=result.AddPage(source.Pages[page-1]);added.Rotate=(added.Rotate+(pageRotations is not null?pageRotations[n]:rotations?.GetValueOrDefault(page)??0))%360;}
-                var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+" Organized.pdf");result.Save(output);outputs.Add(output);
+                var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+" Organized.pdf");result.Save(output);if(uniformWidth&&tool=="organizePDF")UniformWidths(output,token);outputs.Add(output);
             }
             else if(tool is "compress" or "removeMetadata")
             {

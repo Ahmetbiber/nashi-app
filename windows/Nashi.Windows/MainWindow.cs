@@ -147,7 +147,7 @@ public sealed partial class MainWindow:Window
     private Border LibraryRow(LibraryEntry entry,bool compact=false)
     {
         var row=new DockPanel();var available=entry.AvailablePaths;var buttons=new WrapPanel{VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(buttons,Dock.Right);row.Children.Add(buttons);
-        var reuse=Button("Use in Nashi",()=>{if(busy)return;var existing=entry.AvailablePaths.Where(File.Exists).ToArray();if(existing.Length==0){status.Text="These files have moved or were deleted.";RenderLibrary();return;}files.Clear();Add(existing);ShowLibrary(false);status.Text=existing.Length==entry.Paths.Length?"Ready for another round.":"Available files selected. Some files have moved or were deleted.";});reuse.IsEnabled=!busy&&available.Any(File.Exists);buttons.Children.Add(reuse);
+        var reuse=Button("Use in Nashi",()=>{if(busy)return;var existing=entry.AvailablePaths.ToArray();if(existing.Length==0){status.Text="These files have moved or were deleted.";RenderLibrary();return;}files.Clear();Add(existing);ShowLibrary(false);status.Text=existing.Length==entry.Paths.Length?"Ready for another round.":"Available files selected. Some files have moved or were deleted.";});reuse.IsEnabled=!busy&&available.Length>0;buttons.Children.Add(reuse);
         var reveal=Button("Show in Explorer",()=>{var existing=entry.AvailablePaths;if(existing.Length>0)Reveal(existing[0]);else{status.Text="This file has moved or was deleted.";RenderLibrary();}});reveal.IsEnabled=available.Length>0;buttons.Children.Add(reveal);
         var text=new StackPanel{Margin=new(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};var name=Text(entry.Name,14);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.ToolTip=string.Join(Environment.NewLine,entry.Paths);text.Children.Add(name);text.Children.Add(Text(entry.Action+"  ·  "+entry.Created.ToLocalTime().ToString("g")+(available.Length<entry.Paths.Length?"  ·  Files missing":""),11,"Muted"));row.Children.Add(text);
         var card=Card(row);card.Padding=new(14,10,14,10);if(compact){card.CornerRadius=new(12);card.BorderThickness=new(0);card.Margin=new(0,0,0,2);}return card;
@@ -168,7 +168,7 @@ public sealed partial class MainWindow:Window
     }
     private bool All(string[] extensions)=>files.Count>0&&files.All(p=>extensions.Contains(Path.GetExtension(p).TrimStart('.').ToLowerInvariant()));
     private bool Images=>files.Count>0&&files.All(FeatureCatalog.IsImage);
-    private bool Video=>All(["mp4","mov","mkv","webm","avi","wmv","m4v"]);
+    private bool Video=>All(["mp4","mov","mkv","webm","avi","wmv","m4v","gif"]);
     private bool Audio=>All(["mp3","m4a","wav","flac","ogg","opus","aiff","aif","wma","aac"]);
     private IReadOnlyList<ToolChoice> Choices()
     {

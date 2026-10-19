@@ -14,7 +14,6 @@ public sealed partial class ToolEditor
         if(media is null)return;
         if(tool is "trimAudio" or "trimVideo")options.Children.Add(trimSilence);
         if(tool=="normalizeAudio")Field("Loudness range",11);
-        if(tool=="compress"){Field("Target size (KB; 0 = auto)",0);Field("Reduction (%; 0 = auto)",0);}
         if(tool=="splitVideo"){TextField("Split points (seconds; separated by semicolons)","");TextField("Remove clips (numbers; separated by semicolons)","");options.Children.Add(joinClips);}
         if(tool=="audioToVideo")
         {

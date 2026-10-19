@@ -36,10 +36,10 @@ public sealed class GlobalDragController:IDisposable
     private void Poll()
     {
         if(!preferences.Value.Enabled){wheel?.Close();wheel=null;down=false;opened=false;hint=null;return;}var held=Held(1);GetCursorPos(out var point);
-        if(!held){if(down){down=false;opened=false;hint=null;if(wheel is {IsVisible:true}){var old=wheel;owner.Dispatcher.BeginInvoke(()=>{if(old.IsVisible)old.Close();});}wheel=null;}return;}
+        if(!held){if(down){down=false;opened=false;hint=null;if(wheel is {IsVisible:true}){var old=wheel;var dismiss=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};dismiss.Tick+=(_,_)=>{dismiss.Stop();if(old.IsVisible)old.Close();};dismiss.Start();}wheel=null;}return;}
         if(!down){down=true;start=point;opened=false;hint=null;return;}if(opened||Math.Abs(point.X-start.X)+Math.Abs(point.Y-start.Y)<10)return;
         hint??=Task.Run(()=>LinkAt(start));var chord=Chord();var p=preferences.Value;var kind=chord==p.ToolsModifier?"tools":chord==p.ConvertModifier?"convert":chord==p.ActionsModifier?"actions":null;if(kind is null)return;opened=true;
-        wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,hint?.IsCompletedSuccessfully==true?hint.Result:null),()=>hint?.IsCompletedSuccessfully==true?hint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,point.X,point.Y,540*p.WheelScale);
+        var sourceHint=hint;wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null),()=>sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,point.X,point.Y,540*p.WheelScale);
     }
     private static string? LinkAt(NativePoint point)
     {
@@ -61,13 +61,14 @@ public sealed class GlobalDragController:IDisposable
 
 internal sealed class GlobalDropWheel:Window
 {
+    internal string State=>$"entered={entered}, over={over}, dropped={dropCount}, choices={choices.Count}, selection={selection}";private int entered,over,dropCount;
     private readonly string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
     public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
     {
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=540*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Loaded+=(_,_)=>WheelPresentation.Animate(this);
-        DragEnter+=(_,e)=>{var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];choices=Choices(files,Payload(e.Data));Build(choices);e.Effects=choices.Count>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
-        DragOver+=(_,e)=>{if(!e.Data.GetDataPresent(DataFormats.FileDrop)){var updated=Choices([],Payload(e.Data));if(!updated.Select(c=>c.Id).SequenceEqual(choices.Select(c=>c.Id))){choices=updated;Build(choices);}}var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;if(distance<106||distance>255||choices.Count==0){selection="";Highlight(-1);}else{var angle=(Math.Atan2(p.Y-270,p.X-270)*180/Math.PI+90+360+180d/choices.Count)%360;var index=(int)(angle/(360d/choices.Count));var id=choices[index].Id;if(id!=selection){selection=id;Feedback.Play();}Highlight(index);}e.Effects=selection.Length>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
-        Drop+=(_,e)=>{var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
+        DragEnter+=(_,e)=>{entered++;var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];choices=Choices(files,Payload(e.Data));Build(choices);e.Effects=choices.Count>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
+        DragOver+=(_,e)=>{over++;if(!e.Data.GetDataPresent(DataFormats.FileDrop)){var updated=Choices([],Payload(e.Data));if(!updated.Select(c=>c.Id).SequenceEqual(choices.Select(c=>c.Id))){choices=updated;Build(choices);}}var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;if(distance<106||distance>255||choices.Count==0){selection="";Highlight(-1);}else{var angle=(Math.Atan2(p.Y-270,p.X-270)*180/Math.PI+90+360+180d/choices.Count)%360;var index=(int)(angle/(360d/choices.Count));var id=choices[index].Id;if(id!=selection){selection=id;Feedback.Play();}Highlight(index);}e.Effects=selection.Length>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
+        Drop+=(_,e)=>{dropCount++;var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
     }
     private WebMediaPayload? Payload(IDataObject data)=>DragPayload.Parse(data,hint());
     private IReadOnlyList<ToolChoice> Choices(string[] files,WebMediaPayload? web)

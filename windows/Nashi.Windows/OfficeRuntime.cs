@@ -18,6 +18,7 @@ public sealed class OfficeRuntime(string root)
             await using(var source=File.OpenRead(msi))if(Convert.ToHexString(await SHA256.HashDataAsync(source,token)).ToLowerInvariant()!="c6298b10cfa1748bcbedad94c62ce771e240e5021bfd6d7a967cd571b04b5312")throw new InvalidDataException("Office checksum mismatch. Nothing was installed.");
             var content=Path.Combine(stage,"content");Directory.CreateDirectory(content);await Task.Run(()=>MsiImage.Extract(msi,content,progress,token),token);
             var executable=Directory.GetFiles(content,"soffice.exe",SearchOption.AllDirectories).Single(p=>Path.GetFileName(Path.GetDirectoryName(p))=="program");var application=Directory.GetParent(Path.GetDirectoryName(executable)!)!.FullName;
+            var runtimes=Path.Combine(content,".native-runtime");if(Directory.Exists(runtimes))foreach(var dll in Directory.EnumerateFiles(runtimes,"*.dll"))File.Copy(dll,Path.Combine(application,"program",Path.GetFileName(dll)),true);
             token.ThrowIfCancellationRequested();Directory.Move(application,Path.Combine(root,"office-26.8.1"));progress?.Report(new(1,"Office tools ready"));
         }
         finally{if(Directory.Exists(stage))Directory.Delete(stage,true);}
@@ -40,6 +41,7 @@ public sealed class OfficeRuntime(string root)
             }finally{MsiCloseHandle(view);}
         }
         private static string LongName(string name)=>name.Split(':')[0].Split('|')[^1];
+        private static int CompareVersion(string first,string second){var a=System.Diagnostics.FileVersionInfo.GetVersionInfo(first);var b=System.Diagnostics.FileVersionInfo.GetVersionInfo(second);return new Version(Math.Max(0,a.FileMajorPart),Math.Max(0,a.FileMinorPart),Math.Max(0,a.FileBuildPart),Math.Max(0,a.FilePrivatePart)).CompareTo(new Version(Math.Max(0,b.FileMajorPart),Math.Max(0,b.FileMinorPart),Math.Max(0,b.FileBuildPart),Math.Max(0,b.FilePrivatePart)));}
         public static void Extract(string path,string destination,IProgress<OperationProgress>? progress,CancellationToken token)
         {
             Check(MsiOpenDatabase(path,IntPtr.Zero,out var db));try
@@ -54,7 +56,23 @@ public sealed class OfficeRuntime(string root)
                 var dirs=Rows(db,"SELECT `Directory`, `Directory_Parent`, `DefaultDir` FROM `Directory`",3).ToDictionary(r=>r[0]);var components=Rows(db,"SELECT `Component`, `Directory_` FROM `Component`",2).ToDictionary(r=>r[0],r=>r[1]);
                 string Relative(string id,int depth=0){if(depth>64)throw new InvalidDataException("Office directory cycle.");if(id=="TARGETDIR"||!dirs.TryGetValue(id,out var row))return "";var parent=Relative(row[1],depth+1);var name=LongName(row[2]);return name is "." or ""?parent:Path.Combine(parent,name);}
                 var files=Rows(db,"SELECT `File`, `Component_`, `FileName` FROM `File`",3);var index=0;
-                foreach(var row in files){token.ThrowIfCancellationRequested();var source=SafePaths.ArchiveEntry(unpack,row[0]);if(!File.Exists(source))throw new InvalidDataException("Office cabinet is missing a file.");var target=SafePaths.ArchiveEntry(destination,Path.Combine(Relative(components[row[1]]),LongName(row[2])));Directory.CreateDirectory(Path.GetDirectoryName(target)!);if(File.Exists(target)){using var existing=File.OpenRead(target);using var incoming=File.OpenRead(source);if(!SHA256.HashData(existing).SequenceEqual(SHA256.HashData(incoming)))throw new InvalidDataException("Office package contains conflicting files: "+Path.GetRelativePath(destination,target));}else File.Move(source,target);progress?.Report(new(.75+.24*++index/files.Count,"Preparing office tools…"));}
+                foreach(var row in files)
+                {
+                    token.ThrowIfCancellationRequested();var source=SafePaths.ArchiveEntry(unpack,row[0]);if(!File.Exists(source))throw new InvalidDataException("Office cabinet is missing a file.");var relative=Path.Combine(Relative(components[row[1]]),LongName(row[2]));
+                    // The MSI contains both x86 and x64 VC runtime components in
+                    // system directories. Keep only verified package x64 DLLs
+                    // app-local; never write or install anything in Windows.
+                    var external=relative.Split(Path.DirectorySeparatorChar)[0];if(external is "System64" or "System32" or "System")
+                    {
+                        if(Path.GetExtension(source).Equals(".dll",StringComparison.OrdinalIgnoreCase)||LongName(row[2]).EndsWith(".dll",StringComparison.OrdinalIgnoreCase))
+                        {
+                            using var pe=File.OpenRead(source);using var reader=new BinaryReader(pe);if(pe.Length>=64&&reader.ReadUInt16()==0x5a4d){pe.Position=60;var offset=reader.ReadUInt32();if(offset<=pe.Length-6){pe.Position=offset;if(reader.ReadUInt32()==0x4550&&reader.ReadUInt16()==0x8664){var runtime=Path.Combine(destination,".native-runtime");Directory.CreateDirectory(runtime);var dll=SafePaths.ArchiveEntry(runtime,LongName(row[2]));var newer=!File.Exists(dll)||CompareVersion(source,dll)>0;if(newer)File.Copy(source,dll,true);}}}
+                        }
+                        continue;
+                    }
+                    var target=SafePaths.ArchiveEntry(destination,relative);Directory.CreateDirectory(Path.GetDirectoryName(target)!);if(File.Exists(target)){using var existing=File.OpenRead(target);using var incoming=File.OpenRead(source);if(!SHA256.HashData(existing).SequenceEqual(SHA256.HashData(incoming)))throw new InvalidDataException("Office package contains conflicting files: "+relative);}else File.Move(source,target);progress?.Report(new(.75+.24*++index/files.Count,"Preparing office tools…"));
+                }
+
             }finally{MsiCloseHandle(db);}
         }
     }

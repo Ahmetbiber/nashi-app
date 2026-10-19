@@ -12,8 +12,8 @@ public sealed partial class ToolEditor
     private readonly List<Rect> photoRegions=[];
     private readonly ComboBox backdrop=new(){ItemsSource=new[]{"solid","gradient","image"},SelectedIndex=0},collageLayout=new(){ItemsSource=new[]{"grid","row","column","featured"},SelectedIndex=0},redactionStyle=new(){ItemsSource=new[]{"solid","blur","pixelate"},SelectedIndex=0};
     private string? backgroundImage,annotationImage;private string[] collageInputs=[];private readonly ListBox imageOrder=new(){MaxHeight=140};
-    private UIElement? annotationShape;private int strokeKind;private Point endPoint;private int markNumber=1;
-    private System.Windows.Threading.DispatcherTimer? photoPreview;private bool showingOriginal;private long photoGeneration;
+    private UIElement? annotationShape,selectedAnnotation;private Vector annotationOffset;private int strokeKind;private Point endPoint;private int markNumber=1;
+    private System.Windows.Threading.DispatcherTimer? photoPreview;private bool showingOriginal;private readonly SemaphoreSlim previewGate=new(1,1);private long photoGeneration;
     private readonly CheckBox fitCollage=new(){Content="Fill cells (crop to fit)",IsChecked=true},flipHorizontal=new(){Content="Flip horizontally"},flipVertical=new(){Content="Flip vertically"};
     private void BuildPhotoOptions(IReadOnlyList<string> inputs)
     {
@@ -56,11 +56,12 @@ public sealed partial class ToolEditor
     {
         var changes=new Dictionary<string,double>();foreach(var property in typeof(PhotoAdjustments).GetProperties())changes[property.Name]=Value(property.Name,(double)property.GetValue(new PhotoAdjustments())!);
         var adjustments=System.Text.Json.JsonSerializer.Deserialize<PhotoAdjustments>(System.Text.Json.JsonSerializer.Serialize(changes))!;
-        return original with{FlipHorizontal=flipHorizontal.IsChecked==true,FlipVertical=flipVertical.IsChecked==true,Adjustments=adjustments,Frame=new((int)Value("Padding",80),Value("Corner radius",24),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",backdrop.SelectedItem as string??"solid",fields.GetValueOrDefault("Gradient end")?.Text??"#FFD85C",backgroundImage,Value("Background blur"),Value("Shadow radius",24),Value("Shadow opacity",.25),fields.ContainsKey("Canvas width")?(int)Value("Canvas width"):null,fields.ContainsKey("Canvas height")?(int)Value("Canvas height"):null,Value("Image scale",1),Value("Position X",.5),Value("Position Y",.5)),Collage=new(collageLayout.SelectedItem as string??"grid",(int)Value("Columns",2),(int)Value("Canvas width",2048),(int)Value("Canvas height",2048),(int)Value("Spacing",12),(int)Value("Padding",16),Value("Corner radius"),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",fitCollage.IsChecked==true,imageOrder.Items.Count>0?imageOrder.Items.Cast<ListBoxItem>().Select(i=>(int)i.Tag).ToArray():null),Redactions=photoRegions.ToArray(),RedactionStyle=redactionStyle.SelectedItem as string??"solid"};
+        return original with{TargetBytes=Value("Target size (KB; 0 = auto)")>0?(long)(Value("Target size (KB; 0 = auto)")*1024):null,ReductionPercent=Value("Reduction (%; 0 = auto)")>0?Value("Reduction (%; 0 = auto)"):null,FlipHorizontal=flipHorizontal.IsChecked==true,FlipVertical=flipVertical.IsChecked==true,Adjustments=adjustments,Frame=new((int)Value("Padding",80),Value("Corner radius",24),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",backdrop.SelectedItem as string??"solid",fields.GetValueOrDefault("Gradient end")?.Text??"#FFD85C",backgroundImage,Value("Background blur"),Value("Shadow radius",24),Value("Shadow opacity",.25),fields.ContainsKey("Canvas width")?(int)Value("Canvas width"):null,fields.ContainsKey("Canvas height")?(int)Value("Canvas height"):null,Value("Image scale",1),Value("Position X",.5),Value("Position Y",.5)),Collage=new(collageLayout.SelectedItem as string??"grid",(int)Value("Columns",2),(int)Value("Canvas width",2048),(int)Value("Canvas height",2048),(int)Value("Spacing",12),(int)Value("Padding",16),Value("Corner radius"),fields.GetValueOrDefault("Background color")?.Text??"#FFFFFF",fitCollage.IsChecked==true,imageOrder.Items.Count>0?imageOrder.Items.Cast<ListBoxItem>().Select(i=>(int)i.Tag).ToArray():null),Redactions=photoRegions.ToArray(),RedactionStyle=redactionStyle.SelectedItem as string??"solid"};
     }
     private async Task PreviewPhoto()
     {
         if(bitmap is null||!IsVisible||showingOriginal)return;var generation=++photoGeneration;
+        if(!await previewGate.WaitAsync(0)){QueuePhotoPreview();return;}
         try
         {
             var settings=PhotoSettings(new((int)Value("Width",bitmap.PixelWidth),(int)Value("Height",bitmap.PixelHeight),(int)Value("Degrees",0)));BitmapSource result;
@@ -69,7 +70,7 @@ public sealed partial class ToolEditor
             else result=ImageEngine.Collage(collageInputs,settings.Collage,CancellationToken.None);
             if(!IsVisible||showingOriginal||generation!=photoGeneration)return;SetPhotoPreview(result);
         }
-        catch(Exception error)when(error is ArgumentException or FormatException or InvalidDataException or ImageMagick.MagickException or IOException or NotSupportedException){ToolTip=error.Message;}
+        catch(Exception error)when(error is ArgumentException or FormatException or InvalidDataException or ImageMagick.MagickException or IOException or NotSupportedException){ToolTip=error.Message;}finally{previewGate.Release();}
     }
     private void SetPhotoPreview(BitmapSource result){drawing.Width=result.PixelWidth;drawing.Height=result.PixelHeight;if(drawing.Children[0] is Image image){image.Source=result;image.Width=result.PixelWidth;image.Height=result.PixelHeight;}}
     private async Task DetectPhoto(bool text,bool faces)
@@ -78,7 +79,9 @@ public sealed partial class ToolEditor
     }
     private void AnnotationStart()
     {
-        strokeKind=drawingTool.SelectedIndex;var ink=ImageEngine.ColorBrush(fields["Ink color"].Text);var thickness=Math.Clamp(Value("Stroke width",3),1,100);
+        strokeKind=drawingTool.SelectedIndex;
+        if(strokeKind==11){selectedAnnotation=drawing.Children.Cast<UIElement>().Skip(1).Reverse().FirstOrDefault(element=>{var bounds=VisualTreeHelper.GetDescendantBounds(element);bounds.Offset(Canvas.GetLeft(element) is var x&&double.IsFinite(x)?x:0,Canvas.GetTop(element) is var y&&double.IsFinite(y)?y:0);if(element.RenderTransform is TranslateTransform t)bounds.Offset(t.X,t.Y);bounds.Inflate(8,8);return bounds.Contains(origin);});annotationShape=selectedAnnotation;annotationOffset=selectedAnnotation?.RenderTransform is TranslateTransform transform?new(transform.X,transform.Y):new();return;}
+        var ink=ImageEngine.ColorBrush(fields["Ink color"].Text);var thickness=Math.Clamp(Value("Stroke width",3),1,100);
         if(strokeKind is 0 or 10){activeStroke=new Polyline{Stroke=ink,Opacity=strokeKind==0?.55:1,StrokeThickness=strokeKind==0?thickness*5:thickness,StrokeLineJoin=PenLineJoin.Round,IsHitTestVisible=false};activeStroke.Points.Add(origin);annotationShape=activeStroke;}
         else if(strokeKind is 2 or 3)annotationShape=new Polyline{Stroke=ink,StrokeThickness=thickness,StrokeLineJoin=PenLineJoin.Round,IsHitTestVisible=false};
         else if(strokeKind==4)annotationShape=new Ellipse{Stroke=ink,StrokeThickness=thickness,IsHitTestVisible=false};
@@ -91,11 +94,12 @@ public sealed partial class ToolEditor
             if(strokeKind==9&&annotationImage is null){dragging=false;drawing.ReleaseMouseCapture();return;}annotationShape=new Image{Source=strokeKind==9?ImageEngine.Load(annotationImage!):bitmap,Stretch=Stretch.Fill,IsHitTestVisible=false};
         }
         else annotationShape=new Rectangle{Stroke=ink,StrokeThickness=thickness,IsHitTestVisible=false};
-        drawing.Children.Add(annotationShape);Canvas.SetLeft(annotationShape,origin.X);Canvas.SetTop(annotationShape,origin.Y);
+        drawing.Children.Add(annotationShape);Canvas.SetLeft(annotationShape,annotationShape is Polyline?0:origin.X);Canvas.SetTop(annotationShape,annotationShape is Polyline?0:origin.Y);
     }
+    private void UndoAnnotation(){if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);selectedAnnotation=null;}
     private void AnnotationMove(Point point)
     {
-        if(annotationShape is null)return;endPoint=point;if(activeStroke is not null){activeStroke.Points.Add(point);return;}
+        if(annotationShape is null)return;if(strokeKind==11){var delta=point-origin;annotationShape.RenderTransform=new TranslateTransform(annotationOffset.X+delta.X,annotationOffset.Y+delta.Y);return;}endPoint=point;if(activeStroke is not null){activeStroke.Points.Add(point);return;}
         if(annotationShape is Polyline line)
         {
             Canvas.SetLeft(line,0);Canvas.SetTop(line,0);line.Points=new(){origin,point};if(strokeKind==2){var a=Math.Atan2(point.Y-origin.Y,point.X-origin.X);var size=Math.Max(12,line.StrokeThickness*4);line.Points.Add(new(point.X-size*Math.Cos(a-.5),point.Y-size*Math.Sin(a-.5)));line.Points.Add(point);line.Points.Add(new(point.X-size*Math.Cos(a+.5),point.Y-size*Math.Sin(a+.5)));}return;

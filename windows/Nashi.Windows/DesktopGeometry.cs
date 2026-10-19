@@ -19,10 +19,10 @@ internal static class DesktopGeometry
         var dpi=96u;try{if(GetDpiForMonitor(monitor,0,out var actual,out _)==0)dpi=actual;}catch(DllNotFoundException){}var size=(int)Math.Round(logicalSize*dpi/96d);size=Math.Min(size,Math.Min(info.Work.Right-info.Work.Left,info.Work.Bottom-info.Work.Top));
         var left=Math.Clamp(x-size/2,info.Work.Left,info.Work.Right-size);var top=Math.Clamp(y-size/2,info.Work.Top,info.Work.Bottom-size);SetWindowPos(new WindowInteropHelper(window).Handle,IntPtr.Zero,left,top,size,size,0x14);
     }
-    internal static void Snap(Window window,string? edge,bool detect=false)
+    internal static string? Snap(Window window,string? edge,bool detect=false)
     {
-        var handle=new WindowInteropHelper(window).Handle;var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};if(!GetMonitorInfo(MonitorFromWindow(handle,2),ref info)||!GetWindowRect(handle,out var r))return;
+        var handle=new WindowInteropHelper(window).Handle;var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};if(!GetMonitorInfo(MonitorFromWindow(handle,2),ref info)||!GetWindowRect(handle,out var r))return edge;
         if(detect)edge=Math.Abs(r.Left-info.Work.Left)<24?"Left":Math.Abs(r.Right-info.Work.Right)<24?"Right":Math.Abs(r.Top-info.Work.Top)<24?"Top":Math.Abs(r.Bottom-info.Work.Bottom)<24?"Bottom":null;
-        var x=edge=="Left"?info.Work.Left:edge=="Right"?info.Work.Right-(r.Right-r.Left):r.Left;var y=edge=="Top"?info.Work.Top:edge=="Bottom"?info.Work.Bottom-(r.Bottom-r.Top):r.Top;SetWindowPos(handle,IntPtr.Zero,x,y,0,0,0x15);
+        var x=edge=="Left"?info.Work.Left:edge=="Right"?info.Work.Right-(r.Right-r.Left):r.Left;var y=edge=="Top"?info.Work.Top:edge=="Bottom"?info.Work.Bottom-(r.Bottom-r.Top):r.Top;SetWindowPos(handle,IntPtr.Zero,x,y,0,0,0x15);return edge;
     }
 }

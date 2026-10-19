@@ -8,7 +8,11 @@ namespace Nashi.Windows;
 internal static class GlobalGestureChecks
 {
     [StructLayout(LayoutKind.Sequential)]private struct NativeRect{public int Left,Top,Right,Bottom;}
-    [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern IntPtr FindWindow(string? type,string name);
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern IntPtr FindWindow(string? type,string? name);
+    private delegate bool WindowVisitor(IntPtr window,IntPtr parameter);
+    [DllImport("user32.dll")]private static extern bool EnumWindows(WindowVisitor visit,IntPtr parameter);
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern int GetClassName(IntPtr window,System.Text.StringBuilder text,int count);
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern int GetWindowText(IntPtr window,System.Text.StringBuilder text,int count);
     [DllImport("user32.dll")]private static extern bool GetWindowRect(IntPtr handle,out NativeRect rect);
     [DllImport("user32.dll")]private static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")]private static extern bool PostMessage(IntPtr handle,uint message,IntPtr w,IntPtr l);
@@ -17,16 +21,23 @@ internal static class GlobalGestureChecks
         // Explorer is a separate source process. A same-thread WPF drag source
         // blocks the target's dispatcher inside DoDragDrop and is not a valid
         // test of the global Explorer gesture.
-        var folder=Directory.CreateDirectory(Path.Combine(root,"Nashi drag fixtures"));var file=Path.Combine(folder.FullName,"Source.png");File.Copy(original,file,true);var launch=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),"explorer.exe")){UseShellExecute=false};launch.ArgumentList.Add(folder.FullName);Process.Start(launch);
+        var folder=Directory.CreateDirectory(Path.Combine(root,"Nashi drag fixtures"));var file=Path.Combine(folder.FullName,"Source.png");File.Copy(original,file,true);void OpenFixture()=>Process.Start(new ProcessStartInfo(folder.FullName){UseShellExecute=true});OpenFixture();
         var phase="discovering Explorer";using var watchdog=new System.Threading.Timer(_=>{File.WriteAllText(Path.Combine(root,"global-gesture-timeout.txt"),phase);DesktopInput.HoldMouse(false);Environment.Exit(1);},null,TimeSpan.FromSeconds(45),System.Threading.Timeout.InfiniteTimeSpan);
         // UI Automation must run away from Nashi's UI thread: enumerating the
         // desktop can query this process's own WPF providers.
         var discovery=Task.Run(()=>
         {
-            AutomationElement? explorer=null;for(var n=0;n<50;n++){Thread.Sleep(100);explorer=AutomationElement.RootElement.FindFirst(TreeScope.Children,new AndCondition(new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Window),new PropertyCondition(AutomationElement.NameProperty,folder.Name)));if(explorer is not null)break;}
-            if(explorer is null)throw new Exception("The isolated Explorer fixture window did not open.");var handle=new IntPtr(explorer.Current.NativeWindowHandle);var item=explorer.FindFirst(TreeScope.Descendants,new OrCondition(new PropertyCondition(AutomationElement.NameProperty,"Source.png"),new PropertyCondition(AutomationElement.NameProperty,"Source")))??throw new Exception("Explorer did not expose its synthetic source file.");return(Handle:handle,Bounds:item.Current.BoundingRectangle);
+            var lastTitles=new List<string>();for(var n=0;n<50;n++)
+            {
+                Thread.Sleep(100);if(n==15)OpenFixture();var windows=new List<IntPtr>();lastTitles.Clear();EnumWindows((window,_)=>{var type=new System.Text.StringBuilder(256);var title=new System.Text.StringBuilder(512);GetClassName(window,type,256);GetWindowText(window,title,512);if(title.Length>0)lastTitles.Add(type+" · "+title);if(type.ToString()=="CabinetWClass")windows.Add(window);return true;},IntPtr.Zero);
+                foreach(var handle in windows)
+                {
+                    try{var explorer=AutomationElement.FromHandle(handle);var item=explorer.FindFirst(TreeScope.Descendants,new OrCondition(new PropertyCondition(AutomationElement.NameProperty,"Source.png"),new PropertyCondition(AutomationElement.NameProperty,"Source")));if(item is not null&&!item.Current.BoundingRectangle.IsEmpty)return(Handle:handle,Bounds:item.Current.BoundingRectangle);}catch(ElementNotAvailableException){}
+                }
+            }
+            File.WriteAllLines(Path.Combine(root,"explorer-windows.txt"),lastTitles);throw new Exception("Explorer did not expose its synthetic source file.");
         });
-        var discoveryLimit=DateTime.UtcNow.AddSeconds(12);while(!discovery.IsCompleted&&DateTime.UtcNow<discoveryLimit)DesktopInput.Pump(30);if(!discovery.IsCompleted)throw new TimeoutException("Explorer UI Automation did not respond.");var fixture=discovery.GetAwaiter().GetResult();var handle=fixture.Handle;var bounds=fixture.Bounds;if(bounds.IsEmpty)throw new Exception("Explorer's source file has no visible bounds.");
+        var discoveryLimit=DateTime.UtcNow.AddSeconds(12);while(!discovery.IsCompleted&&DateTime.UtcNow<discoveryLimit)DesktopInput.Pump(30);if(!discovery.IsCompleted){DesktopCapture.Save(Path.Combine(root,"explorer-discovery.png"));throw new TimeoutException("Explorer UI Automation did not respond.");}if(discovery.IsFaulted)DesktopCapture.Save(Path.Combine(root,"explorer-discovery.png"));var fixture=discovery.GetAwaiter().GetResult();var handle=fixture.Handle;var bounds=fixture.Bounds;if(bounds.IsEmpty)throw new Exception("Explorer's source file has no visible bounds.");
         var settings=new PreferencesStore(Path.Combine(root,"Gesture preferences"));string? selected=null;string[]? received=null;
         using var controller=new GlobalDragController(owner,settings,(id,data,hint)=>{selected=id;received=data.GetData(DataFormats.FileDrop) as string[];},()=>selected="link-shortcut");
         void Drag(Key modifier,string mode,string expected)

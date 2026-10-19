@@ -10,6 +10,7 @@ public sealed partial class MainWindow
     private readonly MetadataService metadataService=new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi","Tools"));
     private async Task EditMetadataAsync(string[] selected)
     {
+        if(selected.All(p=>FeatureCatalog.IsAudio(p)||FeatureCatalog.IsVideo(p)&&FeatureCatalog.Extension(p)!="gif")){await EditMediaMetadataAsync(selected);return;}
         if(metadataService.Executable is null)
         {
             if(MessageBox.Show(this,"Download ExifTool (~11 MB) from its official SourceForge distribution? The SHA-256 is checked and it runs locally without an administrator password. Upstream licenses are retained.","Set up metadata tools",MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;

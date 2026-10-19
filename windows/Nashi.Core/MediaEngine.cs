@@ -42,6 +42,7 @@ public sealed record MediaOptions
     public string RedactionMode { get; init; } = "solid";
     public MediaRegion[] Regions { get; init; } = [];
     public MediaRange[] AudioRedactions { get; init; } = [];
+    public bool RemoveAllMetadata{get;init;}=true;
     public Dictionary<string,string> Metadata { get; init; } = [];
 }
 
@@ -136,12 +137,18 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
         {
             case "muteVideo": RequireVideo(info);args.AddRange(["-map","0:v:0","-c:v","copy","-an"]);break;
             case "removeMetadata":
-                args.AddRange(["-map","0","-map","-0:d?","-c","copy","-map_metadata","-1","-map_metadata:s","-1","-map_chapters","-1","-fflags","+bitexact"]);
-                foreach(var stream in info.Streams.Where(s=>s.AttachedPicture))args.AddRange(["-map","-0:"+stream.Index]);
+                if(options.RemoveAllMetadata)
+                {
+                    args.AddRange(["-map","0","-map","-0:d?","-c","copy","-map_metadata","-1","-map_metadata:s","-1","-map_chapters","-1","-fflags","+bitexact"]);
+                    foreach(var stream in info.Streams.Where(s=>s.AttachedPicture))args.AddRange(["-map","-0:"+stream.Index]);
+                }
+                else args.AddRange(["-map","0","-c","copy","-map_metadata","0","-map_chapters","0"]);
                 foreach(var pair in options.Metadata)
                 {
                     if(string.IsNullOrWhiteSpace(pair.Key)||pair.Key.Contains('=')||pair.Key.Contains('\0')||pair.Value.Contains('\0'))throw new ArgumentException("Invalid metadata field.");
-                    args.AddRange(["-metadata",pair.Key+"="+pair.Value]);
+                    var key=pair.Key;var option="-metadata";var parts=key.Split(':');if(parts.Length==3&&parts[0] is "stream" or "chapter")
+                    {if(!int.TryParse(parts[1],out var number)||number<0||number>10000||parts[0]=="stream"&&!info.Streams.Any(s=>s.Index==number))throw new ArgumentException("Invalid metadata stream/chapter.");option+=parts[0]=="stream"?":s:"+number:":c:"+number;key=parts[2];if(key is not ("title" or "language" or "handler_name" or "comment"))throw new ArgumentException("Unsupported stream/chapter tag.");}
+                    args.AddRange([option,key+"="+pair.Value]);if(option=="-metadata"&&ext is "ogg" or "opus")args.AddRange(["-metadata:s:a:0",key+"="+pair.Value]);
                 }
                 break;
             case "trimVideo":case "trimAudio":

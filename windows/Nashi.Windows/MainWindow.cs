@@ -93,6 +93,7 @@ public sealed class MainWindow:Window
     private void Add(IEnumerable<string> paths){foreach(var path in paths.Where(File.Exists)){var full=Path.GetFullPath(path);if(!files.Contains(full))files.Add(full);}Refresh();}
     internal void ShowLibrary(bool visible)
     {
+        if(!busy)status.Text="Files stay on your computer.";
         home.Visibility=visible?Visibility.Collapsed:Visibility.Visible;libraryPage.Visibility=visible?Visibility.Visible:Visibility.Collapsed;
         homeButton.SetResourceReference(Control.BackgroundProperty,visible?"Surface":"Sage");libraryButton.SetResourceReference(Control.BackgroundProperty,visible?"Sage":"Surface");if(visible)RenderLibrary();
     }

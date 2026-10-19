@@ -25,7 +25,7 @@ public sealed class WheelWindow:Window
             button.Click+=(_,_)=>{Close();select(choice);};button.MouseEnter+=(_,_)=>Feedback.Play();
             path.MouseLeftButtonUp+=(_,_)=>{Close();select(choice);};path.MouseEnter+=(_,_)=>Feedback.Play();
         }
-        var center=new Button{Content="Tools\nEsc to close",Width=180,Height=180,Background=Brushes.Transparent,Foreground=Brushes.White};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();KeyDown+=(_,e)=>{if(e.Key==Key.Escape)Close();};Deactivated+=(_,_)=>Close();
+        var center=new Button{Content="Tools\nEsc to close",Width=180,Height=180,Background=Brushes.Transparent,Foreground=Brushes.White};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();KeyDown+=(_,e)=>{if(e.Key==Key.Escape)Close();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
     }
 }
 internal static class Feedback

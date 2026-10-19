@@ -50,7 +50,25 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
     }
     public static string PdfHtml(string input,string password="")
     {
-        using var pdf=UglyToad.PdfPig.PdfDocument.Open(input,new(){Password=password});return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/></head><body>"+string.Join("",pdf.GetPages().Select(p=>"<section style=\"page-break-after:always\"><p style=\"white-space:pre-wrap\">"+Escape(ContentOrderTextExtractor.GetText(p))+"</p></section>"))+"</body></html>";
+        using var pdf=UglyToad.PdfPig.PdfDocument.Open(input,new(){Password=password});var html=new StringBuilder("<!DOCTYPE html><html><head><meta charset=\"utf-8\"/></head><body>");
+        foreach(var page in pdf.GetPages())
+        {
+            var blocks=new List<(double Top,string Html)>();
+            foreach(var line in page.GetWords().GroupBy(w=>Math.Round(w.BoundingBox.Bottom/4)).OrderByDescending(g=>g.Key))
+            {
+                var text=new StringBuilder("<p style=\"margin:0 0 5pt\">");var first=true;foreach(var word in line.OrderBy(w=>w.BoundingBox.Left))
+                {
+                    var letter=word.Letters.FirstOrDefault();var font=letter?.FontName??"Arial";var size=Math.Clamp(letter?.FontSize??12,1,300);var style="font-size:"+size.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+"pt;"+(font.Contains("Bold",StringComparison.OrdinalIgnoreCase)?"font-weight:bold;":"")+(font.Contains("Italic",StringComparison.OrdinalIgnoreCase)||font.Contains("Oblique",StringComparison.OrdinalIgnoreCase)?"font-style:italic;":"");if(!first)text.Append(' ');first=false;text.Append("<span style=\"").Append(style).Append("\">").Append(Escape(word.Text)).Append("</span>");
+                }blocks.Add((page.Height-line.Max(w=>w.BoundingBox.Top),text.Append("</p>").ToString()));
+            }
+            foreach(var image in page.GetImages())
+            {
+                byte[]? data=null;var mime="image/png";if(image.TryGetPng(out var png))data=png;else if(image.RawBytes.Length>=2&&image.RawBytes[0]==0xff&&image.RawBytes[1]==0xd8){data=image.RawBytes.ToArray();mime="image/jpeg";}if(data is null||data.Length>20_000_000)continue;
+                blocks.Add((page.Height-image.BoundingBox.Top,"<p><img style=\"max-width:100%;width:"+image.BoundingBox.Width.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+"pt;height:auto\" src=\"data:"+mime+";base64,"+Convert.ToBase64String(data)+"\"/></p>"));
+            }
+            html.Append("<section style=\"page-break-after:always\">");foreach(var block in blocks.OrderBy(b=>b.Top))html.Append(block.Html);html.Append("</section>");
+        }
+        return html.Append("</body></html>").ToString();
     }
     public static string SanitizedHtml(string html)
     {

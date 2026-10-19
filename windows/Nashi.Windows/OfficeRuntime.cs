@@ -8,7 +8,7 @@ namespace Nashi.Windows;
 /// actions, register COM servers or change Windows Installer/system settings.
 public sealed class OfficeRuntime(string root)
 {
-    public string? Executable=>new[]{Path.Combine(root,"office-26.8.1","program","soffice.exe"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.exe")}.FirstOrDefault(File.Exists);
+    public string? Executable=>new[]{Path.Combine(root,"office-26.8.1","program","soffice.com"),Path.Combine(root,"office-26.8.1","program","soffice.exe"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.com"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.exe")}.FirstOrDefault(File.Exists);
     public async Task InstallAsync(IProgress<OperationProgress>? progress,CancellationToken token)
     {
         if(Executable is not null)return;Directory.CreateDirectory(root);var stage=Path.Combine(root,".office-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);

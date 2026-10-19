@@ -62,7 +62,8 @@ internal static class Feedback
         {
             var directory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi");Directory.CreateDirectory(directory);var file=Path.Combine(directory,"WheelSelection.wav");
             if(!File.Exists(file)){using var source=Application.GetResourceStream(new Uri("pack://application:,,,/Assets/WheelSelection.wav")).Stream;using var target=File.Create(file);source.CopyTo(target);}
-            player??=new MediaPlayer();player.Open(new Uri(file));player.Volume=.35;player.Play();
+            if(player is null){player=new MediaPlayer{Volume=.65};player.MediaOpened+=(_,_)=>player.Play();player.Open(new Uri(file));}else{player.Position=TimeSpan.Zero;player.Play();}
+
         }catch(IOException){}catch(InvalidOperationException){}
     }
 }

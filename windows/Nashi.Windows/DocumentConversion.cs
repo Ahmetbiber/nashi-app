@@ -16,7 +16,7 @@ public sealed class DocumentConversion(OfficeRuntime runtime,Toolchain tools)
         {
             token.ThrowIfCancellationRequested();var input=inputs[i];var ext=FeatureCatalog.Extension(input);var work=Path.Combine(tx.StagingDirectory,"work-"+i);Directory.CreateDirectory(work);string source=input;
             if(!FeatureCatalog.Formats([input]).Contains(format))throw new ArgumentException("This conversion is not available for "+Path.GetFileName(input)+".");
-            progress?.Report(new((double)i/inputs.Count,"Preparing "+Path.GetFileName(input)+"…"));
+            progress?.Report(new(null,"Preparing "+Path.GetFileName(input)+"…"));
             if(FeatureCatalog.IsArchive(input)){outputs.AddRange(ArchiveEngine.Convert(input,format,tx.StagingDirectory,options.Password,progress,token));continue;}
             if(ext is "srt" or "vtt")
             {var path=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);await File.WriteAllTextAsync(path,SubtitleCodec.Convert(await File.ReadAllTextAsync(input,token),format),new UTF8Encoding(false),token);outputs.Add(path);continue;}
@@ -27,7 +27,8 @@ public sealed class DocumentConversion(OfficeRuntime runtime,Toolchain tools)
             if(ext is "txt" or "md"){var normalized=Path.Combine(work,Path.GetFileName(input));await File.WriteAllTextAsync(normalized,LegacyTextCodec.Decode(await File.ReadAllBytesAsync(input,token)),new UTF8Encoding(false),token);source=normalized;}
             if(ext=="epub")source=EpubToHtml(input,work,token);
             if(ext=="pdf"&&format is "txt" or "md")
-            {var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);await File.WriteAllTextAsync(output,OfficeDocuments.PdfText(input,options.Password),new UTF8Encoding(false),token);outputs.Add(output);continue;}
+            {var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);await File.WriteAllTextAsync(output,await PdfDocumentMedia.Text(input,options.Password,token),new UTF8Encoding(false),token);outputs.Add(output);continue;}
+            if(ext=="pdf"&&format=="pptx")source=await PdfDocumentMedia.Slides(input,work,options.Dpi,options.Password,token);
             if(ext=="pdf"&&format=="epub"&&options.EpubLayout=="fixed")
             {var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+".epub");EpubFixed(await NativePdf.RenderAsync(input,options.Dpi,token,options.Password),output,Path.GetFileNameWithoutExtension(input));outputs.Add(output);continue;}
             if(ext=="pdf"&&format is not ("png" or "jpg" or "pptx"))

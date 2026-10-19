@@ -62,7 +62,7 @@ public sealed class GlobalDragController:IDisposable
 internal sealed class GlobalDropWheel:Window
 {
     internal string State=>$"entered={entered}, over={over}, dropped={dropCount}, choices={choices.Count}, selection={selection}";private int entered,over,dropCount;
-    private readonly string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
+    private readonly string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540,Background=Brushes.Transparent,AllowDrop=true};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
     public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
     {
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=540*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Loaded+=(_,_)=>WheelPresentation.Animate(this);

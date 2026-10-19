@@ -9,18 +9,18 @@ internal static class GlobalGestureChecks
     {
         var settings=new PreferencesStore(Path.Combine(root,"Gesture preferences"));string? selected=null;string[]? received=null;WebMediaPayload? web=null;
         using var controller=new GlobalDragController(owner,settings,(id,data,hint)=>{selected=id;received=data.GetData(DataFormats.FileDrop) as string[];web=DragPayload.Parse(data,hint);},()=>selected="link-shortcut");
-        var source=new Window{Owner=owner,Title="Nashi drag test source",Width=340,Height=160,Left=30,Top=30};var target=new Button{Content="Drag test fixture",Margin=new(20)};source.Content=target;IDataObject payload=new DataObject(DataFormats.FileDrop,new[]{file});var started=false;
-        target.MouseMove+=(_,e)=>{if(e.LeftButton==MouseButtonState.Pressed&&!started){started=true;DragDrop.DoDragDrop(target,payload,DragDropEffects.Copy);}};source.Show();DesktopInput.Pump();
+        var source=new Window{Owner=owner,Title="Nashi drag test source",Width=340,Height=160,Left=30,Top=30};var target=new Border{Child=new TextBlock{Text="Drag test fixture",Margin=new(20)},Margin=new(20),Background=System.Windows.Media.Brushes.OliveDrab};source.Content=target;IDataObject payload=new DataObject(DataFormats.FileDrop,new[]{file});var started=false;
+        target.PreviewMouseLeftButtonDown+=(_,e)=>{if(!started){started=true;DragDrop.DoDragDrop(target,payload,DragDropEffects.Copy);}};source.Show();DesktopInput.Pump();
         void Drag(Key modifier,string expected)
         {
             selected=null;started=false;string? state=null;GlobalDropWheel? shownWheel=null;source.Activate();DesktopInput.Pump();var start=target.PointToScreen(new Point(50,30));
             var driver=Task.Run(()=>
             {
                 DesktopInput.MovePointer(start);Thread.Sleep(100);DesktopInput.Hold(modifier,true);DesktopInput.HoldMouse(true);Thread.Sleep(100);
-                try{DesktopInput.MovePointer(new(start.X+35,start.Y+15));Thread.Sleep(700);Point drop=default;owner.Dispatcher.Invoke(()=>{var wheel=Application.Current.Windows.OfType<GlobalDropWheel>().SingleOrDefault();if(wheel is null)throw new Exception("Drag shortcut did not open its global wheel.");shownWheel=wheel;drop=wheel.PointToScreen(new(wheel.ActualWidth/2,wheel.ActualHeight*.18));});DesktopInput.MovePointer(drop);Thread.Sleep(300);owner.Dispatcher.Invoke(()=>state=shownWheel?.State);}
+                try{DesktopInput.MovePointer(new(start.X+35,start.Y+15));Thread.Sleep(700);Point drop=default;owner.Dispatcher.Invoke(()=>{var wheel=Application.Current.Windows.OfType<GlobalDropWheel>().SingleOrDefault();if(wheel is null)throw new Exception("Drag shortcut did not open its global wheel.");shownWheel=wheel;drop=wheel.PointToScreen(new(wheel.ActualWidth/2,wheel.ActualHeight*.18));});DesktopInput.MovePointer(drop);Thread.Sleep(300);owner.Dispatcher.Invoke(()=>{state=shownWheel?.State;DesktopCapture.Save(Path.Combine(root,"global-drag-desktop.png"));});}
                 finally{DesktopInput.HoldMouse(false);DesktopInput.Hold(modifier,false);}
             });
-            var until=DateTime.UtcNow.AddSeconds(12);while(!driver.IsCompleted&&DateTime.UtcNow<until)DesktopInput.Pump(30);if(!driver.IsCompleted)throw new TimeoutException("Global drag test timed out.");driver.GetAwaiter().GetResult();DesktopInput.Pump(300);check(selected==expected,"Real OLE drag shortcut: "+expected+"; observed="+selected+"; "+state);check(received?.SingleOrDefault()==file,"Global file drop preserved the selected path");
+            var until=DateTime.UtcNow.AddSeconds(12);while(!driver.IsCompleted&&DateTime.UtcNow<until)DesktopInput.Pump(30);if(!driver.IsCompleted)throw new TimeoutException("Global drag test timed out.");driver.GetAwaiter().GetResult();DesktopInput.Pump(300);check(selected==expected,"Real OLE drag shortcut: "+expected+"; started="+started+"; observed="+selected+"; "+state);check(received?.SingleOrDefault()==file,"Global file drop preserved the selected path");
         }
         try
         {

@@ -57,6 +57,8 @@ public static class PhotoCodec
         if(o.Exposure!=0)image.Evaluate(Channels.RGB,EvaluateOperator.Multiply,Math.Pow(2,o.Exposure));
         image.BrightnessContrast(new Percentage(o.Brightness*100),new Percentage((o.Contrast-1)*50));
         if(o.Gamma!=1)image.GammaCorrect(o.Gamma,Channels.RGB);
+        if(o.Shadows!=0||o.Highlights!=0||o.Whites!=0||o.Blacks!=0||o.Saturation!=1||o.Vibrance!=0||o.Temperature!=0||o.Tint!=0||o.Fade!=0)
+        {
         var pixels=image.GetPixels();
         for(var y=0;y<image.Height;y++)for(var x=0;x<image.Width;x++)
         {
@@ -68,6 +70,7 @@ public static class PhotoCodec
             p.SetChannel(0,(byte)Math.Clamp(Math.Round(r*255),0,255));p.SetChannel(1,(byte)Math.Clamp(Math.Round(g*255),0,255));p.SetChannel(2,(byte)Math.Clamp(Math.Round(b*255),0,255));
         }
         pixels.Dispose();
+        }
         if(o.Hue!=0)image.Modulate(new Percentage(100),new Percentage(100),new Percentage(100+o.Hue/1.8));
         if(o.Dehaze!=0)image.BrightnessContrast(new Percentage(-o.Dehaze*8),new Percentage(o.Dehaze*25));
         if(o.NoiseReduction>0)image.MedianFilter((uint)Math.Clamp(Math.Ceiling(o.NoiseReduction*2),1,3));

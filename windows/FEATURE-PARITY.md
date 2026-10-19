@@ -1,0 +1,33 @@
+# Windows feature parity work
+
+This branch extends the published 0.7.4 Windows build. It is a release candidate, not a statement that these changes are already in the public download.
+
+`Resources/FeatureCatalog.json` is the shared availability contract: 45 input formats, 27 tools, single/multiple-selection rules and conversion intersections. `scripts/check-feature-parity.py` compares it with the Swift catalog on every source check. The catalog check establishes matching choices; engine and native desktop checks establish behavior.
+
+| Area | Windows implementation | Verification |
+| --- | --- | --- |
+| Drag wheels | Ctrl tools, Shift convert, Alt file actions; configurable distinct chords, global copied-link shortcut, size/finish/animation/sound preferences | Real OLE drag with SendInput, file payload and browser URL/HTML fixtures |
+| Home / Library / clipboard | Shared pear artwork, colors, cards and actions; System/Light/Dark; file/text/image/link paste; search, reuse, missing files, persistence | Native keyboard/clipboard, restart and rendered light/dark/compact views |
+| Images | PNG/JPG/WebP/HEIC/AVIF/TIFF/BMP and SVG import; resize/rotate/flip, light/color/detail effects; original/result preview | Independent codec reads, orientation/color pixels and exported dimensions |
+| Crop / annotate / redact | Drag/Shift/Return, move/resize/aspects; independent marker/shapes/text/arrows/images/magnifier and Select/Move; undo/delete; multi-area solid/blur/pixelate, OCR/face assistance | Native drawing/keyboard, saved pixels, independent marks and original hashes |
+| Frame / collage / PDF | Solid/gradient/image backgrounds, padding/corners/shadow/position; grid/row/column/featured, fit and order; multi-image PDF | Export canvas sizes, repeated-image ordering, PDF page counts |
+| Compression | Image/media/PDF quality, size or reduction targets; image dimension presets; preserves text/complex PDF features when a smaller safe copy is unavailable | Real output sizes, format signatures, unchanged original hashes, unreachable-target failures |
+| Media | Conversion and 15 tools; In/Out and range drag, keyboard transport, filmstrip/waveform, codec proxy preview; split points, retain/join clips, snapshots, redaction ranges, visualizations, channel/loudness and sample-depth settings | Real FFmpeg/ffprobe exports for each media tool and output format; native transport and long-range handle drags |
+| PDF | Merge order; grouped/ranged split; thumbnail order, duplicate/delete/rotate, independent duplicate rotations, optional uniform widths; page image export and QR | Native PDF organizer and independent PDF inspection/render/QR decode |
+| Documents | DOCX/Pages/RTF/RTFD/text clipping/EPUB/text/Markdown, slides and spreadsheets; editable/preserved PDF layout, fixed/reflow EPUB, image DPI | Private Office extraction, Pages read/write, PDF Office/image/EPUB and spreadsheet round trips; typography/link/header/page setup fixtures |
+| Archives / subtitles | ZIP/TAR/GZIP/RAR extraction and supported conversions; folder ZIP; SRT/VTT/text | Round trips, Unicode/timing, nested folders, traversal/link/size/cancel protection |
+| Metadata | Local ExifTool inspect/edit/remove, editable image/PDF/media fields; image conversion tag preservation without stale orientation/preview/profile | Encoded-pixel equality, tag round trips and removal, preserved conversion tags |
+| Web | YouTube video/audio/full-size thumbnail; Instagram photo selection vs Reel video/audio; direct images; quality limits; cancel/progress | Classification, quality/DRM/live fixtures, real public image download with pinned SHA-256; service availability remains subject to the public source site |
+| File actions / Float | Copy/move/path/terminal, native Windows Share, reusable Float windows with add/remove, multi-select, drag out, preview, collapse and edge pinning | Native Float input, files retained after removal, transactional move |
+| Preferences / tray / update | Login option, background tray, output/download folders, format defaults; existing signed public updater and external Library/preferences storage | Preference persistence/collisions; updater trust and extraction regressions; published 0.7.4 update was separately verified before this branch |
+
+Windows uses Explorer, Windows keyboard conventions and Windows Share. Apple AirDrop has no Windows implementation; Windows Share is the corresponding file action. OCR requires a Windows OCR language. Optional media, Office and metadata runtimes are downloaded from pinned upstream packages into the user's Nashi tools directory without administrator installation. Native playback uses Windows codecs, with an FFmpeg preview proxy fallback.
+
+## Commands and evidence
+
+- `dotnet run --project windows/Nashi.Verify -c Release` runs platform-independent engine/security tests; media tests require the explicit `NASHI_VERIFY_FFMPEG` / `NASHI_VERIFY_FFPROBE` paths or CI tool setup.
+- `Nashi --smoke-test` exercises a real isolated Windows desktop. Set `NASHI_SMOKE_DIRECTORY` for JSON, failure diagnostics, export fixtures and PNG render artifacts. Extended parity checks run on GitHub Actions.
+- `parity-progress.json` records the last completed assertion; `parity.json` and `smoke.json` are written only after their complete suites pass. Failure diagnostics must not be presented as a successful suite.
+- Native tests use Windows SendInput and OLE plus WPF render captures. They are not a physical Windows computer-use session or a claim that every third-party media site is always available.
+
+Current verification results and remaining issues are recorded in the PR; a release requires the final commit's checks to pass.

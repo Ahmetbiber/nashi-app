@@ -21,7 +21,7 @@ public static partial class DocumentEngine
             token.ThrowIfCancellationRequested();using var source=PdfReader.Open(input,password,PdfDocumentOpenMode.Import);
             if(tool=="splitPDF")
             {
-                if(pagesPerFile<1||pagesPerFile>source.PageCount)throw new ArgumentException("Choose pages per file within the PDF page count.");
+                if(pagesPerFile<1||pagesPerFile>1000)throw new ArgumentException("Choose between 1 and 1,000 pages per file.");
                 var selected=pages??PageRange(pageRanges,source.PageCount);if(selected.Length==0||selected.Any(p=>p<1||p>source.PageCount))throw new ArgumentException("Choose valid PDF pages.");
                 for(var i=0;i<selected.Length;i+=pagesPerFile)
                 {

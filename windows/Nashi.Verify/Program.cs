@@ -13,6 +13,7 @@ var root = Path.Combine(Path.GetTempPath(), "Nashi-Verify-" + Guid.NewGuid().ToS
 Directory.CreateDirectory(root);
 try
 {
+    await DownloadChecks.Run(Check,root);
     var parityRoot=Path.Combine(root,"Parity");Directory.CreateDirectory(parityRoot);try{ParityChecks.Run(Check,parityRoot);}finally{Directory.Delete(parityRoot,true);}
     foreach (var entry in new[] { "../outside", "/absolute", "C:/outside", @"..\outside", @"\\server\share", "file.txt:stream", "CON", "COM1.txt", "trailing.", "trailing ", "folder/../../outside", "a/./b" })
     {

@@ -43,6 +43,13 @@ public static class ImageEngine
     }
     public static void Save(BitmapSource image,string output,string format,int quality=85)
     {
+        // BitmapFrame.Create(source) can copy decoder metadata implicitly.
+        // Materialize pixels into a fresh source, then create a metadata-free
+        // frame explicitly. No comments, EXIF or source color-profile payloads
+        // can reach the encoder through a retained decoder frame.
+        BitmapSource converted=image.Format==PixelFormats.Bgra32?image:new FormatConvertedBitmap(image,PixelFormats.Bgra32,null,0);
+        var stride=checked(converted.PixelWidth*4);var pixels=new byte[checked(stride*converted.PixelHeight)];converted.CopyPixels(pixels,stride,0);
+        image=BitmapSource.Create(converted.PixelWidth,converted.PixelHeight,96,96,PixelFormats.Bgra32,null,pixels,stride);image.Freeze();
         if(format=="pdf")
         {
             using var png=new MemoryStream();var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));encoder.Save(png);png.Position=0;
@@ -51,6 +58,6 @@ public static class ImageEngine
         }
         BitmapEncoder target=format switch{"jpg"=>new JpegBitmapEncoder{QualityLevel=Math.Clamp(quality,1,100)},"bmp"=>new BmpBitmapEncoder(),"gif"=>new GifBitmapEncoder(),"tiff"=>new TiffBitmapEncoder(),_=>new PngBitmapEncoder()};
         // New frames omit source metadata deliberately; originals stay unchanged.
-        target.Frames.Add(BitmapFrame.Create(image));using var file=new FileStream(output,FileMode.CreateNew);target.Save(file);
+        target.Frames.Add(BitmapFrame.Create(image,null,null,null));using var file=new FileStream(output,FileMode.CreateNew);target.Save(file);
     }
 }

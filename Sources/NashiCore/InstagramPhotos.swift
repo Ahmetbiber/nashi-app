@@ -26,7 +26,16 @@ enum InstagramPhotos {
                 func dimension(_ key:String)->Int? { (item[key] as? Int).flatMap{(1...16_384).contains($0) ? $0:nil} }
                 return (image,dimension("width"),dimension("height"))
             }
-            guard let best=variants.max(by:{($0.1 ?? 0)*($0.2 ?? 0)<($1.1 ?? 0)*($1.2 ?? 0)}) else {
+            // Instagram sometimes omits every dimension. Its grid crops and
+            // scaled variants still describe transforms in `stp`; prefer the
+            // full-frame original without changing its signed URL.
+            func quality(_ item:(URL,Int?,Int?),index:Int)->(Int,Int,Int,Int) {
+                let transform=URLComponents(url:item.0,resolvingAgainstBaseURL:false)?.queryItems?.first{$0.name=="stp"}?.value ?? item.0.path
+                let crop=transform.range(of:"(?:^|[_/])c[0-9]+[.]",options:.regularExpression) != nil
+                let scaled=transform.range(of:"(?:^|[_/])[sp][0-9]+x[0-9]+",options:.regularExpression) != nil
+                return (crop ? 0:1,scaled ? 0:1,(item.1 ?? 0)*(item.2 ?? 0),index)
+            }
+            guard let best=variants.enumerated().max(by:{quality($0.element,index:$0.offset)<quality($1.element,index:$1.offset)})?.element else {
                 throw NashiError.failed("A photo in this post is unavailable. Try a fresh public post link.")
             }
             photos.append(WebPhoto(id:index+1,url:best.0,width:best.1,height:best.2))

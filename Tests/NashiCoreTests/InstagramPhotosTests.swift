@@ -27,6 +27,14 @@ final class InstagramPhotosTests:XCTestCase {
         XCTAssertEqual(info.photos.count,1);XCTAssertEqual(info.modes,[.original]);XCTAssertFalse(info.direct)
         XCTAssertEqual(info.url,post);XCTAssertEqual(info.skippedVideoCount,0)
     }
+    func testMissingDimensionsPreferFullOriginalOverSquareGridCrop() throws {
+        let root:[String:Any]=["thumbnails":[
+            ["url":"https://scontent.cdninstagram.com/photo.jpg?stp=c0.386.2316.2316a_dst-jpg_s1080x1080_tt6"],
+            ["url":"https://scontent.cdninstagram.com/photo.jpg?stp=dst-jpg_p1080x1080_tt6"],
+            ["url":"https://scontent.cdninstagram.com/photo.jpg?stp=dst-jpg_e35_tt6"]]]
+        let info=try parse(root)
+        XCTAssertEqual(URLComponents(url:info.photos[0].url,resolvingAgainstBaseURL:false)?.queryItems?.first?.value,"dst-jpg_e35_tt6")
+    }
     func testVideoOnlyPostCannotBeDownloadedAsPhotoCovers() throws {
         XCTAssertThrowsError(try parse(["entries":[video,video]]))
     }

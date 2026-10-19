@@ -88,6 +88,7 @@ internal static class SmokeTests
         DesktopInput.Key(wheel,Key.Left);Check(wheel.SelectedIndex==0,"Wheel Left arrow failed");
         DesktopInput.Key(wheel,Key.Left);Check(wheel.SelectedIndex==2,"Wheel did not wrap to last tool");
         var wheelImage=new RenderTargetBitmap((int)wheel.ActualWidth,(int)wheel.ActualHeight,96,96,PixelFormats.Pbgra32);wheelImage.Render(wheel);ImageEngine.Save(wheelImage,Path.Combine(root,"windows-wheel.png"),"png");DesktopInput.Key(wheel,Key.Escape);Check(!wheel.IsVisible,"Escape did not close wheel");
+        ToolChoice? chosen=null;var enterWheel=new WheelWindow(window,[new("crop","Crop","⌗"),new("resize","Resize","⤢")],choice=>chosen=choice);enterWheel.Show();DesktopInput.Pump();DesktopInput.Key(enterWheel,Key.Tab);DesktopInput.Key(enterWheel,Key.Enter);Check(chosen?.Id=="resize","Tab/Enter did not activate the focused wheel tool");
         var editor=new ToolEditor(window,"crop","Crop",source,preview:bitmap);editor.Show();editor.UpdateLayout();DesktopInput.Pump();
         var canvas=Descendants(editor).OfType<Canvas>().First();
         DesktopInput.Drag(canvas,new Point(20,20),new Point(180,130),shift:true);

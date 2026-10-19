@@ -13,7 +13,7 @@ public sealed class ToolEditor:Window
     public MediaOptions MediaOptions{get;private set;}=new();public ImageOptions ImageOptions{get;private set;}=new();public string Format{get;private set;}="png";public int[] Pages{get;private set;}=[];
     private readonly string tool;private readonly BitmapSource? bitmap;private readonly Dictionary<string,TextBox> fields=[];
     private readonly ComboBox format=new();private readonly ComboBox drawingTool=new(){ItemsSource=new[]{"Marker","Rectangle"},SelectedIndex=0};
-    private readonly Canvas drawing=new(){Background=Brushes.Transparent};private Rectangle? selection,activeRectangle;private Polyline? activeStroke;private Point origin;private bool dragging;
+    private readonly Canvas drawing=new(){Background=Brushes.Transparent,Focusable=true};private Rectangle? selection,activeRectangle;private Polyline? activeStroke;private Point origin;private bool dragging;
     private readonly MediaElement player=new(){LoadedBehavior=MediaState.Manual,UnloadedBehavior=MediaState.Close,Stretch=Stretch.Uniform,Height=260};private bool playing;
     private readonly RangeTimeline timeline=new();private readonly TextBlock time=new(){Margin=new(4,6,4,10)};private double duration=1;
     internal double PreviewSeconds=>player.Position.TotalSeconds;
@@ -98,7 +98,7 @@ public sealed class ToolEditor:Window
     private void BeginDraw(object sender,MouseButtonEventArgs e)
     {
         if(tool is not ("crop" or "cropVideo" or "redactVideo" or "annotate"))return;
-        origin=e.GetPosition(drawing);dragging=drawing.CaptureMouse();
+        drawing.Focus();origin=e.GetPosition(drawing);dragging=drawing.CaptureMouse();
         if(tool=="annotate"&&drawingTool.SelectedIndex==0){activeStroke=new Polyline{Stroke=new SolidColorBrush(Color.FromArgb(160,234,181,40)),StrokeThickness=Math.Max(3,drawing.Width/100),StrokeLineJoin=PenLineJoin.Round};activeStroke.Points.Add(origin);drawing.Children.Add(activeStroke);}
         else
         {
@@ -126,7 +126,7 @@ public sealed class ToolEditor:Window
     {
         if(e.Key==Key.Escape){Close();e.Handled=true;return;}
         if(ClipboardImport.IsEditing(Keyboard.FocusedElement as DependencyObject))return;if(e.Key==Key.Enter){Save();e.Handled=true;return;}
-        if(media is null)return;
+        if(media is null||Keyboard.Modifiers is not (ModifierKeys.None or ModifierKeys.Shift))return;
         switch(e.Key){case Key.Space:if(playing)player.Pause();else player.Play();playing=!playing;break;case Key.Left:Seek(player.Position.TotalSeconds-(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?1d/30:1));break;case Key.Right:Seek(player.Position.TotalSeconds+(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?1d/30:1));break;case Key.I:if(fields.TryGetValue("Start",out var start)&&player.Position.TotalSeconds<Value("End",duration))start.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;case Key.O:if(fields.TryGetValue("End",out var end)&&player.Position.TotalSeconds>Value("Start"))end.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;default:return;}e.Handled=true;
     }
     private void SyncTimeline(){if(fields.ContainsKey("Start")&&fields.ContainsKey("End"))timeline.Set(duration,Value("Start"),Value("End",duration));}

@@ -32,7 +32,7 @@ public sealed class WheelWindow:Window
     public WheelWindow(Window owner,IReadOnlyList<ToolChoice> tools,Action<ToolChoice> select)
     {
         this.choices=tools;this.select=select;Owner=owner;Title="Nashi tools";Width=540;Height=540;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.CenterOwner;
-        var canvas=new Canvas{Width=540,Height=540};Content=canvas;
+        var canvas=new Canvas{Width=540,Height=540};KeyboardNavigation.SetTabNavigation(canvas,KeyboardNavigationMode.Cycle);Content=canvas;
         var disc=new Ellipse{Width=530,Height=530,Fill=Theme.Brush("Surface")};Canvas.SetLeft(disc,5);Canvas.SetTop(disc,5);canvas.Children.Add(disc);
         var count=Math.Min(12,tools.Count);
         for(var i=0;i<count;i++)
@@ -47,7 +47,7 @@ public sealed class WheelWindow:Window
             button.Click+=(_,_)=>{Close();select(choice);};button.MouseEnter+=(_,_)=>Highlight(index);button.GotKeyboardFocus+=(_,_)=>Highlight(index);
             path.MouseLeftButtonUp+=(_,_)=>{Close();select(choice);};path.MouseEnter+=(_,_)=>Highlight(index);
         }
-        var center=new Button{Content=new TextBlock{Text="Tools\nEsc to close",TextAlignment=TextAlignment.Center,FontSize=16,FontWeight=FontWeights.SemiBold},Width=180,Height=180,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink")};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();PreviewKeyDown+=(_,e)=>{e.Handled=Navigate(e.Key);};Loaded+=(_,_)=>{if(buttons.Count>0)buttons[0].Focus();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
+        var center=new Button{Focusable=false,Content=new TextBlock{Text="Tools\nEsc to close",TextAlignment=TextAlignment.Center,FontSize=16,FontWeight=FontWeights.SemiBold},Width=180,Height=180,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink")};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);center.Click+=(_,_)=>Close();PreviewKeyDown+=(_,e)=>{e.Handled=Navigate(e.Key);};Loaded+=(_,_)=>{if(buttons.Count>0)buttons[0].Focus();};bool closing=false;Closing+=(_,_)=>closing=true;Deactivated+=(_,_)=>{if(!closing&&IsVisible)Close();};
     }
 }
 internal static class Feedback

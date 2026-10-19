@@ -99,6 +99,11 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         {
             var converted=await engine.ConvertAsync([source],ext,directory,new());Check((await engine.InspectAsync(converted[0])).Video is not null,"No video in "+ext);
         }
+        var portrait=Path.Combine(directory,"Portrait.mp4");
+        await ProcessRunner.RunAsync(encoder,["-v","error","-i",source,"-map","0","-c","copy","-metadata:s:v:0","rotate=90",portrait]);
+        var portraitInfo=await engine.InspectAsync(portrait);Check(portraitInfo.Video?.Width==72&&portraitInfo.Video.Height==128,"Portrait display dimensions ignored rotation");
+        var portraitCrop=await engine.ToolAsync("cropVideo",[portrait],directory,new(){Regions=[new(0,0,32,100)]});var portraitCropped=await engine.InspectAsync(portraitCrop[0]);
+        Check(portraitCropped.Video?.Width==32&&portraitCropped.Video.Height==100,"Portrait crop used encoded instead of displayed bounds");
         var finalHash=System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(source));
         Check(original.SequenceEqual(finalHash),"Source changed");
         Console.WriteLine(JsonSerializer.Serialize(new{passed=checks,scope="Engine safety plus real FFmpeg conversion, trim, mute, speed, crop, split, join, normalize, snapshots and redaction; Windows UI not claimed"}));

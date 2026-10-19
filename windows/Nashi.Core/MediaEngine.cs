@@ -64,7 +64,14 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
         foreach (var stream in root.GetProperty("streams").EnumerateArray())
         {
             var attached = stream.TryGetProperty("disposition", out var disposition) && disposition.TryGetProperty("attached_pic", out var pic) && pic.GetInt32() == 1;
-            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), GetInt(stream,"width"), GetInt(stream,"height"), attached));
+            var width=GetInt(stream,"width");var height=GetInt(stream,"height");double rotation=0;
+            if(stream.TryGetProperty("side_data_list",out var sideData)&&sideData.ValueKind==JsonValueKind.Array)
+                foreach(var entry in sideData.EnumerateArray())if(entry.TryGetProperty("rotation",out var angle)&&angle.TryGetDouble(out var value))rotation=value;
+            if(rotation==0&&stream.TryGetProperty("tags",out var tags)&&tags.TryGetProperty("rotate",out var tag))double.TryParse(tag.ToString(),CultureInfo.InvariantCulture,out rotation);
+            // FFmpeg auto-rotates decoded frames before crop/scale filters. The
+            // editor and validation use those same displayed dimensions.
+            if(double.IsFinite(rotation)&&Math.Abs(Math.Abs(rotation)%180-90)<.001)(width,height)=(height,width);
+            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached));
         }
         var duration = root.TryGetProperty("format", out var format) && double.TryParse(GetString(format,"duration"), CultureInfo.InvariantCulture, out var seconds) && double.IsFinite(seconds) ? Math.Max(0,seconds) : 0;
         return new(duration, new FileInfo(input).Length, streams);

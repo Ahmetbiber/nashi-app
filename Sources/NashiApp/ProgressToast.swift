@@ -19,7 +19,7 @@ import Combine
         toast.hasShadow=true;toast.level = .floating;toast.isFloatingPanel=true
         toast.hidesOnDeactivate=false;toast.animationBehavior = .none
         toast.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary,.transient,.ignoresCycle]
-        let host=NSHostingView(rootView:JobProgressView(state:state).frame(maxWidth:.infinity,maxHeight:.infinity).tint(Color.nashi))
+        let host=NSHostingView(rootView:JobProgressView(state:state).frame(maxWidth:.infinity,maxHeight:.infinity).tint(Color.nashi).nashiLanguage())
         host.wantsLayer=true;host.layer?.cornerRadius=18;host.layer?.masksToBounds=true
         toast.contentView=host;panel=toast;toast.orderFrontRegardless()
         observation=state.$working.combineLatest(state.$error).receive(on:RunLoop.main).sink { [weak self,weak toast] working,error in

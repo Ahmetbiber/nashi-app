@@ -28,7 +28,7 @@ struct ToolSetupView:View {
                     Button(officeReady ? "Office tools ready":"Download office tools") {install(office:true)}.disabled(working || officeReady)
                 }.padding(10).frame(maxWidth:.infinity,alignment:.leading)
             }
-            Text(message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+            LText(message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
             if working {
                 if let fraction {ProgressView(value:fraction)}else{ProgressView().controlSize(.small)}
                 Button("Cancel setup") {token.cancel();task?.cancel()}

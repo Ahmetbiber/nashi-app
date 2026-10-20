@@ -123,7 +123,7 @@ struct NashiPill:View {
     var symbol:String?=nil
     var color:Color=NashiPalette.forest
     var body:some View {
-        HStack(spacing:5) { if let symbol { Image(systemName:symbol) };Text(title) }
+        HStack(spacing:5) { if let symbol { Image(systemName:symbol) };LText(title) }
             .font(.system(size:10,weight:.semibold,design:.rounded)).foregroundStyle(color == .nashi ? NashiPalette.goldInk:color)
             .padding(.horizontal,9).padding(.vertical,5).background(color.opacity(0.09),in:Capsule())
     }
@@ -134,9 +134,9 @@ struct NashiPageHeading:View {
     let subtitle:String
     var body:some View {
         VStack(alignment:.leading,spacing:8) {
-            Text(eyebrow.uppercased()).font(.system(size:10,weight:.bold,design:.rounded)).tracking(1.4).foregroundStyle(NashiPalette.goldInk)
-            Text(title).font(.system(size:27,weight:.bold,design:.rounded)).tracking(-0.7)
-            Text(subtitle).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+            LText(eyebrow.uppercased()).font(.system(size:10,weight:.bold,design:.rounded)).tracking(1.4).foregroundStyle(NashiPalette.goldInk)
+            LText(title).font(.system(size:27,weight:.bold,design:.rounded)).tracking(-0.7)
+            LText(subtitle).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
         }
     }
 }

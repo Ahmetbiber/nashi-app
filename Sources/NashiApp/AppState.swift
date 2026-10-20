@@ -27,7 +27,7 @@ struct JobRecord:Codable,Identifiable {
     @Published var selectedHistoryID:UUID?
     @Published var libraryFocusRequest=0
     let filePreview=FilePreview()
-    var filteredHistory:[JobRecord] {history.filter{libraryQuery.isEmpty || ([$0.title]+$0.outputs.map{URL(fileURLWithPath:$0).lastPathComponent}).joined(separator:" ").localizedCaseInsensitiveContains(libraryQuery)}}
+    var filteredHistory:[JobRecord] {history.filter{libraryQuery.isEmpty || AppLocalization.matches(([$0.title,AppLocalization.text($0.title,language:historyDefaults.string(forKey:"appLanguage") ?? "en")]+$0.outputs.map{URL(fileURLWithPath:$0).lastPathComponent}).joined(separator:" "),query:libraryQuery,language:historyDefaults.string(forKey:"appLanguage") ?? "en")}}
     func preview(_ job:JobRecord) {filePreview.show(job.outputs.map{URL(fileURLWithPath:$0)}.filter{FileManager.default.fileExists(atPath:$0.path)})}
     func navigateLibrary(_ direction:Int) {let rows=filteredHistory;guard !rows.isEmpty else{return};let old=rows.firstIndex{$0.id==selectedHistoryID};selectedHistoryID=rows[min(rows.count-1,max(0,(old ?? (direction>0 ? -1:1))+direction))].id}
     func pasteContent(_ pasteboard:NSPasteboard = .general) {

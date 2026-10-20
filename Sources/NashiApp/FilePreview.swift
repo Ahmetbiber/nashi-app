@@ -34,11 +34,11 @@ import NashiCore
     @objc private func didClose(){player?.pause();player?.replaceCurrentItem(with:nil);player=nil;preview?.previewItem=nil;preview=nil}
     func close(){window?.close();didClose()}
     private func load() {
-        guard let window else{return};didClose();let url=urls[index];window.title=url.lastPathComponent+" · Preview · Nashi"
+        guard let window else{return};didClose();let url=urls[index];window.title=url.lastPathComponent+" · "+L10n.text("Preview")+" · Nashi"
         let root=NSView();window.contentView=root
         let header=NSStackView();header.orientation = .horizontal;header.spacing=8;caption.stringValue="\(url.lastPathComponent) · \(index+1) / \(urls.count)";caption.lineBreakMode = .byTruncatingMiddle;header.addArrangedSubview(caption)
-        for (label,selector) in [("←",#selector(previous)),("→",#selector(next)),("Open",#selector(openFile))] {header.addArrangedSubview(NSButton(title:label,target:self,action:selector))}
-        let hint=NSTextField(labelWithString:"←/→ files · Media: Space play/pause, ←/→ 1s, ⌥←/→ files · Esc closes");hint.font = .systemFont(ofSize:11);hint.textColor = .secondaryLabelColor
+        for (label,selector) in [("←",#selector(previous)),("→",#selector(next)),("Open",#selector(openFile))] {header.addArrangedSubview(NSButton(title:L10n.text(label),target:self,action:selector))}
+        let hint=NSTextField(labelWithString:L10n.text("←/→ files · Media: Space play/pause, ←/→ 1s, ⌥←/→ files · Esc closes"));hint.font = .systemFont(ofSize:11);hint.textColor = .secondaryLabelColor
         let content:NSView
         if [.audio,.video].contains(FileCategory.detect(url)) {
             let view=AVPlayerView();let p=AVPlayer(url:url);view.player=p;view.controlsStyle = .floating;player=p;content=view

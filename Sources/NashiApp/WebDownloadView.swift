@@ -151,7 +151,7 @@ struct WebDownloadView:View {
                             }.padding(17).nashiCard().disabled(model.downloading)
                         }
                         if info.modes.count>1 {
-                            Picker("Save as",selection:$model.mode) { ForEach(info.modes,id:\.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented).disabled(model.downloading)
+                            Picker("Save as",selection:$model.mode) { ForEach(info.modes,id:\.self) { LText($0.title).tag($0) } }.pickerStyle(.segmented).disabled(model.downloading)
                         }
                         if model.mode == .video,(info.heights.max() ?? 0)>720 {
                             Picker("Video quality",selection:$model.maximumHeight) {
@@ -167,13 +167,13 @@ struct WebDownloadView:View {
                         Spacer();Button("Change…") { model.chooseDestination() }.disabled(model.downloading)
                     }.padding(15).nashiCard()
                     if model.downloading {
-                        VStack(alignment:.leading,spacing:9) { HStack { Text(state.progressLabel).font(.caption);Spacer();if state.progressIsDeterminate { Text("\(Int(state.progress*100))%").font(.caption.monospacedDigit()) } };JobProgressBar(state:state) }
+                        VStack(alignment:.leading,spacing:9) { HStack { LText(state.progressLabel).font(.caption);Spacer();if state.progressIsDeterminate { Text("\(Int(state.progress*100))%").font(.caption.monospacedDigit()) } };JobProgressBar(state:state) }
                     }
                     if !model.completed.isEmpty { Label("Ready on your Mac",systemImage:"checkmark.circle.fill").foregroundStyle(NashiPalette.forest);Text(model.completed.map(\.lastPathComponent).joined(separator:"\n")).font(.caption).textSelection(.enabled) }
                     if let error=model.error { Label(error,systemImage:"exclamationmark.circle").font(.callout).foregroundStyle(.orange).fixedSize(horizontal:false,vertical:true) }
                     if state.working,!model.downloading { Text("Another task is running. Your link is ready when it finishes.").font(.caption).foregroundStyle(.secondary) }
                     VStack(alignment:.leading,spacing:7) {
-                        Text(model.shortcutAvailable ? "Copy a link → ⌃⇧D, or drag it with ⌘.":"Copy a link, then choose Download Link from the Nashi menu.").font(.caption)
+                        LText(model.shortcutAvailable ? "Copy a link → ⌃⇧D, or drag it with ⌘.":"Copy a link, then choose Download Link from the Nashi menu.").font(.caption)
                         Text("Instagram photo posts open a photo selection. For videos, use the share link; for other photos, drag the image or use Copy Image Address. Public media only; login-required and protected items may be unavailable.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                     }
                 }.padding(24)

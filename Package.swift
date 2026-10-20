@@ -13,7 +13,7 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0")
     ],
     targets: [
-        .target(name: "NashiCore"),
+        .target(name: "NashiCore", resources: [.copy("Resources")]),
         // The frozen XPC wire protocol stays at its sealed source path. It is compiled
         // into the renamed module without changing its Objective-C identity.
         .target(name: "NashiUpdates", dependencies: [.product(name: "Sparkle", package: "Sparkle")], path: "Sources", exclude: ["NashiApp", "NashiCore", "NashiCLI", "UpdateCredentialBroker"], sources: ["NashiUpdates", "TangerineUpdates/UpdateCredentialBrokerProtocol.swift"]),

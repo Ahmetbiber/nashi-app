@@ -17,7 +17,7 @@ struct HomeView:View {
     private var formats:[String] { FeatureCatalog.formats(for:state.inputs) }
     private var tools:[ToolKind] { FeatureCatalog.tools(for:state.inputs) }
     private var recent:[JobRecord] {
-        let filtered=state.history.filter { historySearch.isEmpty || ([$0.title]+$0.outputs.map{URL(fileURLWithPath:$0).lastPathComponent}).joined(separator:" ").localizedCaseInsensitiveContains(historySearch) }
+        let filtered=state.history.filter { historySearch.isEmpty || AppLocalization.matches(([$0.title,AppLocalization.text($0.title,language:L10n.language)]+$0.outputs.map{URL(fileURLWithPath:$0).lastPathComponent}).joined(separator:" "),query:historySearch,language:L10n.language) }
         return Array(filtered.prefix(allHistory || !historySearch.isEmpty ? 50:3))
     }
     var body:some View {
@@ -51,7 +51,7 @@ struct HomeView:View {
                     }
                     HStack(alignment:.bottom) {
                         VStack(alignment:.leading,spacing:6) {
-                            Text(state.inputs.isEmpty ? "Your files. Their next form.":"Let’s make something of it.")
+                            LText(state.inputs.isEmpty ? "Your files. Their next form.":"Let’s make something of it.")
                                 .font(.system(size:30,weight:.bold,design:.rounded)).tracking(-0.9)
                             Text("Convert, fine-tune, and send them on their way.").font(.system(size:13)).foregroundStyle(.secondary)
                         }
@@ -93,7 +93,7 @@ struct HomeView:View {
                     Text("Freshly made, pasted, and ready for another round.").font(.callout).foregroundStyle(.secondary)
                     TextField("Find a file or tool · ⌘F",text:$state.libraryQuery).textFieldStyle(.roundedBorder).focused($librarySearchFocused)
                     if let error=state.error {HStack{Label(error,systemImage:"exclamationmark.circle").font(.caption).foregroundStyle(.orange);Spacer();Button("Dismiss"){state.error=nil}.buttonStyle(NashiButtonStyle(.quiet,compact:true))}}
-                    if state.filteredHistory.isEmpty {Text(state.history.isEmpty ? "Nothing here yet. Paste something or make your first fresh copy.":"No matches. Try a file name or tool.").foregroundStyle(.secondary).padding(20)}
+                    if state.filteredHistory.isEmpty {LText(state.history.isEmpty ? "Nothing here yet. Paste something or make your first fresh copy.":"No matches. Try a file name or tool.").foregroundStyle(.secondary).padding(20)}
                     ForEach(state.filteredHistory) {job in
                         RecentFileRow(job:job,canReuse:!state.working,onPreview:{state.preview(job)},onReuse:{urls in guard !state.working else{return};state.inputs=urls;state.libraryVisible=false})
                             .nashiCard(radius:16).overlay(RoundedRectangle(cornerRadius:16).strokeBorder(state.selectedHistoryID==job.id ? Color.nashi:Color.clear,lineWidth:1.5))
@@ -156,7 +156,7 @@ struct HomeView:View {
         return "Keep them together, or give each one a fresh start."
     }
     private func shortcut(_ key:String,_ title:String)->some View {
-        HStack(spacing:5) { Text(ModifierChord.legacy(key)?.symbols ?? key).font(.system(size:12,weight:.semibold));Text(title).font(.system(size:10,weight:.medium)) }
+        HStack(spacing:5) { Text(ModifierChord.legacy(key)?.symbols ?? key).font(.system(size:12,weight:.semibold));LText(title).font(.system(size:10,weight:.medium)) }
             .foregroundStyle(NashiPalette.forest).padding(.horizontal,9).padding(.vertical,6).background(NashiPalette.sage.opacity(0.65),in:RoundedRectangle(cornerRadius:8))
     }
     private var selectionActions:some View {
@@ -221,7 +221,7 @@ private struct HomeActionTile:View {
     var body:some View {
         HStack(spacing:11) {
             Image(systemName:symbol).font(.system(size:17,weight:.medium)).foregroundStyle(color).frame(width:38,height:38).background(color.opacity(0.10),in:RoundedRectangle(cornerRadius:12))
-            VStack(alignment:.leading,spacing:4) { Text(title).font(.system(size:13,weight:.bold,design:.rounded));Text(subtitle).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1) }
+            VStack(alignment:.leading,spacing:4) { LText(title).font(.system(size:13,weight:.bold,design:.rounded));LText(subtitle).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1) }
             Spacer(minLength:1)
             Image(systemName:"chevron.down").font(.system(size:9,weight:.semibold)).foregroundStyle(.tertiary)
         }.padding(15).frame(maxWidth:.infinity,alignment:.leading).nashiCard(radius:18)
@@ -242,7 +242,7 @@ private struct RecentFileRow:View {
             if let first=urls.first { Image(nsImage:NSWorkspace.shared.icon(forFile:first.path)).resizable().frame(width:29,height:29).padding(5).background(NashiPalette.inset,in:RoundedRectangle(cornerRadius:11)) }
             VStack(alignment:.leading,spacing:4) {
                 Text(urls.first?.lastPathComponent ?? job.title).font(.system(size:12,weight:.semibold)).lineLimit(1)
-                Text(available.isEmpty ? "Moved or removed":job.title+" · "+job.date.formatted(.relative(presentation:.named))).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
+                HStack(spacing:3) { if available.isEmpty { Text("Moved or removed") } else { LText(job.title);Text("· "+job.date.formatted(.relative(presentation:.named))) } }.font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
             if urls.count>1 { Text("\(urls.count) files").font(.caption2).foregroundStyle(.secondary) }
@@ -270,7 +270,7 @@ private struct FileGarden:View {
     func card(_ title:String,_ symbol:String,_ color:Color)->some View {
         VStack(alignment:.leading,spacing:10) {
             Image(systemName:symbol).font(.system(size:23)).foregroundStyle(color)
-            Text(title).font(.system(size:10,weight:.bold,design:.rounded)).foregroundStyle(color)
+            LText(title).font(.system(size:10,weight:.bold,design:.rounded)).foregroundStyle(color)
             Capsule().fill(color.opacity(0.18)).frame(width:37,height:4)
         }.padding(13).frame(width:77,height:103,alignment:.leading).background(NashiPalette.surface,in:RoundedRectangle(cornerRadius:15)).overlay(RoundedRectangle(cornerRadius:15).strokeBorder(color.opacity(0.12)))
             .shadow(color:.black.opacity(0.07),radius:12,y:5)
@@ -286,7 +286,7 @@ struct JobProgressView:View {
                 VStack(alignment:.leading,spacing:12) {
                     HStack(spacing:10) {
                         ProgressView().controlSize(.small)
-                        VStack(alignment:.leading,spacing:4) { Text("A fresh file is on its way.").font(.system(size:13,weight:.semibold,design:.rounded));Text(state.progressLabel).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) }
+                        VStack(alignment:.leading,spacing:4) { Text("A fresh file is on its way.").font(.system(size:13,weight:.semibold,design:.rounded));LText(state.progressLabel).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) }
                         Spacer()
                         if state.progressIsDeterminate { Text("\(Int(state.progress*100))%").font(.system(size:12,weight:.semibold,design:.rounded)).monospacedDigit().foregroundStyle(.secondary) }
                         Button("Cancel") { state.token.cancel() }.buttonStyle(NashiButtonStyle(.secondary,compact:true))
@@ -297,7 +297,7 @@ struct JobProgressView:View {
             if let error=state.error {
                 HStack(alignment:.top,spacing:10) {
                     Image(systemName:"exclamationmark.circle.fill").foregroundStyle(.orange)
-                    VStack(alignment:.leading,spacing:4) { Text("Let’s try that again.").font(.system(size:12,weight:.semibold,design:.rounded));Text(error).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(4).textSelection(.enabled) }
+                    VStack(alignment:.leading,spacing:4) { Text("Let’s try that again.").font(.system(size:12,weight:.semibold,design:.rounded));LText(error).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(4).textSelection(.enabled) }
                     Spacer();Button { state.error=nil } label:{Image(systemName:"xmark")}.buttonStyle(NashiButtonStyle(.quiet,compact:true)).accessibilityLabel("Dismiss error")
                 }.padding(15).background(Color.orange.opacity(0.07)).background(NashiPalette.canvas).clipShape(RoundedRectangle(cornerRadius:17)).transition(.opacity)
             }

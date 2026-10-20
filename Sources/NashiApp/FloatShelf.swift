@@ -36,6 +36,7 @@ enum FloatShelfViewMode:Int { case icons,list }
     private var typeBuffer=""
     private var lastTypeTime:TimeInterval=0
     private var isClosed=false
+    private var languageObserver:NSObjectProtocol?
     private var selectedIndices:[Int] { collection.selectionIndexPaths.map(\.item).filter{items.indices.contains($0)}.sorted() }
     private var actionURLs:[URL] { selectedURLs.isEmpty ? urls:selectedURLs }
 
@@ -46,7 +47,9 @@ enum FloatShelfViewMode:Int { case icons,list }
         panel.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary];panel.isReleasedWhenClosed=false;panel.isOpaque=false;panel.backgroundColor = .clear;panel.hasShadow=true;panel.minSize=NSSize(width:360,height:200)
         panel.delegate=self;panel.contentView=surface
         buildContent();append(urls);panel.center()
+        languageObserver=NotificationCenter.default.addObserver(forName:.nashiLanguageChanged,object:nil,queue:.main){ [weak self] _ in Task { @MainActor in self?.updateLabels() } }
     }
+    deinit { if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) } }
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func showWindow(_ sender:Any?) {
         super.showWindow(sender);window?.makeKeyAndOrderFront(sender);window?.makeFirstResponder(collection)
@@ -133,9 +136,9 @@ enum FloatShelfViewMode:Int { case icons,list }
     }
     private func updateLabels() {
         let selected=selectedIndices.count,count=items.count
-        countLabel.stringValue="Float · \(count) file\(count==1 ? "":"s")"
-        statusLabel.stringValue=selected>0 ? "\(selected) selected · Drag to carry files":"Drop files here · Space for Quick Look"
-        collection.emptyMessage=count==0 ? "Drop files or folders here":""
+        countLabel.stringValue=L10n.text("Float · \(count) file\(count==1 ? "":"s")");viewPicker.setLabel(L10n.text("Icons"),forSegment:0);viewPicker.setLabel(L10n.text("List"),forSegment:1)
+        statusLabel.stringValue=L10n.text(selected>0 ? "\(selected) selected · Drag to carry files":"Drop files here · Space for Quick Look")
+        collection.emptyMessage=count==0 ? L10n.text("Drop files or folders here"):""
         carryGrip.toolTip=selected>0 ? "Drag all selected files":"Drag all files";carryGrip.needsDisplay=true
         pinButton.image=NSImage(systemSymbolName:attachedEdge==nil ? "pin":"pin.fill",accessibilityDescription:"Attach Float to an edge")
         collapseButton.toolTip=isExpanded ? "Collapse Float":"Expand Float"
@@ -197,9 +200,9 @@ enum FloatShelfViewMode:Int { case icons,list }
     private func pinMenu()->NSMenu {
         let menu=NSMenu(title:"Attach to Edge")
         for edge in FloatShelfEdge.allCases {
-            let item=NSMenuItem(title:edge.rawValue.capitalized,action:#selector(pinChoice),keyEquivalent:"");item.target=self;item.representedObject=edge.rawValue;item.state=attachedEdge==edge ? .on:.off;menu.addItem(item)
+            let item=NSMenuItem(title:L10n.text(edge.rawValue.capitalized),action:#selector(pinChoice),keyEquivalent:"");item.target=self;item.representedObject=edge.rawValue;item.state=attachedEdge==edge ? .on:.off;menu.addItem(item)
         }
-        menu.addItem(.separator());let detach=NSMenuItem(title:"Detach",action:#selector(pinChoice),keyEquivalent:"");detach.target=self;detach.state=attachedEdge==nil ? .on:.off;menu.addItem(detach);return menu
+        menu.addItem(.separator());let detach=NSMenuItem(title:L10n.text("Detach"),action:#selector(pinChoice),keyEquivalent:"");detach.target=self;detach.state=attachedEdge==nil ? .on:.off;menu.addItem(detach);return menu
     }
     @objc private func pinChoice(_ sender:NSMenuItem) { attach(to:(sender.representedObject as? String).flatMap(FloatShelfEdge.init(rawValue:))) }
 
@@ -261,11 +264,11 @@ enum FloatShelfViewMode:Int { case icons,list }
     private func makeContextMenu()->NSMenu {
         let menu=NSMenu(title:"Float")
         let commands:[(String,Selector)]=[("Open",#selector(openSelection)),("Quick Look",#selector(showQuickLook)),("Show in Finder",#selector(revealSelection)),("Copy",#selector(copyFiles)),("Copy Path",#selector(copyPaths)),("Share…",#selector(shareSelection)),("Remove from Float",#selector(removeSelection))]
-        for (title,action) in commands { let item=NSMenuItem(title:title,action:action,keyEquivalent:"");item.target=self;menu.addItem(item) }
+        for (title,action) in commands { let item=NSMenuItem(title:L10n.text(title),action:action,keyEquivalent:"");item.target=self;menu.addItem(item) }
         menu.addItem(.separator())
-        let add=NSMenuItem(title:"Add Files…",action:#selector(chooseFiles),keyEquivalent:"");add.target=self;menu.addItem(add)
-        let clear=NSMenuItem(title:"Clear Float",action:#selector(clearShelf),keyEquivalent:"");clear.target=self;menu.addItem(clear)
-        let pin=NSMenuItem(title:"Attach to Edge",action:nil,keyEquivalent:"");pin.submenu=pinMenu();menu.addItem(pin)
+        let add=NSMenuItem(title:L10n.text("Add Files…"),action:#selector(chooseFiles),keyEquivalent:"");add.target=self;menu.addItem(add)
+        let clear=NSMenuItem(title:L10n.text("Clear Float"),action:#selector(clearShelf),keyEquivalent:"");clear.target=self;menu.addItem(clear)
+        let pin=NSMenuItem(title:L10n.text("Attach to Edge"),action:nil,keyEquivalent:"");pin.submenu=pinMenu();menu.addItem(pin)
         return menu
     }
     func validateMenuItem(_ menuItem:NSMenuItem)->Bool {

@@ -29,7 +29,7 @@ import NashiUpdates
         let suite="Nashi.DesktopQA."+UUID().uuidString;let defaults=UserDefaults(suiteName:suite)!;defer{defaults.removePersistentDomain(forName:suite)}
         let state=AppState(defaults:defaults);self.state=state
         let w=NSWindow(contentRect:NSRect(x:100,y:100,width:820,height:780),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false);w.title="Nashi Desktop QA";w.isReleasedWhenClosed=false;window=w
-        w.contentView=NSHostingView(rootView:HomeView(state:state,updater:AppUpdater()));monitor=NSEvent.addLocalMonitorForEvents(matching:.keyDown){[weak self] event in guard let self,event.window===w,w.isKeyWindow else{return event};return state.handleHomeKey(event,window:w,pasteboard:self.board) ? nil:event}
+        w.contentView=NSHostingView(rootView:HomeView(state:state,updater:AppUpdater()).nashiLanguage());monitor=NSEvent.addLocalMonitorForEvents(matching:.keyDown){[weak self] event in guard let self,event.window===w,w.isKeyWindow else{return event};return state.handleHomeKey(event,window:w,pasteboard:self.board) ? nil:event}
         w.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);await pause()
         let unicode="Nashi clipboard · Türkçe ıİşğü 🍐\r\nSecond line"
         board.setString(unicode,forType:.string);try await key(9,flags:.maskCommand,in:w)

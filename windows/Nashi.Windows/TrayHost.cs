@@ -23,6 +23,7 @@ internal sealed class TrayHost:IDisposable
     [DllImport("user32.dll")]private static extern IntPtr CreateIconIndirect(ref IconInfo info);
     [DllImport("user32.dll")]private static extern bool DestroyIcon(IntPtr icon);
     private readonly HwndSource source;private readonly Notice notice;private readonly Action open;private readonly Func<ContextMenu> menu;
+    internal void UpdateAvailable(string version){notice.Tip="Nashi · Update "+version+" available";if(notice.Tip.Length>127)notice.Tip=notice.Tip[..127];notice.Flags=4;Shell_NotifyIcon(1,notice);}
     public TrayHost(Window window,Action open,Func<ContextMenu> menu)
     {
         this.open=open;this.menu=menu;var handle=new WindowInteropHelper(window).Handle;source=HwndSource.FromHwnd(handle);source.AddHook(Hook);notice=new(){Size=(uint)Marshal.SizeOf<Notice>(),Window=handle,Id=1,Flags=7,Callback=0x8000+710,Icon=MakeIcon()};if(!Shell_NotifyIcon(0,notice)){Dispose();throw new InvalidOperationException("Windows could not add Nashi to the system tray.");}

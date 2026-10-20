@@ -3,6 +3,7 @@ namespace Nashi.Core;
 public sealed record OutputProfile(double Quality=.85,bool PreserveMetadata=true,int AudioBitrate=256,string SampleDepth="matchSource",int MaxVideoHeight=0,int GifFrameRate=15,int GifWidth=960,string Compression="balanced",string Layout="editable",string EpubLayout="reflowable",int Dpi=144);
 public sealed record Preferences
 {
+    public bool AutomaticUpdateChecks{get;init;}=true;
     public bool Enabled{get;init;}=true;public bool Feedback{get;init;}=true;public bool Animations{get;init;}=true;public bool KeepInTray{get;init;}=true;public bool RevealFinished{get;init;}
     public double WheelScale{get;init;}=1;public string WheelFinish{get;init;}="glass";public string FloatBehavior{get;init;}="createNew";
     public string ToolsModifier{get;init;}="Ctrl";public string ConvertModifier{get;init;}="Shift";public string ActionsModifier{get;init;}="Alt";

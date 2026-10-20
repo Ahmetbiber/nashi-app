@@ -18,7 +18,7 @@ Both implementations use the same 45 input-format / 27-tool catalog. `scripts/ch
 | Float/actions | Reuse, multi-selection, preview, copy/copy path, reveal, move, terminal, share, drag back out, pinned/collapsed shelves |
 | Window management | Seven third/half/two-third layouts; actual title-bar/resize drag, target preview, release placement and Escape cancellation; usable display work area |
 | Progress/results | Borderless progress/success notices, cancellable work, real progress where measurable and indeterminate state otherwise; success fades after three seconds |
-| Settings/updates | Appearance, feedback, motion, drag chords, format profiles, output/download locations, login launch and verified public GitHub updates; Library/imports live outside the app bundle |
+| Settings/updates | Appearance, feedback, motion, drag chords, format profiles, output/download locations, login launch, automatic-check preference, visible update banner and verified public GitHub updates; Library/imports live outside the app bundle |
 
 ## Shortcut mapping
 
@@ -41,7 +41,7 @@ Drag chords are configurable. Text entry keeps normal editing shortcuts; tool sh
 ## Native platform differences
 
 - AirDrop is an Apple service. Windows uses the native Windows Share dialog; available destinations depend on the computer's installed share providers. File sharing is available on both platforms.
-- Mac uses Quick Look/AVFoundation and Sparkle; Windows uses WPF/Windows PDF/media APIs, local conversion previews and a checksum-verified update helper. Unsupported Windows media codecs use a local FFmpeg preview proxy. Office previews require the same optional private office runtime as Windows document conversion; originals stay unchanged.
+- Mac uses Quick Look/AVFoundation and Sparkle; Windows uses WPF/Windows PDF/media APIs, local conversion previews and an Ed25519-verified update helper. Unsupported Windows media codecs use a local FFmpeg preview proxy. Office previews require the same optional private office runtime as Windows document conversion; originals stay unchanged.
 - macOS window control needs the user's system permission. Windows normally uses WinEvent/window APIs, but elevated/protected applications can reject resizing. Both platforms report refused placements.
 - Native fonts, title-bar controls, file pickers and system sharing dialogs follow the operating system. App page structure, palette, actions and keyboard behavior are shared.
 - Authenticated/protected web media and upstream service availability are not guaranteed by either version.

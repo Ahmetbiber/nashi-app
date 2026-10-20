@@ -37,7 +37,7 @@ import Darwin
     private func require(_ value:Bool,_ reason:String)throws { if !value { throw Failure(description:reason) } }
     private func pause(_ milliseconds:UInt64)async throws { try await Task.sleep(nanoseconds:milliseconds*1_000_000);try require(!interrupted,"Native test was interrupted; input was released.") }
     private func run()async throws {
-        try require(AXIsProcessTrusted()&&CGPreflightPostEventAccess(),"Nashi needs its own Accessibility permission; no input was posted.")
+        try require(AXIsProcessTrusted()&&CGPreflightPostEventAccess(),"Nashi needs its own \(WindowManagementController.permissionName) permission; no input was posted.")
         try require(NSEvent.pressedMouseButtons==0&&CGEventSource.flagsState(.combinedSessionState).intersection([.maskCommand,.maskShift,.maskControl,.maskAlternate]).isEmpty,"Release the mouse and modifiers before testing.")
         originalPointer=CGEvent(source:nil)?.location
         let own=Bundle.main.executableURL?.standardizedFileURL

@@ -14,7 +14,7 @@ The preview and placement use the destination display's usable work area. The me
 
 ## macOS
 
-Enable the feature in **Settings → General → Window management**. Grant Nashi Accessibility access once through **Enable Accessibility…**. The app checks permission without prompting repeatedly; it never changes macOS privacy settings automatically. Accessibility APIs move and resize the window that was captured at the beginning of the drag.
+Enable the feature in **Settings → General → Window management**. Use **Open permission settings…** and grant Nashi the window-control permission once. On macOS 27 the Privacy & Security pane is named **Device Control and Data Access** (**Aygıt Denetimi ve Veri Erişimi** in Turkish); earlier versions call it **Accessibility**. The button opens that pane directly. The app checks permission without prompting repeatedly; it never changes macOS privacy settings automatically. Accessibility APIs move and resize the window that was captured at the beginning of the drag.
 
 Upgraded installations retain the `local.tangerine.replica` bundle identity to preserve update and user-data compatibility. macOS may cache the previous Tangerine display name in its Accessibility list; the reference app (`com.th.Tangerine`) is a separate permission. Nashi checks its own `AXIsProcessTrusted()` result. If an old row is enabled but Nashi still reports no access, use **Show Nashi in Finder** to select the current installed app when adding it through macOS settings. Nashi does not reset or edit the privacy database.
 

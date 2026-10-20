@@ -46,9 +46,16 @@ enum WindowPlacementGlyph {
 
     func stop() { timer?.invalidate();timer=nil;cancel();target=nil }
 
+    static var permissionName:String {
+        ProcessInfo.processInfo.operatingSystemVersion.majorVersion>=27 ? "Device Control and Data Access":"Accessibility"
+    }
     static func requestAccess() {
         let options=[kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary
         _=AXIsProcessTrustedWithOptions(options)
+        // The pane anchor is unchanged on macOS 27 even though its visible name changed.
+        if let url=URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func tick() {

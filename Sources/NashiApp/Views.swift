@@ -121,15 +121,15 @@ struct SettingsView:View {
                         .font(.caption).foregroundStyle(.secondary)
                     if !windowAccessibility {
                         HStack {
-                            Text("Allow Accessibility once to move and resize other apps’ windows.").font(.caption).foregroundStyle(.secondary)
+                            Text("Allow \(WindowManagementController.permissionName) once to move and resize other apps’ windows.").font(.caption).foregroundStyle(.secondary)
                             Spacer()
-                            Button("Enable Accessibility…") { WindowManagementController.requestAccess() }
+                            Button("Open permission settings…") { WindowManagementController.requestAccess() }
                         }
                         if Bundle.main.bundleIdentifier == "local.tangerine.replica" {
-                            Text("Upgraded from Tangerine? macOS may still show the previous name. Choose this Nashi app when adding it to Accessibility.").font(.caption).foregroundStyle(.secondary)
+                            Text("Upgraded from Tangerine? macOS may still show the previous name. Choose this Nashi app when adding it to \(WindowManagementController.permissionName).").font(.caption).foregroundStyle(.secondary)
                             Button("Show Nashi in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
                         }
-                    } else { Label("Accessibility is enabled",systemImage:"checkmark.circle").font(.caption).foregroundStyle(.secondary) }
+                    } else { Label("\(WindowManagementController.permissionName) is enabled",systemImage:"checkmark.circle").font(.caption).foregroundStyle(.secondary) }
                 }.padding(10)
             }
             .onReceive(Timer.publish(every:2,on:.main,in:.common).autoconnect()) { _ in windowAccessibility=AXIsProcessTrusted() }

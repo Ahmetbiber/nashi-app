@@ -14,6 +14,7 @@ internal sealed class FilePreviewWindow:Window
     private MediaElement? player;private bool playing;private readonly Slider scrub=new(){Minimum=0,Maximum=1,MinWidth=140};
     private readonly System.Windows.Threading.DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(150)};
     private readonly StackPanel transport=new(){Orientation=Orientation.Horizontal};private bool updating;
+    internal string PreviewStatus=>content.Content is TextBlock text?text.Text:content.Content?.GetType().Name??"Empty";
     internal string CurrentPath=>paths[index];internal bool Playing=>playing;
     internal FilePreviewWindow(Window owner,IEnumerable<string> paths,Toolchain? tools=null,OfficeRuntime? office=null)
     {

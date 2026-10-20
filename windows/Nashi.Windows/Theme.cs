@@ -20,6 +20,7 @@ internal static class Theme
     internal static void Attach(Window window)
     {
         window.SetResourceReference(Window.BackgroundProperty,"Paper");window.SetResourceReference(Window.ForegroundProperty,"Ink");
+        window.Loaded+=(_,_)=>{if(window.WindowStyle!=WindowStyle.None)DesktopGeometry.FitToWorkArea(window);};
         window.SourceInitialized+=(_,_)=>ApplyTitleBar(window);
     }
     private static void ApplyTitleBar(Window window)

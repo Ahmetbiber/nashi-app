@@ -128,7 +128,7 @@ public sealed partial class ToolEditor:Window
         if(tool=="annotate"){AnnotationMove(p);return;}
         if(activeStroke is not null){activeStroke.Points.Add(p);return;}
         if(activeRectangle is null)return;var dx=p.X-origin.X;var dy=p.Y-origin.Y;
-        if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)||CropRatio() is not null)
+        if(tool is "crop" or "cropVideo" && (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)||CropRatio() is not null))
         {
             var ratio=CropRatio()??1d;var width=Math.Min(Math.Abs(dx),Math.Abs(dy)*ratio);var height=width/ratio;p=new(origin.X+Math.CopySign(width,dx),origin.Y+Math.CopySign(height,dy));
         }
@@ -142,6 +142,7 @@ public sealed partial class ToolEditor:Window
     {
         if(e.Key==Key.Escape){Close();e.Handled=true;return;}
         if(Keyboard.FocusedElement is Button&&Keyboard.Modifiers==ModifierKeys.None&&e.Key is Key.Space or Key.Enter)return;
+        if(e.Key==Key.Enter&&Keyboard.Modifiers==ModifierKeys.None){Save();e.Handled=true;return;}
         if(ClipboardImport.IsEditing(Keyboard.FocusedElement as DependencyObject))return;if(tool=="annotate"&&e.Key==Key.Z&&Keyboard.Modifiers==ModifierKeys.Control){UndoAnnotation();e.Handled=true;return;}if(tool=="annotate"&&e.Key==Key.Delete&&selectedAnnotation is not null){drawing.Children.Remove(selectedAnnotation);selectedAnnotation=null;e.Handled=true;return;}if(e.Key==Key.Enter){Save();e.Handled=true;return;}
         if(media is null||Keyboard.Modifiers is not (ModifierKeys.None or ModifierKeys.Shift))return;
         switch(e.Key){case Key.Space:if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)){PlayRange();break;}playingRange=false;if(playing)player.Pause();else player.Play();playing=!playing;break;case Key.Left:Seek(player.Position.TotalSeconds-(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?FineSeekStep:1));break;case Key.Right:Seek(player.Position.TotalSeconds+(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?FineSeekStep:1));break;case Key.I:if(fields.TryGetValue("Start",out var start)&&player.Position.TotalSeconds<Value("End",duration))start.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;case Key.O:if(fields.TryGetValue("End",out var end)&&player.Position.TotalSeconds>Value("Start"))end.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;default:return;}e.Handled=true;

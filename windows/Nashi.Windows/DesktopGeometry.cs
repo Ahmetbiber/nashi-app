@@ -14,6 +14,17 @@ internal static class DesktopGeometry
     [DllImport("user32.dll")]private static extern bool IsWindowEnabled(IntPtr window);
     [DllImport("user32.dll")]private static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
     [DllImport("shcore.dll")]private static extern int GetDpiForMonitor(IntPtr monitor,int type,out uint x,out uint y);
+    internal static void FitToWorkArea(Window window)
+    {
+        var handle=new WindowInteropHelper(window).Handle;var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};if(!GetMonitorInfo(MonitorFromWindow(handle,2),ref info)||!GetWindowRect(handle,out var bounds))return;
+        var dpi=96u;try{if(GetDpiForMonitor(MonitorFromWindow(handle,2),0,out var actual,out _)==0)dpi=actual;}catch(DllNotFoundException){}var scale=dpi/96d;var margin=(int)Math.Round(16*scale);var availableWidth=Math.Max(100,info.Work.Right-info.Work.Left-margin*2);var availableHeight=Math.Max(100,info.Work.Bottom-info.Work.Top-margin*2);
+        window.MinWidth=Math.Min(window.MinWidth,availableWidth/scale);window.MinHeight=Math.Min(window.MinHeight,availableHeight/scale);
+        var width=Math.Min(bounds.Right-bounds.Left,availableWidth);var height=Math.Min(bounds.Bottom-bounds.Top,availableHeight);var x=Math.Clamp(bounds.Left,info.Work.Left+margin,info.Work.Right-margin-width);var y=Math.Clamp(bounds.Top,info.Work.Top+margin,info.Work.Bottom-margin-height);SetWindowPos(handle,IntPtr.Zero,x,y,width,height,0x14);
+    }
+    internal static bool FitsWorkArea(Window window)
+    {
+        var handle=new WindowInteropHelper(window).Handle;var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};return GetMonitorInfo(MonitorFromWindow(handle,2),ref info)&&GetWindowRect(handle,out var r)&&r.Left>=info.Work.Left&&r.Top>=info.Work.Top&&r.Right<=info.Work.Right&&r.Bottom<=info.Work.Bottom;
+    }
     internal static bool IsInteractive(Window window){var handle=new WindowInteropHelper(window).Handle;return window.IsEnabled&&(handle==IntPtr.Zero||IsWindowEnabled(handle));}
     internal static void PlaceWheel(Window window,int x,int y,double logicalSize)
     {

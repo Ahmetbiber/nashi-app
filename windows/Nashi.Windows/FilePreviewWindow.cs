@@ -56,7 +56,7 @@ internal sealed class FilePreviewWindow:Window
             else if(FeatureCatalog.Extension(path)=="pdf")
             {
                 // Load pages on demand rather than decoding every page before showing the first.
-                var pdf=await global::Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(await global::Windows.Storage.StorageFile.GetFileFromPathAsync(path));token.ThrowIfCancellationRequested();
+                var pdf=await NativePdf.OpenAsync(path);token.ThrowIfCancellationRequested();
                 var pageIndex=0;var panel=new DockPanel();var controls=new StackPanel{Orientation=Orientation.Horizontal};DockPanel.SetDock(controls,Dock.Bottom);panel.Children.Add(controls);var image=new Image{Stretch=Stretch.Uniform};panel.Children.Add(image);
                 async Task Page(int delta){pageIndex=Math.Clamp(pageIndex+delta,0,(int)pdf.PageCount-1);var requested=pageIndex;using var page=pdf.GetPage((uint)requested);using var stream=new global::Windows.Storage.Streams.InMemoryRandomAccessStream();await page.RenderToStreamAsync(stream,new global::Windows.Data.Pdf.PdfPageRenderOptions{DestinationWidth=1200});using var memory=new MemoryStream();await stream.AsStreamForRead().CopyToAsync(memory,token);if(!token.IsCancellationRequested&&requested==pageIndex)image.Source=ImageEngine.FromPng(memory.ToArray());}
                 controls.Children.Add(MainWindow.Button("Previous page",async()=>{try{await Page(-1);}catch(OperationCanceledException){}}));controls.Children.Add(MainWindow.Button("Next page",async()=>{try{await Page(1);}catch(OperationCanceledException){}}));controls.Children.Add(new TextBlock{Text=$"{pdf.PageCount} pages",VerticalAlignment=VerticalAlignment.Center});content.Content=panel;await Page(0);

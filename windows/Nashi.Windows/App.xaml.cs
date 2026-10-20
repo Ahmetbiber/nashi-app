@@ -33,7 +33,7 @@ public partial class App:Application
     {
         try{await instance!.Notify(paths);Shutdown(0);}catch(Exception error)when(error is IOException or OperationCanceledException or UnauthorizedAccessException){MessageBox.Show("Nashi is already running but is still starting. Open it from the system tray or try again in a moment.","Nashi");Shutdown(1);}
     }
-    protected override void OnExit(ExitEventArgs e){windowManagement?.Dispose();Feedback.Stop();base.OnExit(e);}
+    protected override void OnExit(ExitEventArgs e){windowManagement?.Dispose();Feedback.Stop();NativePdf.ReleaseUnusedResourcesOnExit();base.OnExit(e);}
     private async Task InstallUpdateAsync()
     {
         try

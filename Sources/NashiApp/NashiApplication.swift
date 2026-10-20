@@ -132,7 +132,7 @@ enum NashiApplication {
             let alert=NSAlert();alert.messageText="Window arrangement";alert.informativeText=message
             alert.addButton(withTitle:"OK");alert.runModal()
         }
-        state.onOpenWheel = { [weak self] in self?.wheel.show(inputs:self?.state.inputs ?? [],mode:.convert,at:NSEvent.mouseLocation,keyboard:true) }
+        state.onOpenWheel = { [weak self] in self?.wheel.show(inputs:self?.state.inputs ?? [],mode:.tools,at:NSEvent.mouseLocation,keyboard:true) }
         state.onWebDownload = { [weak self] url,mode in self?.showWebDownload(url,mode:mode) }
         state.onWebDrop = { [weak self] urls in self?.wheel.show(inputs:urls,mode:.tools,at:NSEvent.mouseLocation,keyboard:true) }
         registerDownloadShortcut()

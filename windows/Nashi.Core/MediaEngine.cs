@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Nashi.Core;
 
-public sealed record MediaStream(int Index, string Kind, string Codec, int? Width, int? Height, bool AttachedPicture,int Bits=0,string SampleFormat="");
+public sealed record MediaStream(int Index, string Kind, string Codec, int? Width, int? Height, bool AttachedPicture,int Bits=0,string SampleFormat="",double FrameRate=30);
 public sealed record MediaInfo(double Duration, long Bytes, IReadOnlyList<MediaStream> Streams)
 {
     public MediaStream? Video => Streams.FirstOrDefault(s => s.Kind == "video" && !s.AttachedPicture);
@@ -73,11 +73,13 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             // FFmpeg auto-rotates decoded frames before crop/scale filters. The
             // editor and validation use those same displayed dimensions.
             if(double.IsFinite(rotation)&&Math.Abs(Math.Abs(rotation)%180-90)<.001)(width,height)=(height,width);
-            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached,GetInt(stream,"bits_per_raw_sample")??GetInt(stream,"bits_per_sample")??0,GetString(stream,"sample_fmt")));
+            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached,GetInt(stream,"bits_per_raw_sample")??GetInt(stream,"bits_per_sample")??0,GetString(stream,"sample_fmt"),ParseFrameRate(GetString(stream,"avg_frame_rate"))));
         }
         var duration = root.TryGetProperty("format", out var format) && double.TryParse(GetString(format,"duration"), CultureInfo.InvariantCulture, out var seconds) && double.IsFinite(seconds) ? Math.Max(0,seconds) : 0;
         return new(duration, new FileInfo(input).Length, streams);
     }
+
+    private static double ParseFrameRate(string value){var parts=value.Split('/');if(parts.Length==2&&double.TryParse(parts[0],CultureInfo.InvariantCulture,out var numerator)&&double.TryParse(parts[1],CultureInfo.InvariantCulture,out var denominator)&&denominator>0&&double.IsFinite(numerator/denominator)&&numerator/denominator>=1)return numerator/denominator;return 30;}
 
     public async Task<IReadOnlyList<string>> ConvertAsync(IReadOnlyList<string> inputs, string format, string destination,
         MediaOptions options, IProgress<OperationProgress>? progress = null, CancellationToken token = default)

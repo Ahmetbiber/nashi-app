@@ -136,7 +136,7 @@ public sealed partial class MainWindow:Window
         if(modifiers==ModifierKeys.Control&&key==Key.V){PasteClipboard();return true;}
         if(modifiers==(ModifierKeys.Control|ModifierKeys.Shift)&&key==Key.D)
         {OpenCopiedLink();return true;}
-        if((modifiers==ModifierKeys.Control&&key==Key.Space)||(modifiers==ModifierKeys.None&&key==Key.Enter&&focus is not System.Windows.Controls.Button)){ShowWheel();return true;}
+        if((modifiers==ModifierKeys.Control&&key is Key.Space or Key.Enter)||(modifiers==ModifierKeys.None&&key==Key.Enter&&focus is not System.Windows.Controls.Button)){ShowWheel();return true;}
         return false;
     }
     private void RenderLibrary()

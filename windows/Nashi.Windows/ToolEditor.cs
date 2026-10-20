@@ -52,9 +52,13 @@ public sealed partial class ToolEditor:Window
                 timeline.Set(duration,0,duration);previewStack.Children.Add(timeline);timeline.Changed+=(a,b)=>{fields["Start"].Text=Number(a);fields["End"].Text=Number(b);Seek(a);};
             }
             var controls=new StackPanel{Orientation=Orientation.Horizontal};var play=MainWindow.Button("▶ / Ⅱ",()=>{if(playing){player.Pause();playing=false;}else{player.Play();playing=true;}});controls.Children.Add(MainWindow.Button("−1s",()=>Seek(player.Position.TotalSeconds-1)));controls.Children.Add(play);controls.Children.Add(MainWindow.Button("+1s",()=>Seek(player.Position.TotalSeconds+1)));previewStack.Children.Add(controls);previewStack.Children.Add(time);
+            if((media.Video is null&&tool is "normalizeAudio" or "audioChannels" or "redactAudio")||tool=="redactVideo")
+            {
+                var comparison=new StackPanel{Orientation=Orientation.Horizontal};comparison.Children.Add(MainWindow.Button("Original",PlayOriginalPreview));processedButton=MainWindow.Button("Preview Processed",async()=>await PreviewProcessed());comparison.Children.Add(processedButton);previewStack.Children.Add(comparison);
+            }
             scrubber.Maximum=duration;scrubber.ValueChanged+=(_,_)=>{if(scrubber.IsMouseCaptureWithin)Seek(scrubber.Value);};previewStack.Children.Add(scrubber);
             if(tool is "trimAudio" or "trimVideo" or "redactAudio")previewStack.Children.Add(MainWindow.Button("Play selected range",PlayRange));
-            previewStack.Children.Add(new TextBlock{Text="Space play/pause · ←/→ 1s · Shift+←/→ 1/30s · I/O set range · Enter save",TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Muted")});
+            previewStack.Children.Add(new TextBlock{Text="Space play/pause · ←/→ 1s · Shift+←/→ 1 frame (video), 0.1s (audio) · I/O set range · Enter save",TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Muted")});
         }
         if(tool=="convert")
         {
@@ -74,7 +78,7 @@ public sealed partial class ToolEditor:Window
         if(tool=="rotate")Field("Degrees",90);
         if(tool is "crop" or "cropVideo" or "redactVideo" or "redactImage")
         {
-            options.Children.Add(new TextBlock{Text=tool=="redactVideo"?"Drag a region to cover with a solid block.":"Drag to select a crop. Hold Shift to lock the original aspect ratio. Press Enter to save.",TextWrapping=TextWrapping.Wrap,Margin=new(4,4,4,16)});
+            options.Children.Add(new TextBlock{Text=tool=="redactVideo"?"Drag a region to cover with a solid block.":"Drag to select a crop. Hold Shift for a square; existing selections keep their ratio. Press Enter to save.",TextWrapping=TextWrapping.Wrap,Margin=new(4,4,4,16)});
             var w=bitmap?.PixelWidth??media?.Video?.Width??1280;var h=bitmap?.PixelHeight??media?.Video?.Height??720;
             Field("X",0);Field("Y",0);Field("Width",w);Field("Height",h);
             if(tool=="redactVideo"){Field("Start",0);Field("End",duration);}
@@ -125,7 +129,7 @@ public sealed partial class ToolEditor:Window
         if(activeRectangle is null)return;var dx=p.X-origin.X;var dy=p.Y-origin.Y;
         if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)||CropRatio() is not null)
         {
-            var ratio=CropRatio()??drawing.Width/drawing.Height;var width=Math.Min(Math.Abs(dx),Math.Abs(dy)*ratio);var height=width/ratio;p=new(origin.X+Math.CopySign(width,dx),origin.Y+Math.CopySign(height,dy));
+            var ratio=CropRatio()??1d;var width=Math.Min(Math.Abs(dx),Math.Abs(dy)*ratio);var height=width/ratio;p=new(origin.X+Math.CopySign(width,dx),origin.Y+Math.CopySign(height,dy));
         }
         var x=Math.Min(origin.X,p.X);var y=Math.Min(origin.Y,p.Y);var w=Math.Abs(p.X-origin.X);var h=Math.Abs(p.Y-origin.Y);
         Canvas.SetLeft(activeRectangle,x);Canvas.SetTop(activeRectangle,y);activeRectangle.Width=w;activeRectangle.Height=h;
@@ -136,12 +140,15 @@ public sealed partial class ToolEditor:Window
     private void OnKey(object sender,KeyEventArgs e)
     {
         if(e.Key==Key.Escape){Close();e.Handled=true;return;}
+        if(Keyboard.FocusedElement is Button&&Keyboard.Modifiers==ModifierKeys.None&&e.Key is Key.Space or Key.Enter)return;
         if(ClipboardImport.IsEditing(Keyboard.FocusedElement as DependencyObject))return;if(tool=="annotate"&&e.Key==Key.Z&&Keyboard.Modifiers==ModifierKeys.Control){UndoAnnotation();e.Handled=true;return;}if(tool=="annotate"&&e.Key==Key.Delete&&selectedAnnotation is not null){drawing.Children.Remove(selectedAnnotation);selectedAnnotation=null;e.Handled=true;return;}if(e.Key==Key.Enter){Save();e.Handled=true;return;}
         if(media is null||Keyboard.Modifiers is not (ModifierKeys.None or ModifierKeys.Shift))return;
-        switch(e.Key){case Key.Space:if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)){PlayRange();break;}playingRange=false;if(playing)player.Pause();else player.Play();playing=!playing;break;case Key.Left:Seek(player.Position.TotalSeconds-(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?1d/30:1));break;case Key.Right:Seek(player.Position.TotalSeconds+(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?1d/30:1));break;case Key.I:if(fields.TryGetValue("Start",out var start)&&player.Position.TotalSeconds<Value("End",duration))start.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;case Key.O:if(fields.TryGetValue("End",out var end)&&player.Position.TotalSeconds>Value("Start"))end.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;default:return;}e.Handled=true;
+        switch(e.Key){case Key.Space:if(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)){PlayRange();break;}playingRange=false;if(playing)player.Pause();else player.Play();playing=!playing;break;case Key.Left:Seek(player.Position.TotalSeconds-(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?FineSeekStep:1));break;case Key.Right:Seek(player.Position.TotalSeconds+(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?FineSeekStep:1));break;case Key.I:if(fields.TryGetValue("Start",out var start)&&player.Position.TotalSeconds<Value("End",duration))start.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;case Key.O:if(fields.TryGetValue("End",out var end)&&player.Position.TotalSeconds>Value("Start"))end.Text=Number(player.Position.TotalSeconds);SyncTimeline();break;default:return;}e.Handled=true;
     }
     private void SyncTimeline(){if(fields.ContainsKey("Start")&&fields.ContainsKey("End"))timeline.Set(duration,Value("Start"),Value("End",duration));}
-    private void Save()
+    private double FineSeekStep=>media?.Video is {} video?1/Math.Max(1,video.FrameRate):.1;
+    private void Save()=>ReadSettings(true);
+    private bool ReadSettings(bool accept)
     {
         try
         {
@@ -155,8 +162,8 @@ public sealed partial class ToolEditor:Window
             MediaOptions=MoreMediaSettings(MediaOptions);
             Format=format.SelectedItem as string??"png";
             if(tool=="organizePDF")Pages=fields["Page numbers"].Text.Split(',',StringSplitOptions.RemoveEmptyEntries).Select(s=>int.Parse(s.Trim(),CultureInfo.InvariantCulture)).ToArray();
-            DocumentOptions=new((int)Value("DPI",144),documentLayout.SelectedItem as string??"editable",epubLayout.SelectedItem as string??"reflowable",archivePassword.Password);DialogResult=true;
+            DocumentOptions=new((int)Value("DPI",144),documentLayout.SelectedItem as string??"editable",epubLayout.SelectedItem as string??"reflowable",archivePassword.Password);if(accept)DialogResult=true;return true;
         }
-        catch(Exception error)when(error is ArgumentException or FormatException or OverflowException){if(App.IsSmokeTest)throw;MessageBox.Show(this,error.Message,"Check your settings",MessageBoxButton.OK,MessageBoxImage.Information);}
+        catch(Exception error)when(error is ArgumentException or FormatException or OverflowException){if(App.IsSmokeTest)throw;MessageBox.Show(this,error.Message,"Check your settings",MessageBoxButton.OK,MessageBoxImage.Information);return false;}
     }
 }

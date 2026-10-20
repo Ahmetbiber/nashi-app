@@ -13,8 +13,9 @@ import AppKit
             case "v":if !editing {pasteContent(pasteboard);return true}
             default:break
             }
-            if event.keyCode==49,!editing,!working {onOpenWheel?();return true}
+            if [49,36,76].contains(event.keyCode),!editing,!working,!inputs.isEmpty {onOpenWheel?();return true}
         }
+        if !libraryVisible,flags.isEmpty,[36,76].contains(event.keyCode),!editing,!(window.firstResponder is NSButton),!working,!inputs.isEmpty {onOpenWheel?();return true}
         guard libraryVisible,flags.isEmpty else{return false}
         // Down from the Library search transfers focus to the matching results.
         if editing,event.keyCode==125 {window.makeFirstResponder(nil);selectedHistoryID=filteredHistory.first?.id;return true}

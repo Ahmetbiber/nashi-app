@@ -118,7 +118,7 @@ struct HomeView:View {
                         Button("Paste") {state.pasteContent()}.buttonStyle(NashiButtonStyle(.secondary)).help("⌘V · Paste files, text, an image or link").disabled(state.working)
                         if !state.inputs.isEmpty {
                             Button { state.onOpenWheel?() } label:{Label("Open wheel",systemImage:"circle.hexagongrid")}
-                                .buttonStyle(NashiButtonStyle(.primary)).keyboardShortcut(.return,modifiers:[]).disabled(state.working)
+                                .buttonStyle(NashiButtonStyle(.primary)).disabled(state.working)
                         }
                     }.padding(.top,3)
                 }.frame(maxWidth:.infinity,alignment:.leading)

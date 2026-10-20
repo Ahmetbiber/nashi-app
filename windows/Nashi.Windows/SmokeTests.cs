@@ -96,7 +96,7 @@ internal static class SmokeTests
         var canvas=Descendants(editor).OfType<Canvas>().First();
         DesktopInput.Drag(canvas,new Point(20,20),new Point(180,130),shift:true);
         var cw=double.Parse(editor.FieldForTest("Width").Text);var ch=double.Parse(editor.FieldForTest("Height").Text);
-        Check(cw>1&&Math.Abs(cw/ch-320d/180)<.03,"Shift-drag crop did not lock image aspect");
+        Check(cw>1&&Math.Abs(cw/ch-1)<.03,"Shift-drag crop did not make a square selection");
         editor.FieldForTest("Width").Focus();DesktopInput.Key(editor,Key.Left);Check(editor.IsVisible,"Arrow in a crop field closed editor");
         var editorImage=new RenderTargetBitmap((int)editor.ActualWidth,(int)editor.ActualHeight,96,96,PixelFormats.Pbgra32);editorImage.Render(editor);ImageEngine.Save(editorImage,Path.Combine(root,"windows-crop.png"),"png");DesktopInput.Key(editor,Key.Escape);Check(!editor.IsVisible,"Escape did not close editor from an active text field");
         var rangeOwner=new Window{Owner=window,Width=600,Height=180,WindowStartupLocation=WindowStartupLocation.CenterOwner};Theme.Attach(rangeOwner);var range=new RangeTimeline{Margin=new(30)};rangeOwner.Content=range;range.Set(1800,0,1800);rangeOwner.Show();rangeOwner.UpdateLayout();DesktopInput.Pump();
@@ -115,7 +115,7 @@ internal static class SmokeTests
         var themeSettings=new SettingsWindow(window,new PreferencesStore(library.DirectoryPath),()=>{},()=>Task.CompletedTask,library);themeSettings.Show();DesktopInput.Pump();
         var appearance=Descendants(themeSettings).OfType<ComboBox>().Single(c=>c.Items.Contains("dark"));appearance.Focus();DesktopInput.Key(themeSettings,Key.Home);DesktopInput.Key(themeSettings,Key.Down);Check(!Theme.Dark&&library.Appearance=="light","Settings appearance keyboard selection did not apply and persist light theme");window.UpdateLayout();Capture(window,"windows-home-light.png");DesktopInput.Key(themeSettings,Key.End);Check(Theme.Dark&&library.Appearance=="dark","Dark theme selection failed");themeSettings.Close();
         if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true")checks+=ParitySmokeTests.Run(root,window,source,bitmap,testTools);
-        DesktopParityChecks.Run(root,window,source,importedText,importedImage,Check);
+        DesktopParityChecks.Run(root,window,source,importedText,importedImage,testTools,Check);
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");Capture(restarted,"windows-home-empty.png");restarted.Close();

@@ -98,6 +98,7 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var original=System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(source));
         var engine=new MediaEngine(encoder,probe);var progress=new List<OperationProgress>();
         var reporter=new InlineProgress(p=>progress.Add(p));
+        Check(Math.Abs((await engine.InspectAsync(source)).Video!.FrameRate-12)<.001,"Frame-by-frame preview lost actual source FPS");
         var trimmed=await engine.ToolAsync("trimVideo",[source],directory,new(){Start=.25,End=1.25},reporter);
         Check(Math.Abs((await engine.InspectAsync(trimmed[0])).Duration-1)<.2,"Trim duration is wrong");
         Check(progress.Any(p=>p.Fraction>0&&p.Fraction<.98),"No live media progress");

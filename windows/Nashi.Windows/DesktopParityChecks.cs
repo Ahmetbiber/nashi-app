@@ -8,7 +8,7 @@ namespace Nashi.Windows;
 internal static class DesktopParityChecks
 {
     private static IEnumerable<DependencyObject> Children(DependencyObject root){for(var n=0;n<VisualTreeHelper.GetChildrenCount(root);n++){var child=VisualTreeHelper.GetChild(root,n);yield return child;foreach(var inner in Children(child))yield return inner;}}
-    internal static void Run(string root,MainWindow owner,string image,string text,string pastedImage,Action<bool,string> check)
+    internal static void Run(string root,MainWindow owner,string image,string text,string pastedImage,Toolchain tools,Action<bool,string> check)
     {
         var isolated=new LibraryStore(Path.Combine(root,"Desktop parity library"));var folder=Directory.CreateDirectory(Path.Combine(root,"Folder clipboard fixture")).FullName;
         var result=ClipboardImport.Read(new DataObject(DataFormats.FileDrop,new[]{folder,image,folder}),isolated);check(result.Paths.Length==2&&result.Paths.Contains(folder),"Folder paste rejected a directory or duplicated it");
@@ -26,6 +26,12 @@ internal static class DesktopParityChecks
         window.Activate();DesktopInput.Pump();DesktopInput.Key(window,Key.Enter);check(window.SelectedFiles.SequenceEqual(new[]{text,pastedImage})&&!window.LibraryVisible,"Library Enter did not reuse the selected batch");window.Close();
         var shelf=new FloatShelf([image,text],(_,_)=>Task.CompletedTask,_=>{});shelf.Show();DesktopInput.Pump();Children(shelf).OfType<ListBox>().Single().Focus();DesktopInput.Key(shelf,Key.Space);preview=Application.Current.Windows.OfType<FilePreviewWindow>().Single();DesktopInput.Pump();check(preview.CurrentPath==image,"Float Space did not use the common preview");DesktopInput.Key(preview,Key.Right);DesktopInput.Pump();check(preview.CurrentPath==text,"Float preview did not navigate its file set");DesktopInput.Key(preview,Key.Escape);shelf.Close();
         var missing=new FilePreviewWindow(owner,[Path.Combine(root,"Missing preview.txt")]);missing.Show();DesktopInput.Pump();check(Children(missing).OfType<TextBlock>().Any(t=>t.Text.Contains("moved or was removed")),"Missing preview did not recover safely");missing.Close();
+        var audio=Path.Combine(root,"Keyboard preview.wav");var audioInfo=new MediaInfo(5,new FileInfo(audio).Length,[new MediaStream(0,"audio","pcm_s16le",null,null,false)]);
+        var mediaEditor=new ToolEditor(owner,"normalizeAudio","Normalize Audio",audio,audioInfo);mediaEditor.ConfigureMediaRuntime(tools);mediaEditor.Show();DesktopInput.Pump();var normalize=Children(mediaEditor).OfType<Button>().Single(b=>b.Content as string=="Preview Processed");normalize.Focus();DesktopInput.Key(mediaEditor,Key.Space);
+        var limit=DateTime.UtcNow.AddSeconds(25);while(!mediaEditor.ProcessedPlayback&&DateTime.UtcNow<limit)DesktopInput.Pump(50);
+        check(mediaEditor.ProcessedPlayback&&File.Exists(mediaEditor.ProcessedPreviewPath),"Native processed audio preview did not render or activate");
+        Children(mediaEditor).OfType<Button>().Single(b=>b.Content as string=="Original").Focus();DesktopInput.Key(mediaEditor,Key.Space);check(!mediaEditor.ProcessedPlayback,"Original preview did not restore source playback");mediaEditor.Timeline.Focus();var before=mediaEditor.PreviewSeconds;DesktopInput.Key(mediaEditor,Key.Right,shift:true);check(Math.Abs(mediaEditor.PreviewSeconds-before-.1)<.06,"Audio fine seek differs from Mac's 0.1 second step");mediaEditor.Close();
+        var frameEditor=new ToolEditor(owner,"trimVideo","Trim Video",audio,new MediaInfo(5,1,[new MediaStream(0,"video","h264",320,180,false,FrameRate:24)]));frameEditor.Show();DesktopInput.Pump();frameEditor.Timeline.Focus();before=frameEditor.PreviewSeconds;DesktopInput.Key(frameEditor,Key.Right,shift:true);check(Math.Abs(frameEditor.PreviewSeconds-before-1d/24)<.015,"Video fine seek ignored 24 fps source rate");frameEditor.Close();
         check(File.Exists(text)&&File.Exists(pastedImage),"Preview changed imported source files");
     }
 }

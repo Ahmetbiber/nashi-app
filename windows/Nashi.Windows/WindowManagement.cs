@@ -19,7 +19,8 @@ internal sealed class WindowManagement:IDisposable
     private WheelWindow? wheel;
     private Window? preview;
     private bool cancelled;
-    private bool disposed;
+    private bool disposed;private volatile bool wheelReady;
+    internal bool WheelReady=>wheelReady;
     private readonly Action<string> notice;
     private readonly Func<bool> enabled;
     internal Action<string>? Trace { get; set; }
@@ -98,7 +99,7 @@ internal sealed class WindowManagement:IDisposable
         var work=WorkArea(point);
         var x=Math.Clamp(point.X-size/2,work.X+4,Math.Max(work.X+4,work.Right-size-4));
         var y=Math.Clamp(point.Y-size/2,work.Y+4,Math.Max(work.Y+4,work.Bottom-size-4));
-        Position(wheel,new(x,y,size,size));Trace?.Invoke($"wheel desired={x},{y},{size} actual={Bounds(new WindowInteropHelper(wheel).Handle)}");
+        Position(wheel,new(x,y,size,size));wheelReady=true;Trace?.Invoke($"wheel desired={x},{y},{size} actual={Bounds(new WindowInteropHelper(wheel).Handle)}");
     }
     private static void PassThrough(Window window)
     {
@@ -111,7 +112,7 @@ internal sealed class WindowManagement:IDisposable
     }
     private static void Position(Window window,WindowFrame frame)
         =>Native.SetWindowPos(new WindowInteropHelper(window).Handle,new nint(-1),frame.X,frame.Y,frame.Width,frame.Height,0x10|0x40);
-    private void HideOverlays(){wheel?.Close();wheel=null;preview?.Close();preview=null;}
+    private void HideOverlays(){wheelReady=false;wheel?.Close();wheel=null;preview?.Close();preview=null;}
     private void Clear(){timer.Stop();HideOverlays();target=0;cancelled=false;}
     public void Dispose(){if(disposed)return;disposed=true;Clear();if(hook!=0)Native.UnhookWinEvent(hook);}
 

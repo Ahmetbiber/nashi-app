@@ -77,7 +77,7 @@ internal static class WindowManagementSmoke
                 var dpi=WindowManagement.Native.GetDpiForWindow(target);var expectedSize=(int)Math.Round(WheelPresentation.Diameter*(dpi>0?dpi:96)/96d);
                 while(DateTime.UtcNow<deadline)
                 {
-                    Thread.Sleep(50);var candidate=FindWindow(null,"Nashi Window Management");
+                    Thread.Sleep(50);if(!manager.WheelReady)continue;var candidate=FindWindow(null,"Nashi Window Management");
                     if(candidate==0||!WindowManagement.Native.IsWindowVisible(candidate))continue;
                     var bounds=WindowManagement.Bounds(candidate);
                     // HWND creation precedes Show/Position; do not aim at the unpositioned default rectangle.

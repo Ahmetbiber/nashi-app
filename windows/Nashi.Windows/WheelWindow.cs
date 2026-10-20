@@ -65,6 +65,7 @@ internal static class Feedback
 {
     internal static bool Enabled{get;set;}=true;
     private static MediaPlayer? player;private static DateTime last;
+    internal static void Stop(){player?.Stop();player?.Close();player=null;}
     public static void Play()
     {
         if(!Enabled||(DateTime.UtcNow-last).TotalMilliseconds<70)return;last=DateTime.UtcNow;
@@ -72,7 +73,7 @@ internal static class Feedback
         {
             var directory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi");Directory.CreateDirectory(directory);var file=Path.Combine(directory,"WheelSelection.wav");
             if(!File.Exists(file)){using var source=Application.GetResourceStream(new Uri("pack://application:,,,/Assets/WheelSelection.wav")).Stream;using var target=File.Create(file);source.CopyTo(target);}
-            if(player is null){player=new MediaPlayer{Volume=.65};player.MediaOpened+=(_,_)=>player.Play();player.Open(new Uri(file));}else{player.Position=TimeSpan.Zero;player.Play();}
+            if(player is null){var created=new MediaPlayer{Volume=.65};player=created;created.MediaOpened+=(_,_)=>{if(Enabled&&ReferenceEquals(player,created))created.Play();};created.Open(new Uri(file));}else{player.Position=TimeSpan.Zero;player.Play();}
 
         }catch(IOException){}catch(InvalidOperationException){}
     }

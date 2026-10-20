@@ -67,10 +67,19 @@ internal static class WindowManagementSmoke
                 SetForegroundWindow(target);Thread.Sleep(100);SetCursorPos(320,104);Thread.Sleep(100);
                 mouse_event(2,0,0,0,0);down=true;Thread.Sleep(70);SetCursorPos(350,130);Thread.Sleep(80);
                 keybd_event(key,0,0,0);SetCursorPos(375,145);
-                nint wheel=0;var deadline=DateTime.UtcNow.AddSeconds(3);
-                while(wheel==0&&DateTime.UtcNow<deadline){Thread.Sleep(50);wheel=FindWindow(null,"Nashi Window Management");}
-                if(wheel==0)throw new Exception("Window wheel did not open during a native move.");
-                var frame=WindowManagement.Bounds(wheel);manager.Trace?.Invoke($"test wheel={frame} choice={choice}");var index=Array.IndexOf(Enum.GetValues<WindowPlacement>(),choice);
+                nint wheel=0;var frame=default(WindowFrame);var deadline=DateTime.UtcNow.AddSeconds(3);
+                var dpi=WindowManagement.Native.GetDpiForWindow(target);var expectedSize=(int)Math.Round(360*(dpi>0?dpi:96)/96d);
+                while(DateTime.UtcNow<deadline)
+                {
+                    Thread.Sleep(50);var candidate=FindWindow(null,"Nashi Window Management");
+                    if(candidate==0||!WindowManagement.Native.IsWindowVisible(candidate))continue;
+                    var bounds=WindowManagement.Bounds(candidate);
+                    // HWND creation precedes Show/Position; do not aim at the unpositioned default rectangle.
+                    if(Math.Abs(bounds.Width-expectedSize)>2||Math.Abs(bounds.Height-expectedSize)>2)continue;
+                    wheel=candidate;frame=bounds;break;
+                }
+                if(wheel==0)throw new Exception("Window wheel did not finish positioning during a native move.");
+                manager.Trace?.Invoke($"test wheel={frame} choice={choice}");var index=Array.IndexOf(Enum.GetValues<WindowPlacement>(),choice);
                 var angle=(-90+index*360d/7)*Math.PI/180;
                 SetCursorPos((int)(frame.X+frame.Width*(.5+.33*Math.Cos(angle))),(int)(frame.Y+frame.Height*(.5+.33*Math.Sin(angle))));Thread.Sleep(180);
                 if(cancel){keybd_event(0x1B,0,0,0);Thread.Sleep(100);keybd_event(0x1B,0,2,0);Thread.Sleep(100);}

@@ -51,7 +51,11 @@ jobs:
             }
             $exitCode = $process.ExitCode
             Write-Host "Native desktop process exit code: $exitCode"
-            if ($exitCode -ne 0) { throw "Native desktop checks exited with code $exitCode" }
+            if ($exitCode -ne 0) {
+              Start-Sleep -Seconds 3
+              Get-WinEvent -FilterHashtable @{LogName='Application'; Id=1000,1001,1026; StartTime=(Get-Date).AddMinutes(-20)} -ErrorAction SilentlyContinue | Select-Object -First 8 TimeCreated,ProviderName,Id,Message | Format-List | Out-String | Write-Host
+              throw "Native desktop checks exited with code $exitCode"
+            }
           } finally { $process.Dispose() }
           if (!(Test-Path build/windows-smoke/smoke.json)) { throw 'No native smoke result' }
           Get-Content build/windows-smoke/smoke.json

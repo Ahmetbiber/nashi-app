@@ -39,6 +39,11 @@ jobs:
         env:
           NASHI_SMOKE_DIRECTORY: '${{ github.workspace }}\build\windows-smoke'
         run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
+          cmd /d /c "call `"$vcvars`" && cl /nologo /std:c++20 /EHsc /W4 /DNASHI_TRACE_LIBRARY /LD windows\Diagnostics\NativeDebugRunner.cpp /Fe:build\NativeShutdownTrace.dll /link dbghelp.lib"
+          if ($LASTEXITCODE -ne 0) { throw 'Native diagnostic observer did not compile' }
+          $env:NASHI_NATIVE_TRACE_LIBRARY = (Resolve-Path build/NativeShutdownTrace.dll).Path
           $start = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path build/windows/Nashi/Nashi.exe))
           $start.UseShellExecute = $false
           $start.ArgumentList.Add('--smoke-test')

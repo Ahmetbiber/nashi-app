@@ -5,17 +5,40 @@ import ServiceManagement
 import Carbon
 import Combine
 import NashiUpdates
+import ApplicationServices
 
 @main
 enum NashiApplication {
     @MainActor static func main() {
         if CommandLine.arguments.count>1,["convert","tool","inspect","catalog","dependencies"].contains(CommandLine.arguments[1]) { exit(NashiCommandLine.run()) }
         let app=NSApplication.shared
+        if CommandLine.arguments.contains("--window-management-status") {
+            let status:[String:Any]=["bundleIdentifier":Bundle.main.bundleIdentifier ?? "", "displayName":Bundle.main.object(forInfoDictionaryKey:"CFBundleDisplayName") as? String ?? "", "accessibilityTrusted":AXIsProcessTrusted()]
+            if let data=try? JSONSerialization.data(withJSONObject:status,options:[.sortedKeys]),let text=String(data:data,encoding:.utf8) { print(text) }
+            return
+        }
+        if CommandLine.arguments.contains("--window-management-fixture") {
+            let fixture=WindowManagementFixtureDelegate();app.delegate=fixture;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(fixture) { app.run() };return
+        }
         let delegate=AppDelegate()
         app.delegate=delegate
         app.setActivationPolicy(.accessory)
         withExtendedLifetime(delegate) { app.run() }
     }
+}
+
+/// An explicit test-only invocation supplies a disposable, resizable cross-process target.
+@MainActor private final class WindowManagementFixtureDelegate:NSObject,NSApplicationDelegate {
+    private var window:NSWindow?
+    func applicationDidFinishLaunching(_ notification:Notification) {
+        let w=NSWindow(contentRect:NSRect(x:220,y:200,width:620,height:420),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
+        w.title="Nashi Window Layout Fixture";w.minSize=NSSize(width:160,height:120);w.isReleasedWhenClosed=false
+        let label=NSTextField(labelWithString:"Nashi window arrangement test fixture")
+        label.font=NSFont.systemFont(ofSize:20,weight:.medium);label.frame=NSRect(x:26,y:300,width:560,height:40)
+        w.contentView?.addSubview(label);w.makeKeyAndOrderFront(nil);window=w
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool { true }
 }
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {

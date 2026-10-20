@@ -22,6 +22,7 @@ internal sealed class WindowManagement:IDisposable
     private bool disposed;
     private readonly Action<string> notice;
     private readonly Func<bool> enabled;
+    internal Action<string>? Trace { get; set; }
     private static readonly WindowPlacement[] placements=Enum.GetValues<WindowPlacement>();
     internal WheelWindow? ActiveWheel=>wheel;
 
@@ -38,18 +39,18 @@ internal sealed class WindowManagement:IDisposable
         {
             Clear();if(!enabled()||!Native.IsWindowVisible(window)||Native.IsIconic(window))return;
             if((Native.GetAsyncKeyState(1)&0x8000)==0)return; // Never intercept keyboard-initiated system moves.
-            target=window;Native.GetCursorPos(out origin);cancelled=false;timer.Start();
+            target=window;Native.GetCursorPos(out origin);cancelled=false;timer.Start();Trace?.Invoke($"start pointer={origin.X},{origin.Y}");
         }
         else if(type==0x000B&&window==target)
         {
             Native.GetCursorPos(out var point);wheel?.HoverScreen(new(point.X,point.Y));
             var selected=wheel?.SelectedIndex??-1;var captured=target;
             var choice=selected>=0&&selected<placements.Length&&!cancelled?placements[selected]:(WindowPlacement?)null;
-            var work=WorkArea(point);Clear();
+            var work=WorkArea(point);Trace?.Invoke($"end pointer={point.X},{point.Y} selected={selected} cancelled={cancelled}");Clear();
             if(choice is {} placement)
             {
                 var apply=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};
-                apply.Tick+=(_,_)=>{apply.Stop();if(!disposed&&Native.IsWindow(captured)&&!Apply(captured,placement.Frame(work)))notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
+                apply.Tick+=(_,_)=>{apply.Stop();if(disposed||!Native.IsWindow(captured))return;var result=Apply(captured,placement.Frame(work));Trace?.Invoke($"apply {placement} success={result} actual={Bounds(captured)}");if(!result)notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
             }
         }
     }
@@ -85,7 +86,7 @@ internal sealed class WindowManagement:IDisposable
         var work=WorkArea(point);
         var x=Math.Clamp(point.X-size/2,work.X+4,Math.Max(work.X+4,work.Right-size-4));
         var y=Math.Clamp(point.Y-size/2,work.Y+4,Math.Max(work.Y+4,work.Bottom-size-4));
-        Position(wheel,new(x,y,size,size));
+        Position(wheel,new(x,y,size,size));Trace?.Invoke($"wheel desired={x},{y},{size} actual={Bounds(new WindowInteropHelper(wheel).Handle)}");
     }
     private static void PassThrough(Window window)
     {

@@ -30,6 +30,7 @@ enum FloatShelfViewMode:Int { case icons,list }
     private var statusHeight:NSLayoutConstraint!
     private var expandedSize=NSSize(width:400,height:340)
     private var isAdjustingFrame=false
+    private let filePreview=FilePreview()
     private var previewItems:[ShelfPreviewItem]=[]
     private var sharingPicker:NSSharingServicePicker?
     private var typeBuffer=""
@@ -164,7 +165,7 @@ enum FloatShelfViewMode:Int { case icons,list }
         if let edge=attachedEdge,!isAdjustingFrame { attach(to:edge) }
     }
     func windowWillClose(_ notification:Notification) {
-        guard !isClosed else { return };isClosed=true
+        guard !isClosed else { return };isClosed=true;filePreview.close()
         if QLPreviewPanel.sharedPreviewPanelExists(),let panel=QLPreviewPanel.shared(),panel.delegate === self { panel.orderOut(nil);panel.delegate=nil;panel.dataSource=nil }
         for item in items { item.releaseScope() };items=[];previewItems=[]
         onClose?()
@@ -293,11 +294,7 @@ enum FloatShelfViewMode:Int { case icons,list }
         items=items.enumerated().filter{!selected.contains($0.offset)}.map(\.element);reload()
     }
     @objc private func clearShelf() { for item in items { item.releaseScope() };items=[];reload() }
-    @objc private func showQuickLook() {
-        guard !actionURLs.isEmpty,let panel=QLPreviewPanel.shared() else { return }
-        previewItems=actionURLs.map(ShelfPreviewItem.init);window?.makeFirstResponder(collection)
-        panel.updateController();panel.dataSource=self;panel.delegate=self;panel.reloadData();panel.makeKeyAndOrderFront(nil)
-    }
+    @objc private func showQuickLook() {filePreview.show(actionURLs)}
     private func updatePreviewIfVisible() {
         guard QLPreviewPanel.sharedPreviewPanelExists(),let panel=QLPreviewPanel.shared(),panel.isVisible,panel.delegate === self else { return }
         previewItems=actionURLs.map(ShelfPreviewItem.init);panel.reloadData()

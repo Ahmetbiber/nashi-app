@@ -15,6 +15,7 @@ import NashiCore
             monitor=NSEvent.addLocalMonitorForEvents(matching:.keyDown) { [weak self] event in
                 guard let self,event.window===self.window else{return event}
                 if event.keyCode==53 {self.close();return nil}
+                let modifiers=event.modifierFlags.intersection([.command,.control,.option,.shift]);guard modifiers.isEmpty || modifiers == .option else{return event}
                 if event.keyCode==49 {if let player=self.player {if player.rate==0 {player.play()}else{player.pause()}}else{self.close()};return nil}
                 if [123,124].contains(event.keyCode) {
                     let delta=event.keyCode==123 ? -1:1
@@ -30,7 +31,7 @@ import NashiCore
     @objc private func previous(){navigate(-1)}
     @objc private func next(){navigate(1)}
     @objc private func openFile(){NSWorkspace.shared.open(urls[index])}
-    @objc private func didClose(){player?.pause();player=nil;preview?.previewItem=nil;preview=nil}
+    @objc private func didClose(){player?.pause();player?.replaceCurrentItem(with:nil);player=nil;preview?.previewItem=nil;preview=nil}
     func close(){window?.close();didClose()}
     private func load() {
         guard let window else{return};didClose();let url=urls[index];window.title=url.lastPathComponent+" · Preview · Nashi"

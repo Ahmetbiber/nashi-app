@@ -46,9 +46,17 @@ public sealed partial class ToolEditor
         {
             photoPreview=new(){Interval=TimeSpan.FromMilliseconds(300)};photoPreview.Tick+=async(_,_)=>{photoPreview.Stop();await PreviewPhoto();};
             foreach(var box in fields.Values)box.TextChanged+=(_,_)=>QueuePhotoPreview();backdrop.SelectionChanged+=(_,_)=>QueuePhotoPreview();collageLayout.SelectionChanged+=(_,_)=>QueuePhotoPreview();Closed+=(_,_)=>photoPreview.Stop();
-            var original=new CheckBox{Content="Show original",Margin=new(4,14,4,4)};original.Checked+=(_,_)=>{showingOriginal=true;photoPreview.Stop();photoGeneration++;SetPhotoPreview(bitmap!);};original.Unchecked+=(_,_)=>{showingOriginal=false;QueuePhotoPreview();};options.Children.Add(original);Loaded+=(_,_)=>QueuePhotoPreview();
+            var original=new CheckBox{Content="Show original",Margin=new(4,14,4,4)};original.Checked+=(_,_)=>{showingOriginal=true;photoPreview.Stop();photoGeneration++;SetPhotoPreview(bitmap!);};original.Unchecked+=(_,_)=>{showingOriginal=false;QueuePhotoPreview();};previewStack.Children.Add(original);Loaded+=(_,_)=>QueuePhotoPreview();
         }
         if(tool=="annotate")options.Children.Add(MainWindow.Button("Choose annotation image…",()=>{var picker=new OpenFileDialog{Filter="Images|*.png;*.jpg;*.webp;*.heic;*.avif;*.bmp"};if(picker.ShowDialog(this)==true){annotationImage=picker.FileName;drawingTool.SelectedIndex=9;}}));
+    }
+    private UIElement ZoomablePreview(UIElement visual)
+    {
+        var zoom=1d;var result=new StackPanel();var controls=new StackPanel{Orientation=Orientation.Horizontal};var viewbox=new Viewbox{Child=visual,Stretch=Stretch.Uniform,Width=600,Height=420};var scroll=new ScrollViewer{Content=viewbox,Height=420,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
+        void SetZoom(double value){zoom=Math.Clamp(value,.5,4);viewbox.Width=Math.Max(100,scroll.ViewportWidth)*zoom;viewbox.Height=420*zoom;}
+        var percent=new TextBlock{Text="100%",VerticalAlignment=VerticalAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(8,0,8,0)};
+        void Apply(double value){SetZoom(value);percent.Text=$"{zoom*100:0}%";}
+        controls.Children.Add(MainWindow.Button("−",()=>Apply(zoom/1.25)));controls.Children.Add(MainWindow.Button("Fit",()=>Apply(1)));controls.Children.Add(MainWindow.Button("+",()=>Apply(zoom*1.25)));controls.Children.Add(percent);result.Children.Add(controls);result.Children.Add(scroll);scroll.SizeChanged+=(_,_)=>SetZoom(zoom);return result;
     }
     private void MoveImage(int delta){var index=imageOrder.SelectedIndex;var next=index+delta;if(index<0||next<0||next>=imageOrder.Items.Count)return;var item=imageOrder.Items[index];imageOrder.Items.RemoveAt(index);imageOrder.Items.Insert(next,item);imageOrder.SelectedIndex=next;QueuePhotoPreview();}
     private void QueuePhotoPreview(){if(photoPreview is null||showingOriginal)return;photoPreview.Stop();photoPreview.Start();}

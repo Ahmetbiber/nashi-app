@@ -16,13 +16,13 @@ public sealed partial class ToolEditor
         if(!ReadSettings(false))return;processingPreview=true;if(processedButton is not null){processedButton.IsEnabled=false;processedButton.Content="Preparing…";}time.Text="Preparing processed preview…";
         try
         {
-            var engine=new MediaEngine(previewTools.Executable("ffmpeg"),previewTools.Executable("ffprobe"));var rendered=(await engine.ToolAsync(tool,[input],PreviewDirectory(),MediaOptions,null,previewLifetime.Token))[0];
-            var playable=(await engine.ConvertAsync([rendered],media?.Video is null?"wav":"mp4",PreviewDirectory(),new(){PreserveMetadata=false},null,previewLifetime.Token))[0];
+            var engine=new MediaEngine(previewTools.Executable("ffmpeg"),previewTools.Executable("ffprobe"));var settings=tool=="splitVideo"?MediaOptions with{JoinSplitClips=true}:MediaOptions;var rendered=(await engine.ToolAsync(tool,[input],PreviewDirectory(),settings,null,previewLifetime.Token))[0];
+            var playable=(await engine.ConvertAsync([rendered],media?.Video is null&&tool!="audioToVideo"?"wav":"mp4",PreviewDirectory(),new(){PreserveMetadata=false},null,previewLifetime.Token))[0];
             var info=await engine.InspectAsync(playable,previewLifetime.Token);if(previewLifetime.IsCancellationRequested)return;
             ProcessedPreviewPath=playable;player.Source=new Uri(playable);duration=info.Duration;scrubber.Maximum=duration;processedPlayback=true;drawing.IsEnabled=false;drawing.Visibility=System.Windows.Visibility.Hidden;Seek(0);player.Play();playing=true;time.Text="Processed preview · export uses the original file.";
         }
         catch(OperationCanceledException){}
         catch(Exception error){if(IsVisible)time.Text="Preview unavailable: "+error.Message;}
-        finally{processingPreview=false;if(processedButton is not null){processedButton.IsEnabled=true;processedButton.Content="Preview Processed";}}
+        finally{processingPreview=false;if(processedButton is not null){processedButton.IsEnabled=true;processedButton.Content=tool=="splitVideo"?"Play Result":tool=="audioToVideo"?"Preview Visualization":"Preview Processed";}}
     }
 }

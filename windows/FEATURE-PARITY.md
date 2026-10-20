@@ -31,3 +31,5 @@ Windows uses Explorer, Windows keyboard conventions and Windows Share. Apple Air
 - Native tests use Windows SendInput and OLE plus WPF render captures. They are not a physical Windows computer-use session or a claim that every third-party media site is always available.
 
 Current verification results and remaining issues are recorded in the PR; a release requires the final commit's checks to pass.
+
+The combined desktop branch also includes the seven-layout window wheel and the follow-up Home/Library/preview/clipboard/media alignment. See [the desktop comparison and shortcut map](../docs/DESKTOP-PARITY.md) for the current behavior and native platform adaptations.

@@ -5,17 +5,52 @@ import ServiceManagement
 import Carbon
 import Combine
 import NashiUpdates
+import ApplicationServices
 
 @main
 enum NashiApplication {
     @MainActor static func main() {
         if CommandLine.arguments.count>1,["convert","tool","inspect","catalog","dependencies"].contains(CommandLine.arguments[1]) { exit(NashiCommandLine.run()) }
         let app=NSApplication.shared
+        if CommandLine.arguments.contains("--window-management-status") {
+            let status:[String:Any]=["bundleIdentifier":Bundle.main.bundleIdentifier ?? "", "displayName":Bundle.main.object(forInfoDictionaryKey:"CFBundleDisplayName") as? String ?? "", "accessibilityTrusted":AXIsProcessTrusted()]
+            if let data=try? JSONSerialization.data(withJSONObject:status,options:[.sortedKeys]),let text=String(data:data,encoding:.utf8) { print(text) }
+            return
+        }
+        if let index=CommandLine.arguments.firstIndex(of:"--window-management-smoke"),CommandLine.arguments.count>index+2,
+           let managerPID=Int32(CommandLine.arguments[index+1]) {
+            let runner=WindowManagementSmokeDelegate(managerPID:managerPID,output:URL(fileURLWithPath:CommandLine.arguments[index+2],isDirectory:true))
+            app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner) { app.run() };return
+        }
+        if CommandLine.arguments.contains("--window-management-fixture") {
+            let fixture=WindowManagementFixtureDelegate();app.delegate=fixture;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(fixture) { app.run() };return
+        }
+        if let index=CommandLine.arguments.firstIndex(of:"--desktop-parity-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=DesktopParitySmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
         let delegate=AppDelegate()
         app.delegate=delegate
         app.setActivationPolicy(.accessory)
         withExtendedLifetime(delegate) { app.run() }
     }
+}
+
+/// An explicit test-only invocation supplies a disposable, resizable cross-process target.
+@MainActor private final class WindowManagementFixtureDelegate:NSObject,NSApplicationDelegate {
+    private var window:NSWindow?
+    func applicationDidFinishLaunching(_ notification:Notification) {
+        let w=NSWindow(contentRect:NSRect(x:220,y:200,width:620,height:420),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
+        let key=CommandLine.arguments.firstIndex(of:"--minimum-window-width")
+        let minimum=key.flatMap{$0+1<CommandLine.arguments.count ? Double(CommandLine.arguments[$0+1]):nil} ?? 160
+        w.title="Nashi Window Layout Fixture";w.minSize=NSSize(width:min(1200,max(160,minimum)),height:120);w.isReleasedWhenClosed=false
+        let label=NSTextField(labelWithString:"Nashi window arrangement test fixture")
+        label.font=NSFont.systemFont(ofSize:20,weight:.medium);label.frame=NSRect(x:26,y:300,width:560,height:40)
+        w.contentView?.addSubview(label);w.makeKeyAndOrderFront(nil);window=w
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool { true }
 }
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -24,6 +59,7 @@ enum NashiApplication {
     private var updateObservations=Set<AnyCancellable>()
     var statusItem:NSStatusItem!
     var home:NSWindow?
+    private var homeKeyboardMonitor:Any?
     var settings:NSWindow?
     var updateConnection:NSWindow?
     private let progressToast=ProgressToastController()
@@ -37,16 +73,20 @@ enum NashiApplication {
     var welcome:NSWindow?
     var monitor:DragMonitor!
     var wheel:WheelController!
+    var windowManagement:WindowManagementController!
 
     func applicationDidFinishLaunching(_ notification:Notification) {
         NashiAppearance.apply()
-        UserDefaults.standard.register(defaults:["enabled":true,"reveal":true,"sound":true,"convertKey":"shift","toolsKey":"command","actionsKey":"control","wheelScale":1.0])
+        UserDefaults.standard.register(defaults:["enabled":true,"reveal":true,"sound":true,"convertKey":"shift","toolsKey":"command","actionsKey":"control","wheelScale":1.0,"windowManagementEnabled":true])
         let mainMenu=NSMenu();let appMenu=NSMenu()
-        appMenu.addItem(withTitle:"Nashi",action:#selector(showHome),keyEquivalent:"")
+        appMenu.addItem(withTitle:"Home",action:#selector(showHome),keyEquivalent:"1")
+        appMenu.addItem(withTitle:"Library",action:#selector(showLibrary),keyEquivalent:"2")
+        appMenu.addItem(withTitle:"Find in Library…",action:#selector(findInLibrary),keyEquivalent:"f")
+        appMenu.addItem(withTitle:"Choose Files…",action:#selector(chooseFiles),keyEquivalent:"o")
         appMenu.addItem(withTitle:"Download Link…",action:#selector(showDownloadLink),keyEquivalent:"")
         appMenu.addItem(withTitle:"Settings…",action:#selector(showSettings),keyEquivalent:",")
         appMenu.addItem(withTitle:"Welcome…",action:#selector(showWelcome),keyEquivalent:"")
-        appMenu.addItem(withTitle:"Check for Updates…",action:#selector(checkForUpdates),keyEquivalent:"")
+        appMenu.addItem(withTitle:"Check for Updates…",action:#selector(checkForUpdates),keyEquivalent:"u")
         appMenu.addItem(withTitle:"Update Connection…",action:#selector(showUpdateConnection),keyEquivalent:"")
         appMenu.addItem(.separator());appMenu.addItem(withTitle:"Quit Nashi",action:#selector(quit),keyEquivalent:"q")
         for item in appMenu.items { item.target=self;if item.action == #selector(showDownloadLink) { item.keyEquivalent="d";item.keyEquivalentModifierMask=[.control,.shift] } };let appItem=NSMenuItem();appItem.submenu=appMenu;mainMenu.addItem(appItem)
@@ -89,10 +129,19 @@ enum NashiApplication {
         NotificationCenter.default.publisher(for:.showToolSetup).sink { [weak self] _ in self?.showToolSetup() }.store(in:&updateObservations)
         wheel=WheelController(state:state)
         monitor=DragMonitor(onEnd:{ [weak self] in self?.wheel.endDrag() }) { [weak self] urls,mode,point in self?.wheel.show(inputs:urls,mode:mode,at:point) }
-        state.onOpenWheel = { [weak self] in self?.wheel.show(inputs:self?.state.inputs ?? [],mode:.convert,at:NSEvent.mouseLocation,keyboard:true) }
+        windowManagement=WindowManagementController(fileWheelIsVisible:{ [weak self] in self?.wheel.panel?.isVisible == true })
+        windowManagement.onNotice = { message in
+            let alert=NSAlert();alert.messageText="Window arrangement";alert.informativeText=message
+            alert.addButton(withTitle:"OK");alert.runModal()
+        }
+        state.onOpenWheel = { [weak self] in self?.wheel.show(inputs:self?.state.inputs ?? [],mode:.tools,at:NSEvent.mouseLocation,keyboard:true) }
         state.onWebDownload = { [weak self] url,mode in self?.showWebDownload(url,mode:mode) }
         state.onWebDrop = { [weak self] urls in self?.wheel.show(inputs:urls,mode:.tools,at:NSEvent.mouseLocation,keyboard:true) }
         registerDownloadShortcut()
+        homeKeyboardMonitor=NSEvent.addLocalMonitorForEvents(matching:.keyDown) { [weak self] event in
+            guard let self,event.window===self.home,self.home?.isKeyWindow==true else{return event}
+            return self.state.handleHomeKey(event,window:self.home!) ? nil:event
+        }
         state.onChooseFiles = { [weak self] in self?.chooseFiles() }
         state.onSettings = { [weak self] in self?.showSettings() }
         state.onShowTool = { [weak self] tool in self?.showTool(tool) }
@@ -108,7 +157,10 @@ enum NashiApplication {
             state.inputs=CommandLine.arguments[(index+1)...].map{URL(fileURLWithPath:$0)};showHome()
         }
     }
+    @objc func showLibrary() {showHome();state.libraryVisible=true;state.selectedHistoryID=state.history.first?.id}
+    @objc func findInLibrary() {showLibrary();state.libraryFocusRequest+=1}
     @objc func showHome() {
+        state.libraryVisible=false
         progressToast.dismiss()
         if home == nil { home=makeWindow(title:"Nashi",size:NSSize(width:820,height:780),view:HomeView(state:state,updater:updater)) }
         home?.contentMinSize=NSSize(width:700,height:580)
@@ -144,6 +196,7 @@ enum NashiApplication {
         downloadModel.shortcutAvailable=state.webShortcutAvailable
     }
     func applicationWillTerminate(_ notification:Notification) {
+        windowManagement?.stop()
         if let downloadHotKey { UnregisterEventHotKey(downloadHotKey) }
         if let downloadHotKeyHandler { RemoveEventHandler(downloadHotKeyHandler) }
     }

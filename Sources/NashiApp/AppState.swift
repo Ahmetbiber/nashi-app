@@ -22,6 +22,23 @@ struct JobRecord:Codable,Identifiable {
     @Published var activeTool:ToolKind?
     @Published var activeInputs:[URL]=[]
     @Published var history:[JobRecord]=[]
+    @Published var libraryVisible=false
+    @Published var libraryQuery=""
+    @Published var selectedHistoryID:UUID?
+    @Published var libraryFocusRequest=0
+    let filePreview=FilePreview()
+    var filteredHistory:[JobRecord] {history.filter{libraryQuery.isEmpty || ([$0.title]+$0.outputs.map{URL(fileURLWithPath:$0).lastPathComponent}).joined(separator:" ").localizedCaseInsensitiveContains(libraryQuery)}}
+    func preview(_ job:JobRecord) {filePreview.show(job.outputs.map{URL(fileURLWithPath:$0)}.filter{FileManager.default.fileExists(atPath:$0.path)})}
+    func navigateLibrary(_ direction:Int) {let rows=filteredHistory;guard !rows.isEmpty else{return};let old=rows.firstIndex{$0.id==selectedHistoryID};selectedHistoryID=rows[min(rows.count-1,max(0,(old ?? (direction>0 ? -1:1))+direction))].id}
+    func pasteContent(_ pasteboard:NSPasteboard = .general) {
+        guard !working else{return}
+        do {let result=try ClipboardImport.read(pasteboard)
+            if let link=result.link {onWebDownload?(link,.video);return}
+            inputs=result.urls;outputs=[];error=nil;libraryVisible=false
+            history.insert(JobRecord(title:result.label,inputs:[],outputs:result.urls.map(\.path)),at:0);history=Array(history.prefix(50))
+            if let data=try? JSONEncoder().encode(history) {historyDefaults.set(data,forKey:"history")}
+        }catch{self.error=error.localizedDescription}
+    }
     var token=CancellationToken()
     var onOpenWheel:(()->Void)?
     var onChooseFiles:(()->Void)?
@@ -38,9 +55,10 @@ struct JobRecord:Codable,Identifiable {
     private var windowObservers:[ObjectIdentifier:NSObjectProtocol]=[:]
     private var sharingService:NSSharingService?
 
-    override init() {
-        super.init()
-        if let data=UserDefaults.standard.data(forKey:"history"),let items=try? JSONDecoder().decode([JobRecord].self,from:data) { history=items }
+    private let historyDefaults:UserDefaults
+    init(defaults:UserDefaults = .standard) {
+        historyDefaults=defaults;super.init()
+        if let data=historyDefaults.data(forKey:"history"),let items=try? JSONDecoder().decode([JobRecord].self,from:data) { history=items }
     }
     func retainToolWindow(_ window:NSWindow) {
         toolWindows.append(window);let id=ObjectIdentifier(window)
@@ -79,7 +97,7 @@ struct JobRecord:Codable,Identifiable {
                 stopProgressUpdates();outputs=result;progress=1
                 let record=JobRecord(title:operation.title,inputs:selected.map(\.path),outputs:result.map(\.path))
                 history.insert(record,at:0);history=Array(history.prefix(50))
-                if let data=try? JSONEncoder().encode(history) { UserDefaults.standard.set(data,forKey:"history") }
+                if let data=try? JSONEncoder().encode(history) { historyDefaults.set(data,forKey:"history") }
                 onSuccess?(.filesReady(result))
                 if options.revealInFinder { NSWorkspace.shared.activateFileViewerSelecting(result) }
             } catch { stopProgressUpdates();if !cancel.isCancelled { self.error=error.localizedDescription } }
@@ -155,7 +173,7 @@ struct JobRecord:Codable,Identifiable {
     func recordWebDownload(_ files:[URL],site:String) {
         history.insert(JobRecord(title:"Download · \(site)",inputs:files.map(\.path),outputs:files.map(\.path)),at:0)
         history=Array(history.prefix(50))
-        if let data=try? JSONEncoder().encode(history) { UserDefaults.standard.set(data,forKey:"history") }
+        if let data=try? JSONEncoder().encode(history) { historyDefaults.set(data,forKey:"history") }
         reportSuccess(.filesReady(files))
     }
 }

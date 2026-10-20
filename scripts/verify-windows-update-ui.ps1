@@ -50,6 +50,7 @@ function Property-Equals($Property, $Value) {
 }
 try {
     $app = Start-Process -FilePath $AppPath -WorkingDirectory ([IO.Path]::GetDirectoryName($AppPath)) -PassThru
+    $appHandle = $app.Handle # Keep the OS handle so a fast exit still exposes its real status.
     $processCondition = Property-Equals ([System.Windows.Automation.AutomationElement]::ProcessIdProperty) $app.Id
     $button = $null
     $deadline = [DateTime]::UtcNow.AddSeconds(60)

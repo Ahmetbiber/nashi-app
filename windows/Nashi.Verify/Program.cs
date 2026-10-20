@@ -13,6 +13,18 @@ var root = Path.Combine(Path.GetTempPath(), "Nashi-Verify-" + Guid.NewGuid().ToS
 Directory.CreateDirectory(root);
 try
 {
+    await DownloadChecks.Run(Check,root);
+    var parityRoot=Path.Combine(root,"Parity");Directory.CreateDirectory(parityRoot);try{ParityChecks.Run(Check,parityRoot);}finally{Directory.Delete(parityRoot,true);}
+    Check(FeatureCatalog.IsVideo("Clip.m4v")&&FeatureCatalog.IsAudio("Clip.aac"),"Media preview classification differs from Mac aliases");
+    foreach(var area in new[]{new WindowFrame(0,24,1511,910),new WindowFrame(-1920,-1030,1920,1006),new WindowFrame(1512,40,1727,1090)})
+    {
+        var a=WindowPlacement.LeftThird.Frame(area);var b=WindowPlacement.MiddleThird.Frame(area);var c=WindowPlacement.RightThird.Frame(area);
+        Check(a.X==area.X&&a.Right==b.X&&b.Right==c.X&&c.Right==area.Right,"Window thirds have gaps or cross display bounds");
+        Check(WindowPlacement.LeftHalf.Frame(area).Right==WindowPlacement.RightHalf.Frame(area).X,"Window halves overlap or leave a gap");
+        var constrained=1000;Check(WindowPlacement.LeftThird.Frame(area,constrained).X==area.X,"Constrained left placement lost its edge");Check(WindowPlacement.RightThird.Frame(area,constrained).Right==area.Right,"Constrained right placement lost its edge");Check(Math.Abs(WindowPlacement.MiddleThird.Frame(area,constrained).X+(double)WindowPlacement.MiddleThird.Frame(area,constrained).Width/2-(area.X+area.Width/2d))<=.5,"Constrained middle placement lost its center");Check(WindowPlacement.LeftThird.Frame(area,area.Width*2)==area,"An oversized minimum escaped the display");
+        Check(WindowPlacement.LeftTwoThirds.Frame(area).Right==b.Right&&WindowPlacement.RightTwoThirds.Frame(area).X==b.X,"Two-thirds placement mismatch");
+        foreach(var placement in Enum.GetValues<WindowPlacement>())Check(placement.Frame(area).Height==area.Height&&placement.Frame(area).Y==area.Y,"Window layout changed the usable vertical frame");
+    }
     foreach (var entry in new[] { "../outside", "/absolute", "C:/outside", @"..\outside", @"\\server\share", "file.txt:stream", "CON", "COM1.txt", "trailing.", "trailing ", "folder/../../outside", "a/./b" })
     {
         try { SafePaths.ArchiveEntry(root, entry); throw new Exception("Unsafe path accepted: " + entry); }
@@ -44,7 +56,8 @@ try
     Check(!Directory.EnumerateDirectories(root).Any(), "Staging files survived cancellation");
     var libraryDirectory=Path.Combine(root,"LibraryData");var library=new LibraryStore(libraryDirectory);
     var unicodeFile=Path.Combine(root,"Türkçe 🍐.txt");File.WriteAllText(unicodeFile,"original");library.Record("Pasted text",[unicodeFile]);library.SetAppearance("dark");
-    var reopened=new LibraryStore(libraryDirectory);Check(reopened.Entries.Single().Paths.Single()==unicodeFile&&reopened.Appearance=="dark","Library restart lost paths or settings");
+    library.SetWindowManagement(false);
+    var reopened=new LibraryStore(libraryDirectory);Check(reopened.Entries.Single().Paths.Single()==unicodeFile&&reopened.Appearance=="dark"&&!reopened.WindowManagementEnabled,"Library restart lost paths or settings");
     Check(reopened.Search("Türkçe").Count()==1&&reopened.Search("PASTED").Count()==1&&reopened.Search("absent").Count()==0,"Library search failed");
     File.Delete(unicodeFile);Check(reopened.Entries.Single().AvailablePaths.Length==0,"Missing Library file was available");
     for(var i=0;i<55;i++)library.Record("ZIP "+i,[Path.Combine(root,"Output.txt")]);Check(library.Entries.Count==LibraryStore.Limit,"Library retention limit failed");
@@ -87,10 +100,17 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var original=System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(source));
         var engine=new MediaEngine(encoder,probe);var progress=new List<OperationProgress>();
         var reporter=new InlineProgress(p=>progress.Add(p));
+        Check(Math.Abs((await engine.InspectAsync(source)).Video!.FrameRate-12)<.001,"Frame-by-frame preview lost actual source FPS");
         var trimmed=await engine.ToolAsync("trimVideo",[source],directory,new(){Start=.25,End=1.25},reporter);
         Check(Math.Abs((await engine.InspectAsync(trimmed[0])).Duration-1)<.2,"Trim duration is wrong");
         Check(progress.Any(p=>p.Fraction>0&&p.Fraction<.98),"No live media progress");
         var audio=await engine.ConvertAsync([source],"mp3",directory,new());Check((await engine.InspectAsync(audio[0])).HasAudio,"Audio conversion failed");
+        var deep=await engine.ConvertAsync([source],"wav",directory,new(){SampleDepth="pcm24"});var matched=await engine.ConvertAsync(deep,"aiff",directory,new());Check((await engine.InspectAsync(matched[0])).Streams.First(s=>s.Kind=="audio").Bits==24,"Match source reduced 24-bit audio");
+        var floating=await engine.ConvertAsync([source],"wav",directory,new(){SampleDepth="float32"});var floatMatch=await engine.ConvertAsync(floating,"aiff",directory,new());Check((await engine.InspectAsync(floatMatch[0])).Streams.First(s=>s.Kind=="audio").Codec=="pcm_f32be","Match source lost floating point audio");
+        var taggedAudio=await engine.ToolAsync("removeMetadata",audio,directory,new(){RemoveAllMetadata=false,Metadata=new(){{"title","Fixture title"},{"artist","Fixture artist"}}});
+        async Task<Dictionary<string,string>> Tags(string file){var result=await ProcessRunner.RunAsync(probe,["-v","error","-show_format","-show_streams","-of","json",file]);using var doc=JsonDocument.Parse(result.Output);var tags=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);if(doc.RootElement.GetProperty("format").TryGetProperty("tags",out var values))foreach(var p in values.EnumerateObject())tags[p.Name]=p.Value.ToString();if(doc.RootElement.TryGetProperty("streams",out var streams))foreach(var stream in streams.EnumerateArray())if(stream.TryGetProperty("tags",out values))foreach(var p in values.EnumerateObject())tags.TryAdd(p.Name,p.Value.ToString());return tags;}
+        var writtenTags=await Tags(taggedAudio[0]);Check(writtenTags.GetValueOrDefault("title")=="Fixture title"&&writtenTags.GetValueOrDefault("artist")=="Fixture artist","MP3 metadata editing failed");var clearedTitle=await engine.ToolAsync("removeMetadata",taggedAudio,directory,new(){RemoveAllMetadata=false,Metadata=new(){{"title",""}}});Check(!(await Tags(clearedTitle[0])).ContainsKey("title")&&(await Tags(clearedTitle[0])).GetValueOrDefault("artist")=="Fixture artist","Clearing one media tag removed another");var clearedAll=await engine.ToolAsync("removeMetadata",taggedAudio,directory,new());Check(!(await Tags(clearedAll[0])).ContainsKey("title")&&!(await Tags(clearedAll[0])).ContainsKey("artist"),"Remove all media metadata retained user tags");
+        async Task<string> AudioHash(string file)=>(await ProcessRunner.RunAsync(encoder,["-v","error","-i",file,"-map","0:a:0","-c:a","copy","-f","hash","-"])).Output;Check(await AudioHash(audio[0])==await AudioHash(taggedAudio[0]),"Media tag edit changed encoded audio");
         var muted=await engine.ToolAsync("muteVideo",[source],directory,new());Check(!(await engine.InspectAsync(muted[0])).HasAudio,"Mute retained audio");
         var speed=await engine.ToolAsync("changeVideoSpeed",[source],directory,new(){Speed=2});Check((await engine.InspectAsync(speed[0])).Duration<1.3,"Speed duration is wrong");
         var crop=await engine.ToolAsync("cropVideo",[source],directory,new(){Regions=[new(0,0,64,40)]});var cropped=await engine.InspectAsync(crop[0]);Check(cropped.Video?.Width==64&&cropped.Video.Height==40,"Crop dimensions wrong");
@@ -107,7 +127,7 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var metadata=await engine.ToolAsync("removeMetadata",[source],directory,new());Check((await engine.InspectAsync(metadata[0])).Video is not null,"Metadata export failed");
         foreach(var ext in MediaEngine.AudioFormats)
         {
-            var converted=await engine.ConvertAsync([source],ext,directory,new());Check((await engine.InspectAsync(converted[0])).HasAudio,"No audio in "+ext);
+            var converted=await engine.ConvertAsync([source],ext,directory,new());Check((await engine.InspectAsync(converted[0])).HasAudio,"No audio in "+ext);if(FeatureCatalog.Conversions.ContainsKey(ext)){var edited=await engine.ToolAsync("removeMetadata",converted,directory,new(){RemoveAllMetadata=false,Metadata=new(){{"title","Nashi tag roundtrip"}}});Check((await Tags(edited[0])).GetValueOrDefault("title")=="Nashi tag roundtrip","Audio metadata failed: "+ext);}
         }
         foreach(var ext in MediaEngine.VideoFormats)
         {

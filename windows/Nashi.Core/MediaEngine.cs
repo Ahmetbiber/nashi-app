@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Nashi.Core;
 
-public sealed record MediaStream(int Index, string Kind, string Codec, int? Width, int? Height, bool AttachedPicture);
+public sealed record MediaStream(int Index, string Kind, string Codec, int? Width, int? Height, bool AttachedPicture,int Bits=0,string SampleFormat="",double FrameRate=30);
 public sealed record MediaInfo(double Duration, long Bytes, IReadOnlyList<MediaStream> Streams)
 {
     public MediaStream? Video => Streams.FirstOrDefault(s => s.Kind == "video" && !s.AttachedPicture);
@@ -15,6 +15,7 @@ public sealed record MediaOptions
 {
     public double Quality { get; init; } = .8;
     public int AudioBitrate { get; init; } = 256;
+    public string SampleDepth{get;init;}="matchSource";public int GifFrameRate{get;init;}=15;public int GifWidth{get;init;}=960;
     public double Start { get; init; }
     public double? End { get; init; }
     public double Speed { get; init; } = 1;
@@ -41,6 +42,7 @@ public sealed record MediaOptions
     public string RedactionMode { get; init; } = "solid";
     public MediaRegion[] Regions { get; init; } = [];
     public MediaRange[] AudioRedactions { get; init; } = [];
+    public bool RemoveAllMetadata{get;init;}=true;
     public Dictionary<string,string> Metadata { get; init; } = [];
 }
 
@@ -71,11 +73,13 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             // FFmpeg auto-rotates decoded frames before crop/scale filters. The
             // editor and validation use those same displayed dimensions.
             if(double.IsFinite(rotation)&&Math.Abs(Math.Abs(rotation)%180-90)<.001)(width,height)=(height,width);
-            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached));
+            streams.Add(new(stream.GetProperty("index").GetInt32(), GetString(stream,"codec_type"), GetString(stream,"codec_name"), width, height, attached,GetInt(stream,"bits_per_raw_sample")??GetInt(stream,"bits_per_sample")??0,GetString(stream,"sample_fmt"),ParseFrameRate(GetString(stream,"avg_frame_rate"))));
         }
         var duration = root.TryGetProperty("format", out var format) && double.TryParse(GetString(format,"duration"), CultureInfo.InvariantCulture, out var seconds) && double.IsFinite(seconds) ? Math.Max(0,seconds) : 0;
         return new(duration, new FileInfo(input).Length, streams);
     }
+
+    private static double ParseFrameRate(string value){var parts=value.Split('/');if(parts.Length==2&&double.TryParse(parts[0],CultureInfo.InvariantCulture,out var numerator)&&double.TryParse(parts[1],CultureInfo.InvariantCulture,out var denominator)&&denominator>0&&double.IsFinite(numerator/denominator)&&numerator/denominator>=1)return numerator/denominator;return 30;}
 
     public async Task<IReadOnlyList<string>> ConvertAsync(IReadOnlyList<string> inputs, string format, string destination,
         MediaOptions options, IProgress<OperationProgress>? progress = null, CancellationToken token = default)
@@ -89,11 +93,11 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             var output = Output(transaction.StagingDirectory,input,format,"");
             var arguments = new List<string> { "-i",input };
             if (AudioFormats.Contains(format))
-            { RequireAudio(info); arguments.AddRange(["-map","0:a:0","-vn"]); arguments.AddRange(AudioEncoding(format,options)); }
+            { RequireAudio(info); arguments.AddRange(["-map","0:a:0","-vn"]); arguments.AddRange(AudioEncoding(format,SourceDepth(options,info))); }
             else
             {
                 RequireVideo(info);
-                if (format == "gif") arguments.AddRange(["-filter_complex","[0:v]fps=15,scale=w='min(960,iw)':h=-2,split[p0][p1];[p0]palettegen[pal];[p1][pal]paletteuse=dither=sierra2_4a","-an","-loop","0"]);
+                if (format == "gif") arguments.AddRange(["-filter_complex",$"[0:v]fps={options.GifFrameRate},scale=w='min({options.GifWidth},iw)':h=-2,split[p0][p1];[p0]palettegen[pal];[p1][pal]paletteuse=dither=sierra2_4a","-an","-loop","0"]);
                 else
                 {
                     arguments.AddRange(["-map","0:v:0","-map","0:a:0?"]);
@@ -127,7 +131,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
 
     private async Task<IReadOnlyList<string>> ApplyAsync(string tool,string input,MediaInfo info,string directory,MediaOptions options,Action<OperationProgress> progress,CancellationToken token)
     {
-        progress(new(null,"Preparing "+Path.GetFileName(input)+"…"));
+        options=SourceDepth(options,info);progress(new(null,"Preparing "+Path.GetFileName(input)+"…"));
         var ext=Path.GetExtension(input).TrimStart('.').ToLowerInvariant();if(ext=="aif")ext="aiff";
         var output=Output(directory,input,ext," "+ToolSuffix(tool));
         var args=new List<string>{"-i",input};double? duration=info.Duration;
@@ -135,12 +139,18 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
         {
             case "muteVideo": RequireVideo(info);args.AddRange(["-map","0:v:0","-c:v","copy","-an"]);break;
             case "removeMetadata":
-                args.AddRange(["-map","0","-map","-0:d?","-c","copy","-map_metadata","-1","-map_metadata:s","-1","-map_chapters","-1","-fflags","+bitexact"]);
-                foreach(var stream in info.Streams.Where(s=>s.AttachedPicture))args.AddRange(["-map","-0:"+stream.Index]);
+                if(options.RemoveAllMetadata)
+                {
+                    args.AddRange(["-map","0","-map","-0:d?","-c","copy","-map_metadata","-1","-map_metadata:s","-1","-map_chapters","-1","-fflags","+bitexact"]);
+                    foreach(var stream in info.Streams.Where(s=>s.AttachedPicture))args.AddRange(["-map","-0:"+stream.Index]);
+                }
+                else args.AddRange(["-map","0","-c","copy","-map_metadata","0","-map_chapters","0"]);
                 foreach(var pair in options.Metadata)
                 {
                     if(string.IsNullOrWhiteSpace(pair.Key)||pair.Key.Contains('=')||pair.Key.Contains('\0')||pair.Value.Contains('\0'))throw new ArgumentException("Invalid metadata field.");
-                    args.AddRange(["-metadata",pair.Key+"="+pair.Value]);
+                    var key=pair.Key;var option="-metadata";var parts=key.Split(':');if(parts.Length==3&&parts[0] is "stream" or "chapter")
+                    {if(!int.TryParse(parts[1],out var number)||number<0||number>10000||parts[0]=="stream"&&!info.Streams.Any(s=>s.Index==number))throw new ArgumentException("Invalid metadata stream/chapter.");option+=parts[0]=="stream"?":s:"+number:":c:"+number;key=parts[2];if(key is not ("title" or "language" or "handler_name" or "comment"))throw new ArgumentException("Unsupported stream/chapter tag.");}
+                    args.AddRange([option,key+"="+pair.Value]);if(option=="-metadata"&&ext is "ogg" or "opus")args.AddRange(["-metadata:s:a:0",key+"="+pair.Value]);
                 }
                 break;
             case "trimVideo":case "trimAudio":
@@ -328,10 +338,15 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static Action<OperationProgress> Scoped(IProgress<OperationProgress>? progress,int index,int count)=>p=>progress?.Report(p with{Fraction=p.Fraction is null?null:(index+p.Fraction)/count*.98,Label=count>1?$"File {index+1} of {count} · {p.Label}":p.Label});
     private static string Output(string directory,string input,string ext,string suffix)=>SafePaths.Unique(directory,Path.GetFileNameWithoutExtension(input)+suffix+"."+ext);
     private static string ToolSuffix(string tool)=>tool switch{"muteVideo"=>"Muted","removeMetadata"=>"Metadata","trimAudio" or "trimVideo"=>"Trimmed","cropVideo"=>"Cropped","changeVideoSpeed"=>"Speed","audioChannels"=>"Channels","redactVideo" or "redactAudio"=>"Redacted",_=>tool};
+    internal static MediaOptions SourceDepth(MediaOptions options,MediaInfo info)
+    {
+        if(options.SampleDepth!="matchSource")return options;var audio=info.Streams.FirstOrDefault(s=>s.Kind=="audio");
+        var depth=audio?.Codec.Contains("pcm_f",StringComparison.Ordinal)==true?"float32":audio?.Bits>24?"pcm32":audio?.Bits>16?"pcm24":"pcm16";return options with{SampleDepth=depth};
+    }
     private static string[] AudioEncoding(string ext,MediaOptions o)=>ext switch
     {
         "mp3"=>["-c:a","libmp3lame","-b:a",o.AudioBitrate+"k"],"m4a" or "aac"=>["-c:a","aac","-b:a",o.AudioBitrate+"k"],
-        "wav"=>["-c:a","pcm_s16le"],"aiff"=>["-c:a","pcm_s16be"],"flac"=>["-c:a","flac","-compression_level","8"],
+        "wav"=>["-c:a",o.SampleDepth switch{"pcm24"=>"pcm_s24le","pcm32"=>"pcm_s32le","float32"=>"pcm_f32le",_=>"pcm_s16le"}],"aiff"=>["-c:a",o.SampleDepth switch{"pcm24"=>"pcm_s24be","pcm32"=>"pcm_s32be","float32"=>"pcm_f32be",_=>"pcm_s16be"}],"flac"=>["-c:a","flac","-compression_level","8"],
         "ogg"=>["-c:a","libvorbis","-q:a",Number(o.Quality*9)],"opus"=>["-c:a","libopus","-b:a",Math.Min(256,o.AudioBitrate)+"k"],
         "wma"=>["-c:a","wmav2","-b:a",Math.Min(320,o.AudioBitrate)+"k"],_=>throw new ArgumentException("Unsupported audio format.")
     };
@@ -350,9 +365,10 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static void RequireAudio(MediaInfo info){if(!info.HasAudio)throw new ArgumentException("This file has no audio stream.");}
     private static string Number(double value)=>double.IsFinite(value)?value.ToString("0.########",CultureInfo.InvariantCulture):throw new ArgumentException("Enter a finite number.");
     private static string GetString(JsonElement element,string property)=>element.TryGetProperty(property,out var value)?value.ToString():"";
-    private static int? GetInt(JsonElement element,string property)=>element.TryGetProperty(property,out var value)&&value.TryGetInt32(out var number)?number:null;
+    private static int? GetInt(JsonElement element,string property)=>element.TryGetProperty(property,out var value)&&int.TryParse(value.ToString(),NumberStyles.Integer,CultureInfo.InvariantCulture,out var number)?number:null;
     private static void Validate(MediaOptions o)
     {
+        if(o.SampleDepth is not ("matchSource" or "pcm16" or "pcm24" or "pcm32" or "float32")||o.GifFrameRate<1||o.GifFrameRate>60||o.GifWidth<16||o.GifWidth>8192)throw new ArgumentException("Choose supported GIF and audio sample settings.");
         if(!double.IsFinite(o.Quality)||o.Quality<0||o.Quality>1||o.AudioBitrate<8||o.AudioBitrate>512||!double.IsFinite(o.Speed)||o.Speed<.05||o.Speed>100||o.Channels is not (1 or 2)||!double.IsFinite(o.LeftVolume)||!double.IsFinite(o.RightVolume)||o.LeftVolume<0||o.RightVolume<0||o.LeftVolume>4||o.RightVolume>4||o.Width is <2 or >8192||o.Height is <2 or >8192||o.TargetBytes is <=0||o.ReductionPercent is {} reduction&&(!double.IsFinite(reduction)||reduction<=0||reduction>=100)||!double.IsFinite(o.SplitInterval)||o.SplitInterval<=0)throw new ArgumentException("One or more media settings are outside their supported range.");
         if(!double.IsFinite(o.TargetLoudness)||o.TargetLoudness< -70||o.TargetLoudness> -5||!double.IsFinite(o.LoudnessRange)||o.LoudnessRange<1||o.LoudnessRange>50||!double.IsFinite(o.TruePeak)||o.TruePeak< -9||o.TruePeak>0)throw new ArgumentException("Choose supported loudness targets.");
     }

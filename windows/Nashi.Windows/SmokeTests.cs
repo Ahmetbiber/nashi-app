@@ -22,6 +22,8 @@ internal static class SmokeTests
     {
         Application.Current.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         var root=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY")??Path.Combine(Path.GetTempPath(),"Nashi-Smoke-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var checks=0;
+        using var watchdog=new System.Threading.Timer(_=>{File.WriteAllText(Path.Combine(root,"suite-timeout.txt"),"Native desktop verification exceeded 15 minutes.");DesktopInput.HoldMouse(false);Environment.Exit(1);},null,TimeSpan.FromMinutes(15),System.Threading.Timeout.InfiniteTimeSpan);
+        var testTools=ParitySmokeTests.Tools(root);
         void Check(bool value,string reason){if(!value)throw new Exception(reason);checks++;}
         var visual=new DrawingVisual();using(var dc=visual.RenderOpen()){dc.DrawRectangle(Brushes.DarkOliveGreen,null,new Rect(0,0,320,180));dc.DrawRectangle(Brushes.Gold,null,new Rect(20,20,120,80));}
         var bitmap=new RenderTargetBitmap(320,180,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var source=Path.Combine(root,"Source.png");ImageEngine.Save(bitmap,source,"png");
@@ -48,7 +50,7 @@ internal static class SmokeTests
         var crop=ImageEngine.Apply("crop",[source],root,new(Crop:new Int32Rect(10,10,80,60)));Check(ImageEngine.Load(crop[0]).PixelWidth==80,"Crop width mismatch");
         var resized=ImageEngine.Apply("resize",[source],root,new(Width:160));Check(ImageEngine.Load(resized[0]).PixelHeight==90,"Resize aspect mismatch");
         var rotated=ImageEngine.Apply("rotate",[source],root,new(Rotation:90));Check(ImageEngine.Load(rotated[0]).PixelWidth==180,"Rotate mismatch");
-        foreach(var ext in ImageEngine.Formats){var converted=ImageEngine.Apply("convert",[source],root,new(),ext);Check(new FileInfo(converted[0]).Length>0,"Empty "+ext);}
+        foreach(var ext in ImageEngine.Formats){var converted=ImageEngine.Apply("convert",[source],root,new(){EncoderPath=testTools.Ready?testTools.Executable("ffmpeg"):null},ext);Check(new FileInfo(converted[0]).Length>0,"Empty "+ext);}
         var pdfs=Directory.GetFiles(root,"*.pdf");var merged=DocumentEngine.Pdf("mergePDFs",[pdfs[0],pdfs[0]],root);var parts=DocumentEngine.Pdf("splitPDF",merged,root);Check(parts.Count==2,"PDF page count mismatch");
         var zip=DocumentEngine.Zip([source],root);var extracted=DocumentEngine.Unzip(zip,root);Check(File.Exists(Path.Combine(extracted[0],"Source.png")),"ZIP output missing");
         var library=new LibraryStore(Path.Combine(root,"UserData"));library.SetAppearance("dark");
@@ -94,7 +96,7 @@ internal static class SmokeTests
         var canvas=Descendants(editor).OfType<Canvas>().First();
         DesktopInput.Drag(canvas,new Point(20,20),new Point(180,130),shift:true);
         var cw=double.Parse(editor.FieldForTest("Width").Text);var ch=double.Parse(editor.FieldForTest("Height").Text);
-        Check(cw>1&&Math.Abs(cw/ch-320d/180)<.03,"Shift-drag crop did not lock image aspect");
+        Check(cw>1&&Math.Abs(cw/ch-1)<.03,"Shift-drag crop did not make a square selection");
         editor.FieldForTest("Width").Focus();DesktopInput.Key(editor,Key.Left);Check(editor.IsVisible,"Arrow in a crop field closed editor");
         var editorImage=new RenderTargetBitmap((int)editor.ActualWidth,(int)editor.ActualHeight,96,96,PixelFormats.Pbgra32);editorImage.Render(editor);ImageEngine.Save(editorImage,Path.Combine(root,"windows-crop.png"),"png");DesktopInput.Key(editor,Key.Escape);Check(!editor.IsVisible,"Escape did not close editor from an active text field");
         var rangeOwner=new Window{Owner=window,Width=600,Height=180,WindowStartupLocation=WindowStartupLocation.CenterOwner};Theme.Attach(rangeOwner);var range=new RangeTimeline{Margin=new(30)};rangeOwner.Content=range;range.Set(1800,0,1800);rangeOwner.Show();rangeOwner.UpdateLayout();DesktopInput.Pump();
@@ -110,11 +112,17 @@ internal static class SmokeTests
         DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Left arrow did not seek back one second");
         DesktopInput.Key(audioEditor,Key.I);DesktopInput.Key(audioEditor,Key.Right);DesktopInput.Key(audioEditor,Key.O);Check(audioEditor.Timeline.End>audioEditor.Timeline.Start&&audioEditor.Timeline.End<5,"I/O did not synchronize trim range");
         audioEditor.FieldForTest("Start").Focus();position=audioEditor.PreviewSeconds;DesktopInput.Key(audioEditor,Key.Left);Check(Math.Abs(audioEditor.PreviewSeconds-position)<.1,"Arrow in trim text field incorrectly sought media");DesktopInput.Key(audioEditor,Key.Escape);Check(!audioEditor.IsVisible,"Escape did not close trim editor");
-        var appearance=Descendants(window).OfType<ComboBox>().Single(c=>c.Items.Contains("Dark"));appearance.Focus();DesktopInput.Key(window,Key.Home);DesktopInput.Key(window,Key.Down);Check(!Theme.Dark&&library.Appearance=="light","Appearance keyboard selection did not apply and persist light theme");window.UpdateLayout();Capture(window,"windows-home-light.png");DesktopInput.Key(window,Key.End);Check(Theme.Dark&&library.Appearance=="dark","Dark theme selection failed");
+        var themeSettings=new SettingsWindow(window,new PreferencesStore(library.DirectoryPath),()=>{},()=>Task.CompletedTask,library);themeSettings.Show();DesktopInput.Pump();
+        var appearance=Descendants(themeSettings).OfType<ComboBox>().Single(c=>c.Items.Contains("dark"));appearance.Focus();DesktopInput.Key(themeSettings,Key.Home);DesktopInput.Key(themeSettings,Key.Down);Check(!Theme.Dark&&library.Appearance=="light","Settings appearance keyboard selection did not apply and persist light theme");window.UpdateLayout();Capture(window,"windows-home-light.png");DesktopInput.Key(themeSettings,Key.End);Check(Theme.Dark&&library.Appearance=="dark","Dark theme selection failed");themeSettings.Close();
+        if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true")checks+=ParitySmokeTests.Run(root,window,source,bitmap,testTools);
+        DesktopParityChecks.Run(root,window,source,importedText,importedImage,testTools,Check);
+        PdfPreviewChecks.Run(root,Check);
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");Capture(restarted,"windows-home-empty.png");restarted.Close();
-        File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations. No global Explorer gesture claimed."}));
+        WindowManagementSmoke.Run(root,Check);
+        Check(PdfRasterDocument.OpenDocuments==0,"Closed PDF previews retained native documents or pinned source buffers");
+        File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations.",extendedParity=Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true"}));
         void Capture(Window view,string name){view.UpdateLayout();var capture=new RenderTargetBitmap((int)view.ActualWidth,(int)view.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(view);ImageEngine.Save(capture,Path.Combine(root,name),"png");}
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)

@@ -10,6 +10,7 @@ struct WheelItem {
     var operation:NashiCore.Operation? = nil
     var action:FileAction? = nil
     var webAction:WebWheelAction? = nil
+    var windowPlacement:WindowPlacement? = nil
 }
 
 @MainActor final class WheelController {
@@ -151,7 +152,9 @@ final class WheelView:NSView {
                                                maximumWidth:84*scale,iconSize:source == nil ? nil:20*scale,scale:scale)
                 labelLayouts[i]=layout
             }
-            if let source,let slot=layout.iconRect {
+            if let placement=item.windowPlacement,let slot=layout.iconRect {
+                WindowPlacementGlyph.draw(placement,in:slot,color:foreground)
+            } else if let source,let slot=layout.iconRect {
                 let image=source.withSymbolConfiguration(.init(paletteColors:[foreground])) ?? source
                 image.isTemplate=false
                 let fit=min(slot.width/max(1,image.size.width),slot.height/max(1,image.size.height))

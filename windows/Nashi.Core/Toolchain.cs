@@ -56,17 +56,37 @@ public sealed class Toolchain(string directory)
 }
 public static class VerifiedDownload
 {
-    public static async Task FetchAsync(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token)
+    public static Task FetchAsync(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token)=>FetchCore(uri,output,maximum,progress,token,null,TimeSpan.FromSeconds(60));
+    internal static Task FetchForTest(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token,HttpMessageHandler handler,TimeSpan idle)=>FetchCore(uri,output,maximum,progress,token,handler,idle);
+    private static async Task FetchCore(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token,HttpMessageHandler? handler,TimeSpan idle)
     {
         if(uri.Scheme!="https"||!string.IsNullOrEmpty(uri.UserInfo))throw new InvalidDataException("An HTTPS download is required.");
-        using var client=new HttpClient{Timeout=TimeSpan.FromMinutes(30)};
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Nashi/0.7.0");
-        using var response=await client.GetAsync(uri,HttpCompletionOption.ResponseHeadersRead,token);response.EnsureSuccessStatusCode();
-        if(response.RequestMessage?.RequestUri?.Scheme!="https")throw new InvalidDataException("Unsafe download redirect.");
-        var length=response.Content.Headers.ContentLength;if(length>maximum)throw new InvalidDataException("Download is larger than the supported limit.");
-        await using var input=await response.Content.ReadAsStreamAsync(token);await using var target=new FileStream(output,FileMode.CreateNew,FileAccess.Write,FileShare.None,81920,true);
-        var buffer=new byte[81920];long total=0;int count;
-        while((count=await input.ReadAsync(buffer,token))>0){total+=count;if(total>maximum)throw new InvalidDataException("Download exceeded its limit.");await target.WriteAsync(buffer.AsMemory(0,count),token);if(length>0)progress?.Invoke((double)total/length.Value);}
-        if(length is not null&&total!=length)throw new EndOfStreamException("Download ended early.");
+        using var client=handler is null?new HttpClient(new SocketsHttpHandler{ConnectTimeout=TimeSpan.FromSeconds(30)}):new HttpClient(handler,false);client.Timeout=Timeout.InfiniteTimeSpan;client.DefaultRequestHeaders.UserAgent.ParseAdd("Nashi/0.7");
+        for(var attempt=0;attempt<3;attempt++)
+        {
+            try{await FetchOnce(client,uri,output,maximum,progress,token,idle);return;}
+            catch(Exception error)when(!token.IsCancellationRequested&&attempt<2&&error is HttpRequestException or EndOfStreamException or TimeoutException){await Task.Delay(500*(attempt+1),token);}
+        }
+    }
+    private static async Task FetchOnce(HttpClient client,Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token,TimeSpan idle)
+    {
+        var created=false;
+        try
+        {
+            using var inactivity=CancellationTokenSource.CreateLinkedTokenSource(token);inactivity.CancelAfter(idle);
+            using var response=await client.GetAsync(uri,HttpCompletionOption.ResponseHeadersRead,inactivity.Token);response.EnsureSuccessStatusCode();
+            if(response.RequestMessage?.RequestUri?.Scheme!="https")throw new InvalidDataException("Unsafe download redirect.");
+            var length=response.Content.Headers.ContentLength;if(length>maximum)throw new InvalidDataException("Download is larger than the supported limit.");
+            await using var input=await response.Content.ReadAsStreamAsync(inactivity.Token);await using var target=new FileStream(output,FileMode.CreateNew,FileAccess.Write,FileShare.None,81920,true);created=true;
+            var buffer=new byte[81920];long total=0;
+            while(true)
+            {
+                inactivity.CancelAfter(idle);int count;try{count=await input.ReadAsync(buffer,inactivity.Token);}catch(IOException error){throw new HttpRequestException("The download connection was interrupted.",error);}if(count==0)break;
+                total+=count;if(total>maximum)throw new InvalidDataException("Download exceeded its limit.");await target.WriteAsync(buffer.AsMemory(0,count),token);if(length>0)progress?.Invoke((double)total/length.Value);
+            }
+            if(length is not null&&total!=length)throw new EndOfStreamException("Download ended early.");
+        }
+        catch(OperationCanceledException error)when(!token.IsCancellationRequested){if(created)File.Delete(output);throw new TimeoutException("The download stopped responding. Please try again.",error);}
+        catch{if(created)File.Delete(output);throw;}
     }
 }

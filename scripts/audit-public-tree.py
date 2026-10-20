@@ -19,3 +19,4 @@ if issues:
  for name,reason in issues:print('FAIL',name,reason)
  sys.exit(1)
 print('PASS public-source policy:',count,'tracked files; no forbidden data/material')
+if (root/'scripts/check-feature-parity.py').is_file():subprocess.run([sys.executable,str(root/'scripts/check-feature-parity.py')],check=True)

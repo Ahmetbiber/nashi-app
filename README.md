@@ -8,17 +8,17 @@ Nashi is an independent, open-source file conversion and editing app inspired by
 
 ## See Nashi in action
 
-[![Nashi guided tour: choose a file, convert with the wheel, crop and find the results](docs/assets/showcase/nashi-demo.gif)](https://orkunisitmak.github.io/nashi-app/#demo)
+[![Nashi real screen recording: Finder drag, conversion wheel, crop and video trim](docs/assets/showcase/nashi-demo.gif?v=50e9219b2083)](https://orkunisitmak.github.io/nashi-app/#demo)
 
-**[Watch the 23-second demo](https://orkunisitmak.github.io/nashi-app/#demo)** · **[Türkçe demo](https://orkunisitmak.github.io/nashi-app/tr/#demo)** · [MP4](https://orkunisitmak.github.io/nashi-app/assets/showcase/nashi-demo.mp4)
+**[Watch the 95-second screen recording](https://orkunisitmak.github.io/nashi-app/#demo)** · **[Türkçe demo](https://orkunisitmak.github.io/nashi-app/tr/#demo)** · [MP4](https://orkunisitmak.github.io/nashi-app/assets/showcase/nashi-demo.mp4?v=50e9219b2083)
 
-A guided tour assembled from real macOS 0.7.3 app captures: choose an image, convert it to JPG, crop it and find the outputs. English and Turkish captions are available in the video player.
+A real macOS 0.7.3 screen recording: drag files in Finder, use the wheel to convert to JPG, crop an image and trim a video with In/Out handles. Pauses and longer previews are shortened; retained actions play at normal speed. English and Turkish captions are available in the video player.
 
 | macOS · Home | macOS · Crop image |
 | :---: | :---: |
 | [![Nashi Mac Home with file selection and quick actions](docs/assets/showcase/mac-home.png)](docs/assets/showcase/mac-home.png) | [![Nashi Mac crop editor with a square selection and aspect ratio controls](docs/assets/showcase/mac-crop.png)](docs/assets/showcase/mac-crop.png) |
-| **macOS · Conversion wheel** | **Windows · Development preview** |
-| [![Nashi conversion wheel with JPG highlighted](docs/assets/showcase/mac-wheel.png)](docs/assets/showcase/mac-wheel.png) | [![Nashi native Windows Home in the light theme](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
+| **macOS · Video trim** | **Windows · Development preview** |
+| [![Nashi video trim editor with In and Out handles and a selected range](docs/assets/showcase/mac-trim.png)](docs/assets/showcase/mac-trim.png) | [![Nashi native Windows Home in the light theme](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
 
 Windows screenshot: native UI test capture from the development build in [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1), ahead of the current public Windows release. Demo files contain Nashi's own artwork; no personal files or account details are shown.
 

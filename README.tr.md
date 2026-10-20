@@ -6,17 +6,17 @@ Nashi, [Tangerine](https://tangerineformac.com/) uygulamasının sürükle ve ç
 
 ## Nashi’yi iş başında gör
 
-[![Nashi ürün turu: dosya seç, çarktan dönüştür, kırp ve çıktıları bul](docs/assets/showcase/nashi-demo.gif)](https://orkunisitmak.github.io/nashi-app/tr/#demo)
+[![Nashi gerçek ekran kaydı: Finder sürükleme, wheel, dönüştürme, crop ve video trim](docs/assets/showcase/nashi-demo.gif?v=50e9219b2083)](https://orkunisitmak.github.io/nashi-app/tr/#demo)
 
-**[23 saniyelik demoyu izle](https://orkunisitmak.github.io/nashi-app/tr/#demo)** · [MP4 aç / indir](https://orkunisitmak.github.io/nashi-app/assets/showcase/nashi-demo.mp4)
+**[95 saniyelik ekran kaydını izle](https://orkunisitmak.github.io/nashi-app/tr/#demo)** · [MP4 aç / indir](https://orkunisitmak.github.io/nashi-app/assets/showcase/nashi-demo.mp4?v=50e9219b2083)
 
-Gerçek macOS 0.7.3 uygulama görüntülerinden hazırlanmış ürün turu: görsel seçme, JPG’ye dönüştürme, kırpma ve çıktılarını bulma. Video oynatıcıda Türkçe ve İngilizce altyazı bulunur.
+macOS 0.7.3 ile çekilmiş gerçek kullanım ekran kaydı: Finder’dan sürükleme, wheel’den JPG’ye dönüştürme, görsel kırpma ve In/Out tutamaçlarıyla video trim. Beklemeler ve uzun önizlemeler kısaltıldı; kalan hareketler normal hızda oynar. Video oynatıcıda Türkçe ve İngilizce altyazı bulunur.
 
 | macOS · Ana ekran | macOS · Görsel kırp |
 | :---: | :---: |
 | [![Nashi Mac ana ekranı](docs/assets/showcase/mac-home.png)](docs/assets/showcase/mac-home.png) | [![Kare seçim ve oran kontrolleriyle Nashi kırpma editörü](docs/assets/showcase/mac-crop.png)](docs/assets/showcase/mac-crop.png) |
-| **macOS · Dönüştürme çarkı** | **Windows · Geliştirme önizlemesi** |
-| [![JPG seçili Nashi dönüştürme çarkı](docs/assets/showcase/mac-wheel.png)](docs/assets/showcase/mac-wheel.png) | [![Açık temada yerel Windows ana ekranı](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
+| **macOS · Video kırp** | **Windows · Geliştirme önizlemesi** |
+| [![In/Out tutamaçları ve seçilen aralıkla Nashi video trim editörü](docs/assets/showcase/mac-trim.png)](docs/assets/showcase/mac-trim.png) | [![Açık temada yerel Windows ana ekranı](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
 
 Windows görüntüsü [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1) geliştirme sürümünün yerel UI testinden alınmıştır; mevcut public Windows sürümünden ileridedir. Demo dosyaları yalnızca Nashi görsellerini içerir; kişisel dosya veya hesap bilgisi gösterilmez.
 

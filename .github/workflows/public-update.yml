@@ -1,12 +1,14 @@
 name: Public Windows update verification
 on:
   workflow_dispatch:
+  release:
+    types: [published]
 permissions:
   contents: read
 jobs:
   update:
     runs-on: windows-2025
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -18,6 +20,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          [xml]$versionProps = Get-Content windows/Directory.Build.props
+          $expectedVersion = [string]$versionProps.Project.PropertyGroup.Version
+          if ($expectedVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
           $proof = Join-Path $env:GITHUB_WORKSPACE 'build/public-update-proof'
           New-Item -ItemType Directory -Force $proof | Out-Null
           $base = 'https://github.com/orkunisitmak/nashi-app/releases/download/v0.7.1-31/'
@@ -44,7 +49,7 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'Nashi-Portable-Update'
           Expand-Archive $zip $target
           $old = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion
-          powershell.exe -NoProfile -STA -File scripts/verify-windows-update-ui.ps1 -AppPath (Join-Path $target 'Nashi.exe') -ExpectedVersion '0.7.4' -ProofPath (Join-Path $proof 'native-update-ui.json')
+          powershell.exe -NoProfile -STA -File scripts/verify-windows-update-ui.ps1 -AppPath (Join-Path $target 'Nashi.exe') -ExpectedVersion $expectedVersion -ProofPath (Join-Path $proof 'native-update-ui.json')
           if ($LASTEXITCODE -ne 0) { throw 'The native update UI test failed' }
           $new = $old
           $restarted = $null
@@ -60,12 +65,20 @@ jobs:
           $restarted.CloseMainWindow() | Out-Null
           if (!$restarted.WaitForExit(15000)) { throw 'Updated app did not close normally' }
           if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $text).Hash -ne $textHash -or (Get-FileHash $image).Hash -ne $imageHash) { throw 'Update changed saved Library or clipboard imports' }
-          $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'preserved-state'
-          $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--verify-update-state' -PassThru
-          if (!$check.WaitForExit(60000) -or $check.ExitCode -ne 0) { throw 'Updated native Library state verification failed' }
-          $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'updated-native-smoke'
-          $check = Start-Process (Join-Path $target 'Nashi.exe') -ArgumentList '--smoke-test' -PassThru
-          if (!$check.WaitForExit(90000) -or $check.ExitCode -ne 0) { throw 'Updated native app smoke failed' }
+          function Invoke-UpdatedFixture([string] $argument, [string] $directory, [int] $timeout) {
+            $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof $directory
+            $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $target 'Nashi.exe'))
+            $start.UseShellExecute = $false
+            $start.ArgumentList.Add($argument)
+            $check = [Diagnostics.Process]::Start($start)
+            try {
+              $handle = $check.Handle
+              if (!$check.WaitForExit($timeout)) { $check.Kill($true); throw "Updated fixture timed out: $argument" }
+              if ($check.ExitCode -ne 0) { throw "Updated fixture failed: $argument; exit $($check.ExitCode)" }
+            } finally { $check.Dispose() }
+          }
+          Invoke-UpdatedFixture '--verify-update-state' 'preserved-state' 60000
+          Invoke-UpdatedFixture '--smoke-test' 'updated-native-smoke' 900000
           @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true; nativeUpdateUi = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
           Get-Content (Join-Path $proof 'result.json')
           Remove-Item $zip

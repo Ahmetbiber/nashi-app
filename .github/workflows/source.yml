@@ -19,6 +19,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Check generated language tables
+        run: python3 scripts/generate-localizations.py --check
       - name: Owner merge authorization regressions
         run: python3 scripts/test-owner-auto-merge.py
       - name: Public source boundary
@@ -38,4 +40,4 @@ jobs:
       - name: Build native macOS app
         run: swift build --product Nashi
       - name: Update trust, web photo and window placement regressions
-        run: swift test --filter 'NashiUpdatesTests|WebMediaDragPayloadTests|InstagramPhotosTests|YouTubeThumbnailTests|WindowPlacementTests'
+        run: swift test --filter 'NashiUpdatesTests|WebMediaDragPayloadTests|InstagramPhotosTests|YouTubeThumbnailTests|WindowPlacementTests|AppLocalizationTests'

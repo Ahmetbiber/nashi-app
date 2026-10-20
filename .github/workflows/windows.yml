@@ -52,6 +52,14 @@ jobs:
             $exitCode = $process.ExitCode
             Write-Host "Native desktop process exit code: $exitCode"
             if ($exitCode -ne 0) {
+              $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+              $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
+              cmd /d /c "`"$vcvars`" && cl /nologo /std:c++20 /EHsc /W4 windows\Diagnostics\NativeDebugRunner.cpp /Fe:build\NativeDebugRunner.exe /link dbghelp.lib"
+              if ($LASTEXITCODE -eq 0) {
+                $env:NASHI_SMOKE_DIRECTORY = Join-Path $env:GITHUB_WORKSPACE 'build/windows-smoke/native-debug'
+                New-Item -ItemType Directory -Force $env:NASHI_SMOKE_DIRECTORY | Out-Null
+                & build/NativeDebugRunner.exe (Resolve-Path build/windows/Nashi/Nashi.exe) --smoke-test 2>&1 | Tee-Object -FilePath build/windows-smoke/native-stack.txt
+              }
               Start-Sleep -Seconds 3
               Get-WinEvent -FilterHashtable @{LogName='Application'; Id=1000,1001,1026; StartTime=(Get-Date).AddMinutes(-20)} -ErrorAction SilentlyContinue | Select-Object -First 8 TimeCreated,ProviderName,Id,Message | Format-List | Out-String | Write-Host
               throw "Native desktop checks exited with code $exitCode"

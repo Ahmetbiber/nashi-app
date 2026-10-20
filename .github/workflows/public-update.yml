@@ -43,6 +43,11 @@ jobs:
           Copy-Item Resources/Brand/NashiIcon.png $image
           $state = Join-Path $data 'library.json'
           @{ Appearance = 'dark'; Entries = @(@{ Id = [guid]::NewGuid().ToString(); Created = [DateTimeOffset]::Now.ToString('o'); Action = 'Update persistence fixture'; Paths = @($text,$image) }) } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 $state
+          # This disposable profile closes on X so the test can read saved state.
+          # The normal product default deliberately keeps running in the tray.
+          $preferences = Join-Path $data 'preferences.json'
+          @{ KeepInTray = $false; AutomaticUpdateChecks = $true } | ConvertTo-Json | Set-Content -Encoding utf8 $preferences
+          $preferencesHash = (Get-FileHash $preferences).Hash
           $stateHash = (Get-FileHash $state).Hash
           $textHash = (Get-FileHash $text).Hash
           $imageHash = (Get-FileHash $image).Hash
@@ -64,6 +69,7 @@ jobs:
           $restartedId = $restarted.Id
           $restarted.CloseMainWindow() | Out-Null
           if (!$restarted.WaitForExit(15000)) { throw 'Updated app did not close normally' }
+          if ((Get-FileHash $preferences).Hash -ne $preferencesHash) { throw 'Update changed saved preferences' }
           if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $text).Hash -ne $textHash -or (Get-FileHash $image).Hash -ne $imageHash) { throw 'Update changed saved Library or clipboard imports' }
           function Invoke-UpdatedFixture([string] $argument, [string] $directory, [int] $timeout) {
             $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof $directory
@@ -79,7 +85,7 @@ jobs:
           }
           Invoke-UpdatedFixture '--verify-update-state' 'preserved-state' 60000
           Invoke-UpdatedFixture '--smoke-test' 'updated-native-smoke' 900000
-          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true; nativeUpdateUi = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
+          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true; preferencesPreserved = $true; nativeUpdateUi = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
           Get-Content (Join-Path $proof 'result.json')
           Remove-Item $zip
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

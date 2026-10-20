@@ -14,3 +14,11 @@ boundaries and actual output metadata rather than only checking file existence.
 Nashi is independently developed and inspired by Tangerine's drag-and-wheel
 interaction. Do not contribute proprietary Tangerine code, binaries, artwork,
 screenshots or decompiled resources. Third-party licenses must be preserved.
+
+## Owner pull requests
+
+Ready PRs authored by `orkunisitmak` from branches in this repository merge automatically
+once the required GitHub Actions security, Mac and Windows checks pass. Drafts,
+external forks and other authors remain manual. Keep a PR in draft while it is not
+ready to merge. A new commit must pass the checks again. Automatic merges also
+request post-merge CI and the existing GitHub Pages site build.

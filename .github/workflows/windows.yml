@@ -39,8 +39,20 @@ jobs:
         env:
           NASHI_SMOKE_DIRECTORY: '${{ github.workspace }}\build\windows-smoke'
         run: |
-          $process = Start-Process build/windows/Nashi/Nashi.exe -ArgumentList '--smoke-test' -Wait -PassThru
-          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          $start = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path build/windows/Nashi/Nashi.exe))
+          $start.UseShellExecute = $false
+          $start.ArgumentList.Add('--smoke-test')
+          $process = [System.Diagnostics.Process]::Start($start)
+          try {
+            $processHandle = $process.Handle
+            if (!$process.WaitForExit(900000)) {
+              $process.Kill($true)
+              throw 'Native desktop checks exceeded 15 minutes'
+            }
+            $exitCode = $process.ExitCode
+            Write-Host "Native desktop process exit code: $exitCode"
+            if ($exitCode -ne 0) { throw "Native desktop checks exited with code $exitCode" }
+          } finally { $process.Dispose() }
           if (!(Test-Path build/windows-smoke/smoke.json)) { throw 'No native smoke result' }
           Get-Content build/windows-smoke/smoke.json
       - name: Package portable app

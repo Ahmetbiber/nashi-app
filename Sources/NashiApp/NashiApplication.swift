@@ -37,10 +37,11 @@ enum NashiApplication {
     var welcome:NSWindow?
     var monitor:DragMonitor!
     var wheel:WheelController!
+    var windowManagement:WindowManagementController!
 
     func applicationDidFinishLaunching(_ notification:Notification) {
         NashiAppearance.apply()
-        UserDefaults.standard.register(defaults:["enabled":true,"reveal":true,"sound":true,"convertKey":"shift","toolsKey":"command","actionsKey":"control","wheelScale":1.0])
+        UserDefaults.standard.register(defaults:["enabled":true,"reveal":true,"sound":true,"convertKey":"shift","toolsKey":"command","actionsKey":"control","wheelScale":1.0,"windowManagementEnabled":true])
         let mainMenu=NSMenu();let appMenu=NSMenu()
         appMenu.addItem(withTitle:"Nashi",action:#selector(showHome),keyEquivalent:"")
         appMenu.addItem(withTitle:"Download Link…",action:#selector(showDownloadLink),keyEquivalent:"")
@@ -89,6 +90,11 @@ enum NashiApplication {
         NotificationCenter.default.publisher(for:.showToolSetup).sink { [weak self] _ in self?.showToolSetup() }.store(in:&updateObservations)
         wheel=WheelController(state:state)
         monitor=DragMonitor(onEnd:{ [weak self] in self?.wheel.endDrag() }) { [weak self] urls,mode,point in self?.wheel.show(inputs:urls,mode:mode,at:point) }
+        windowManagement=WindowManagementController(fileWheelIsVisible:{ [weak self] in self?.wheel.panel?.isVisible == true })
+        windowManagement.onNotice = { message in
+            let alert=NSAlert();alert.messageText="Window arrangement";alert.informativeText=message
+            alert.addButton(withTitle:"OK");alert.runModal()
+        }
         state.onOpenWheel = { [weak self] in self?.wheel.show(inputs:self?.state.inputs ?? [],mode:.convert,at:NSEvent.mouseLocation,keyboard:true) }
         state.onWebDownload = { [weak self] url,mode in self?.showWebDownload(url,mode:mode) }
         state.onWebDrop = { [weak self] urls in self?.wheel.show(inputs:urls,mode:.tools,at:NSEvent.mouseLocation,keyboard:true) }
@@ -144,6 +150,7 @@ enum NashiApplication {
         downloadModel.shortcutAvailable=state.webShortcutAvailable
     }
     func applicationWillTerminate(_ notification:Notification) {
+        windowManagement?.stop()
         if let downloadHotKey { UnregisterEventHotKey(downloadHotKey) }
         if let downloadHotKeyHandler { RemoveEventHandler(downloadHotKeyHandler) }
     }

@@ -29,24 +29,32 @@ internal sealed class WindowManagement:IDisposable
 
     internal WindowManagement(Action<string>? notice=null,Func<bool>? isEnabled=null)
     {
-        this.notice=notice??(_=>{});enabled=isEnabled??(()=>true);callback=OnWindowEvent;
+        this.notice=notice??(_=>{});enabled=isEnabled??(()=>true);
+        var dispatcher=Dispatcher.CurrentDispatcher;
+        callback=(handle,type,window,objectId,childId,thread,time)=>
+        {
+            if(disposed||dispatcher.HasShutdownStarted)return;Native.GetCursorPos(out var point);var mouseDown=(Native.GetAsyncKeyState(1)&0x8000)!=0;var escapeDown=(Native.GetAsyncKeyState(0x1B)&0x8000)!=0;
+            // Native WinEvent callbacks can reenter window teardown. Return to
+            // Windows before creating/closing WPF HWNDs; snapshot Escape now.
+            dispatcher.BeginInvoke(DispatcherPriority.Input,()=>OnWindowEvent(handle,type,window,objectId,childId,thread,time,point,mouseDown,escapeDown));
+        };
         hook=Native.SetWinEventHook(0x000A,0x000B,0,callback,0,0,0); // MOVESIZESTART / MOVESIZEEND
         timer.Tick+=(_,_)=>Tick();
     }
-    private void OnWindowEvent(nint handle,uint type,nint window,int objectId,int childId,uint thread,uint time)
+    private void OnWindowEvent(nint handle,uint type,nint window,int objectId,int childId,uint thread,uint time,Native.Point capturedPoint,bool mouseDown,bool escapeDown)
     {
         if(disposed||objectId!=0||childId!=0||window==0)return;
         if(type==0x000A)
         {
             Clear();if(!enabled()||!Native.IsWindowVisible(window)||Native.IsIconic(window))return;
-            if((Native.GetAsyncKeyState(1)&0x8000)==0)return; // Never intercept keyboard-initiated system moves.
-            target=window;Native.GetCursorPos(out origin);cancelled=false;timer.Start();Trace?.Invoke($"start pointer={origin.X},{origin.Y}");
+            if(!mouseDown)return; // Never intercept keyboard-initiated system moves.
+            target=window;origin=capturedPoint;cancelled=false;timer.Start();Trace?.Invoke($"start pointer={origin.X},{origin.Y}");
         }
         else if(type==0x000B&&window==target)
         {
             // Escape can end the native move loop before the next timer tick sees it.
-            if((Native.GetAsyncKeyState(0x1B)&0x8000)!=0)cancelled=true;
-            Native.GetCursorPos(out var point);wheel?.HoverScreen(new(point.X,point.Y));
+            if(escapeDown)cancelled=true;
+            var point=capturedPoint;wheel?.HoverScreen(new(point.X,point.Y));
             var selected=wheel?.SelectedIndex??-1;var captured=target;
             var choice=selected>=0&&selected<placements.Length&&!cancelled?placements[selected]:(WindowPlacement?)null;
             var work=WorkArea(point);Trace?.Invoke($"end pointer={point.X},{point.Y} selected={selected} cancelled={cancelled}");Clear();

@@ -21,8 +21,10 @@ public sealed partial class ToolEditor
         if(tool=="editImage")
         {
             Field("Width",bitmap?.PixelWidth??1280);Field("Height",bitmap?.PixelHeight??720);Field("Degrees",0);options.Children.Add(flipHorizontal);options.Children.Add(flipVertical);flipHorizontal.Click+=(_,_)=>QueuePhotoPreview();flipVertical.Click+=(_,_)=>QueuePhotoPreview();
-            foreach(var property in typeof(PhotoAdjustments).GetProperties())Field(property.Name,(double)property.GetValue(new PhotoAdjustments())!);
-            options.Children.Insert(1,new TextBlock{Text="Light, color, detail and effects. Zero leaves an effect unchanged; Contrast, Gamma and Saturation start at 1.",TextWrapping=TextWrapping.Wrap,Margin=new(4,4,4,16)});
+            var rotation=new WrapPanel();rotation.Children.Add(MainWindow.Button("Rotate Left",()=>RotatePhoto(-90)));rotation.Children.Add(MainWindow.Button("Rotate Right",()=>RotatePhoto(90)));options.Children.Add(rotation);
+            PhotoGroup("Light",[("Exposure",-3,3),("Brightness",-1,1),("Contrast",0,2),("Highlights",-1,1),("Shadows",-1,1),("Whites",-1,1),("Blacks",-1,1),("Gamma",.2,3)]);
+            PhotoGroup("Color",[("Temperature",-1,1),("Tint",-1,1),("Saturation",0,2),("Vibrance",-1,1),("Hue",-180,180)]);
+            PhotoGroup("Detail",[("Clarity",0,1),("Texture",-1,1),("Sharpen",0,2),("Dehaze",0,1),("Grain",0,1),("NoiseReduction",0,1),("Vignette",0,2),("Fade",0,1),("Blur",0,30)]);
         }
         if(tool=="frameImage")
         {
@@ -50,10 +52,22 @@ public sealed partial class ToolEditor
         }
         if(tool=="annotate")options.Children.Add(MainWindow.Button("Choose annotation image…",()=>{var picker=new OpenFileDialog{Filter="Images|*.png;*.jpg;*.webp;*.heic;*.avif;*.bmp"};if(picker.ShowDialog(this)==true){annotationImage=picker.FileName;drawingTool.SelectedIndex=9;}}));
     }
+    private void RotatePhoto(int degrees){fields["Degrees"].Text=Number(Value("Degrees")+degrees);var width=fields["Width"].Text;fields["Width"].Text=fields["Height"].Text;fields["Height"].Text=width;QueuePhotoPreview();}
+    private void PhotoGroup(string title,(string Name,double Minimum,double Maximum)[] controls)
+    {
+        options.Children.Add(new TextBlock{Text=title,FontSize=15,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,16,4,4)});
+        foreach(var setting in controls)
+        {
+            var property=typeof(PhotoAdjustments).GetProperty(setting.Name)!;var value=(double)property.GetValue(new PhotoAdjustments())!;Field(setting.Name,value);var field=fields[setting.Name];options.Children.Remove(field);var label=(UIElement)options.Children[options.Children.Count-1];options.Children.Remove(label);
+            var row=new DockPanel{Margin=new(4,8,4,0)};field.Width=72;field.Margin=new(4,0,0,0);field.Padding=new(7,3,7,3);DockPanel.SetDock(field,Dock.Right);row.Children.Add(field);row.Children.Add(new TextBlock{Text=setting.Name=="NoiseReduction"?"Noise reduction":setting.Name,VerticalAlignment=VerticalAlignment.Center});options.Children.Add(row);
+            var slider=new Slider{Minimum=setting.Minimum,Maximum=setting.Maximum,Value=value,Margin=new(4,7,4,7),ToolTip=setting.Name};var syncing=false;
+            slider.ValueChanged+=(_,_)=>{if(syncing)return;syncing=true;field.Text=Number(slider.Value);syncing=false;};field.TextChanged+=(_,_)=>{if(syncing||!double.TryParse(field.Text,System.Globalization.CultureInfo.CurrentCulture,out var number)||!double.IsFinite(number))return;syncing=true;slider.Value=number;syncing=false;};options.Children.Add(slider);
+        }
+    }
     private UIElement ZoomablePreview(UIElement visual)
     {
         var zoom=1d;var result=new StackPanel();var controls=new StackPanel{Orientation=Orientation.Horizontal};var viewbox=new Viewbox{Child=visual,Stretch=Stretch.Uniform,Width=600,Height=420};var scroll=new ScrollViewer{Content=viewbox,Height=420,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
-        void SetZoom(double value){zoom=Math.Clamp(value,.5,4);viewbox.Width=Math.Max(100,scroll.ViewportWidth)*zoom;viewbox.Height=420*zoom;}
+        void SetZoom(double value){zoom=Math.Clamp(value,.25,4);viewbox.Width=Math.Max(100,scroll.ViewportWidth)*zoom;viewbox.Height=420*zoom;}
         var percent=new TextBlock{Text="100%",VerticalAlignment=VerticalAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(8,0,8,0)};
         void Apply(double value){SetZoom(value);percent.Text=$"{zoom*100:0}%";}
         controls.Children.Add(MainWindow.Button("−",()=>Apply(zoom/1.25)));controls.Children.Add(MainWindow.Button("Fit",()=>Apply(1)));controls.Children.Add(MainWindow.Button("+",()=>Apply(zoom*1.25)));controls.Children.Add(percent);result.Children.Add(controls);result.Children.Add(scroll);scroll.SizeChanged+=(_,_)=>SetZoom(zoom);return result;

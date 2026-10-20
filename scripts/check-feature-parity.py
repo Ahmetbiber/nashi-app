@@ -14,3 +14,19 @@ for name, value in expected.items():
     if actual.get(name) != value:
         raise SystemExit(f'{name}: Windows and macOS catalogs diverged. Update the shared contract and corresponding engines/tests together.')
 print(f'PASS matching catalogs: {len(actual["conversionMatrix"])} input formats, {len(actual["toolNames"])} tools')
+# Runtime preview/metadata routing must agree too; matching menu catalogs alone
+# would miss aliases such as M4V and AAC.
+models = (root/'Sources/NashiCore/Models.swift').read_text()
+windows = (root/'windows/Nashi.Core/FeatureCatalog.cs').read_text()
+alias_line = source.split('public static func normalizedExtension',1)[1].split('public static func formats',1)[0]
+aliases = dict(re.findall(r'"([a-z0-9]+)":"([a-z0-9]+)"', alias_line))
+for category in ['image', 'video', 'audio', 'archive']:
+    mac = re.search(r'if \[([^\]]+)\]\.contains\(ext\) \{ return \.'+category+r' \}', models)
+    win = re.search(r'bool Is'+category.capitalize()+r'\(string path\)=>new\[\]\{([^}]+)\}', windows)
+    if not mac or not win:
+        raise SystemExit(f'{category}: category declaration could not be verified')
+    extensions = lambda text: set(re.findall(r'"([a-z0-9]+)"',text))
+    expected_category = {aliases.get(ext,ext) for ext in extensions(mac[1])}
+    if expected_category != extensions(win[1]):
+        raise SystemExit(f'{category}: Windows runtime routing differs from Mac: {expected_category ^ extensions(win[1])}')
+print('PASS matching image/video/audio/archive preview categories and aliases')

@@ -1,6 +1,6 @@
 # Nashi for Windows
 
-This branch brings the Windows app toward the Mac feature set. The current public download remains 0.7.4 until a tested release is published. See [the feature parity and verification matrix](FEATURE-PARITY.md) for implementation, evidence and platform differences.
+Mac and Windows 0.7.5 are published with the shared 45-format / 27-tool catalog and aligned Home, Library, paste, preview and window-management workflows. See [the feature parity and verification matrix](FEATURE-PARITY.md) for implementation, evidence and platform differences.
 
 Nashi uses WPF / .NET 10, the same pear artwork, file garden, rounded cards, gold actions and light/dark palette as macOS, with Windows keyboard conventions and native window controls. Build with `dotnet publish windows/Nashi.Windows -c Release -o build/windows/Nashi`. The output is self-contained; users do not install .NET separately. Keep the portable folder together in a writable location so updates can replace it safely.
 

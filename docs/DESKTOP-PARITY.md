@@ -56,3 +56,15 @@ Drag chords are configurable. Text entry keeps normal editing shortcuts; tool sh
 - Windows executable: `--smoke-test` runs native SendInput/OLE/WPF checks, real OS clipboard imports, Library restart/search/reuse, preview navigation, crop/annotation/export, media controls and processed playback, original-file integrity, Explorer gestures and all seven window layouts. GitHub's Windows runner uploads screenshots, errors and JSON results.
 
 Windows native verification runs on an isolated Windows runner. This is not a claim of a physical Windows Computer Use session or listening to audio on every hardware configuration. Regression tests cover additional display geometries; not every display/codec/share-provider configuration has been exercised on physical hardware.
+
+
+## Published 0.7.5 verification
+
+[Mac and Windows 0.7.5](https://github.com/orkunisitmak/nashi-app/releases/tag/v0.7.5-36) are published. The Mac feed advances from build 33 to build 36.
+
+- Mac: 273 source tests passed, two opt-in live-web cases skipped; the exact signed public package passed 38 native desktop checks and 18 physical normal/minimum-width window gestures.
+- Windows: 198 engine checks and two complete native runs of 231 assertions, both actual OS exit code 0. [Release-code evidence](https://github.com/orkunisitmak/nashi-app/actions/runs/39454458596).
+- Web demo: 41 checks passed, including the catalog, wheel, crop/annotation/trim controls, exports and mobile layout.
+- The [real public update test](https://github.com/orkunisitmak/nashi-app/actions/runs/39458173367) passed 0.7.1.0 → 0.7.5.0 through the native update UI: anonymous signed download, replacement, restart, clean normal exit, unchanged Library/text/image/preferences, and 231 updated native assertions. Its disposable profile uses KeepInTray=false so X exits; the product default still stays in the tray.
+
+Mac Computer Use's control bridge failed during this session; final interaction checks used the previously authorized bounded native input fixtures. Windows checks use a real isolated runner, not a physical Windows workstation. Hardware audio/haptics and every third-party application's resizing behavior remain outside this evidence.

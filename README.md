@@ -19,15 +19,15 @@ A real macOS 0.7.3 screen recording: drag files in Finder, use the wheel to conv
 | macOS · Home | macOS · Crop image |
 | :---: | :---: |
 | [![Nashi Mac Home with file selection and quick actions](docs/assets/showcase/mac-home.png)](docs/assets/showcase/mac-home.png) | [![Nashi Mac crop editor with a square selection and aspect ratio controls](docs/assets/showcase/mac-crop.png)](docs/assets/showcase/mac-crop.png) |
-| **macOS · Video trim** | **Windows · Development preview** |
-| [![Nashi video trim editor with In and Out handles and a selected range](docs/assets/showcase/mac-trim.png)](docs/assets/showcase/mac-trim.png) | [![Nashi native Windows Home in the light theme](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
+| **macOS · Video trim** | **Windows · 0.7.5** |
+| [![Nashi video trim editor with In and Out handles and a selected range](docs/assets/showcase/mac-trim.png)](docs/assets/showcase/mac-trim.png) | [![Nashi native Windows 0.7.5 Home in the dark theme](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
 
-Windows screenshot: native UI test capture from the development build in [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1), ahead of the current public Windows release. Demo files contain Nashi's own artwork; no personal files or account details are shown.
+Windows screenshot: native UI test capture from the released 0.7.5 code, verified in [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1). Demo files contain Nashi's own artwork; no personal files or account details are shown.
 
 ## Download and use
 
 - **[macOS ZIP · Apple Silicon, macOS 13+](https://github.com/orkunisitmak/nashi-app/releases/latest/download/Nashi-macOS-arm64.zip):** extract, move Nashi.app to your Applications folder and open it. The full macOS catalog has 27 tools, 45 input formats and 275 conversion routes.
-- **[Windows x64 ZIP · native preview](https://github.com/orkunisitmak/nashi-app/releases/latest/download/Nashi-Windows-x64.zip):** extract the entire archive into its own writable folder, then open Nashi.exe. No separate .NET install is required. Keep the folder together so portable updates can replace the app safely. [Windows features and differences](windows/README.md).
+- **[Windows x64 ZIP](https://github.com/orkunisitmak/nashi-app/releases/latest/download/Nashi-Windows-x64.zip):** extract the entire archive into its own writable folder, then open Nashi.exe. No separate .NET install is required. Keep the folder together so portable updates can replace the app safely. [Windows features and differences](windows/README.md).
 
 Choose **Set up tools** once for hash-verified downloads directly from upstream. Media tools enable media conversions/previews and web downloads; macOS Office setup enables Office conversions. Core native image/PDF features work immediately. [Exact versions, hashes and licenses](docs/dependencies.md).
 

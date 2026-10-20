@@ -17,10 +17,10 @@ macOS 0.7.3 ile çekilmiş gerçek kullanım ekran kaydı: Finder’dan sürükl
 | macOS · Ana ekran | macOS · Görsel kırp |
 | :---: | :---: |
 | [![Nashi Mac ana ekranı](docs/assets/showcase/mac-home.png)](docs/assets/showcase/mac-home.png) | [![Kare seçim ve oran kontrolleriyle Nashi kırpma editörü](docs/assets/showcase/mac-crop.png)](docs/assets/showcase/mac-crop.png) |
-| **macOS · Video kırp** | **Windows · Geliştirme önizlemesi** |
-| [![In/Out tutamaçları ve seçilen aralıkla Nashi video trim editörü](docs/assets/showcase/mac-trim.png)](docs/assets/showcase/mac-trim.png) | [![Açık temada yerel Windows ana ekranı](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
+| **macOS · Video kırp** | **Windows · 0.7.5** |
+| [![In/Out tutamaçları ve seçilen aralıkla Nashi video trim editörü](docs/assets/showcase/mac-trim.png)](docs/assets/showcase/mac-trim.png) | [![Koyu temada yerel Windows 0.7.5 ana ekranı](docs/assets/showcase/windows-home-preview.png)](docs/assets/showcase/windows-home-preview.png) |
 
-Windows görüntüsü [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1) geliştirme sürümünün yerel UI testinden alınmıştır; mevcut public Windows sürümünden ileridedir. Demo dosyaları yalnızca Nashi görsellerini içerir; kişisel dosya veya hesap bilgisi gösterilmez.
+Windows görüntüsü, [PR #1](https://github.com/orkunisitmak/nashi-app/pull/1) ile doğrulanan ve yayınlanan 0.7.5 kodunun yerel UI testinden alınmıştır. Demo dosyaları yalnızca Nashi görsellerini içerir; kişisel dosya veya hesap bilgisi gösterilmez.
 
 ## İndir ve kullan
 

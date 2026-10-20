@@ -20,6 +20,7 @@ internal sealed class WindowManagement:IDisposable
     private Window? preview;
     private bool cancelled;
     private bool disposed;private volatile bool wheelReady;
+    private CancellationTokenSource? pendingPlacement;
     internal bool WheelReady=>wheelReady;
     private readonly Action<string> notice;
     private readonly Func<bool> enabled;
@@ -47,7 +48,7 @@ internal sealed class WindowManagement:IDisposable
         if(disposed||objectId!=0||childId!=0||window==0)return;
         if(type==0x000A)
         {
-            Clear();if(!enabled()||!Native.IsWindowVisible(window)||Native.IsIconic(window))return;
+            pendingPlacement?.Cancel();Clear();if(!enabled()||!Native.IsWindowVisible(window)||Native.IsIconic(window))return;
             if(!mouseDown)return; // Never intercept keyboard-initiated system moves.
             target=window;origin=capturedPoint;cancelled=false;timer.Start();Trace?.Invoke($"start pointer={origin.X},{origin.Y}");
         }
@@ -61,10 +62,35 @@ internal sealed class WindowManagement:IDisposable
             var work=WorkArea(point);Trace?.Invoke($"end pointer={point.X},{point.Y} selected={selected} cancelled={cancelled}");Clear();
             if(choice is {} placement)
             {
-                PlacementPending=true;
-                var apply=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};
-                apply.Tick+=(_,_)=>{apply.Stop();PlacementPending=false;if(disposed||!Native.IsWindow(captured))return;var result=Apply(captured,placement.Frame(work),placement);Trace?.Invoke($"apply {placement} success={result} actual={Bounds(captured)}");if(!result)notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
+                _=ArrangeAsync(captured,placement,work);
             }
+        }
+    }
+    private async Task ArrangeAsync(nint captured,WindowPlacement placement,WindowFrame work)
+    {
+        pendingPlacement?.Cancel();var cancellation=new CancellationTokenSource();pendingPlacement=cancellation;PlacementPending=true;
+        try
+        {
+            // The native move loop and DWM frame bounds settle after MOVESIZEEND.
+            // Yield the UI thread rather than treating stale bounds as a refusal.
+            await Task.Delay(100,cancellation.Token);var frame=placement.Frame(work);
+            for(var attempt=0;attempt<4;attempt++)
+            {
+                cancellation.Token.ThrowIfCancellationRequested();
+                if(disposed||!enabled()||!Native.IsWindow(captured))return;
+                if(!RequestFrame(captured,frame))break;
+                await Task.Delay(120,cancellation.Token);var observed=Bounds(captured);
+                Trace?.Invoke($"apply {placement} attempt={attempt+1} desired={frame} actual={observed}");
+                if(Matches(observed,frame))return;
+                if(observed.Width>frame.Width+3)frame=placement.Frame(work,observed.Width);
+            }
+            notice("This window could not be arranged. The app may restrict resizing.");
+        }
+        catch(OperationCanceledException) { }
+        finally
+        {
+            if(ReferenceEquals(pendingPlacement,cancellation)){pendingPlacement=null;PlacementPending=false;}
+            cancellation.Dispose();
         }
     }
     private void Tick()
@@ -114,7 +140,7 @@ internal sealed class WindowManagement:IDisposable
         =>Native.SetWindowPos(new WindowInteropHelper(window).Handle,new nint(-1),frame.X,frame.Y,frame.Width,frame.Height,0x10|0x40);
     private void HideOverlays(){wheelReady=false;wheel?.Close();wheel=null;preview?.Close();preview=null;}
     private void Clear(){timer.Stop();HideOverlays();target=0;cancelled=false;}
-    public void Dispose(){if(disposed)return;disposed=true;Clear();if(hook!=0)Native.UnhookWinEvent(hook);}
+    public void Dispose(){if(disposed)return;disposed=true;pendingPlacement?.Cancel();Clear();if(hook!=0)Native.UnhookWinEvent(hook);}
 
     internal static WindowFrame WorkArea(Native.Point point)
     {
@@ -128,20 +154,16 @@ internal sealed class WindowManagement:IDisposable
         if(Native.DwmGetWindowAttribute(handle,9,out var visible,Marshal.SizeOf<Native.Rect>())==0)r=visible;
         return new(r.Left,r.Top,r.Right-r.Left,r.Bottom-r.Top);
     }
-    internal static bool Apply(nint handle,WindowFrame frame,WindowPlacement? placement=null)
+    internal static bool Apply(nint handle,WindowFrame frame)
+        =>RequestFrame(handle,frame)&&Matches(Bounds(handle),frame);
+    private static bool Matches(WindowFrame actual,WindowFrame expected)
+        =>Math.Abs(actual.X-expected.X)<3&&Math.Abs(actual.Y-expected.Y)<3&&Math.Abs(actual.Width-expected.Width)<3&&Math.Abs(actual.Height-expected.Height)<3;
+    private static bool RequestFrame(nint handle,WindowFrame frame)
     {
         if(frame.Width<=0||frame.Height<=0||!Native.IsWindow(handle)||!Native.GetWindowRect(handle,out var raw))return false;
         var visual=Bounds(handle);var left=visual.X-raw.Left;var top=visual.Y-raw.Top;
         var right=raw.Right-visual.Right;var bottom=raw.Bottom-visual.Bottom;
-        if(!Native.SetWindowPos(handle,0,frame.X-left,frame.Y-top,frame.Width+left+right,frame.Height+top+bottom,0x10|0x4))return false;
-        var observed=Bounds(handle);
-        if(placement is {} choice&&observed.Width>frame.Width+3)
-        {
-            var work=WorkArea(new Native.Point{X=frame.X+frame.Width/2,Y=frame.Y+frame.Height/2});
-            var fitted=choice.Frame(work,observed.Width);
-            return Apply(handle,fitted); // One bounded retry with the app's real minimum width.
-        }
-        return Native.GetWindowRect(handle,out var actual)&&Math.Abs(actual.Left-(frame.X-left))<3&&Math.Abs(actual.Top-(frame.Y-top))<3&&Math.Abs(actual.Right-actual.Left-(frame.Width+left+right))<3&&Math.Abs(actual.Bottom-actual.Top-(frame.Height+top+bottom))<3;
+        return Native.SetWindowPos(handle,0,frame.X-left,frame.Y-top,frame.Width+left+right,frame.Height+top+bottom,0x10|0x4);
     }
 
     internal static class Native

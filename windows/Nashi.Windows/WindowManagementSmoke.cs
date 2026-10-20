@@ -60,7 +60,11 @@ internal static class WindowManagementSmoke
             nint limited=0;deadline=DateTime.UtcNow.AddSeconds(10);while(limited==0&&DateTime.UtcNow<deadline){DesktopInput.Pump(100);limited=FindWindow(null,"Nashi Constrained Layout Fixture");}
             try
             {
-                check(limited!=0,"Constrained window fixture did not appear");var minimum=WindowManagement.Bounds(limited).Width;
+                check(limited!=0,"Constrained window fixture did not appear");
+                // Force the real native minimum, then let the child WPF layout
+                // and DWM invisible resize borders settle before measuring it.
+                _=WindowManagement.Apply(limited,new(80,90,160,420));DesktopInput.Pump(300);
+                var minimum=WindowManagement.Bounds(limited).Width;
                 foreach(var placement in new[]{WindowPlacement.LeftThird,WindowPlacement.MiddleThird,WindowPlacement.RightThird})
                 {
                     Gesture(limited,manager,placement,shift:true,cancel:false);var expected=placement.Frame(area,minimum);var actual=WindowManagement.Bounds(limited);

@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  repository_dispatch:
+    types: [owner-pr-merged]
 permissions:
   contents: read
 concurrency:
@@ -17,6 +19,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Owner merge authorization regressions
+        run: python3 scripts/test-owner-auto-merge.py
       - name: Public source boundary
         run: python3 scripts/audit-public-tree.py
       - name: Scan full public history for secrets

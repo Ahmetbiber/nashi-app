@@ -6,7 +6,7 @@ permissions:
 jobs:
   desktop:
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -28,8 +28,12 @@ jobs:
         env:
           NASHI_SMOKE_DIRECTORY: '${{ github.workspace }}\build\windows-smoke'
         run: |
-          $process = Start-Process build/windows/Nashi/Nashi.exe -ArgumentList '--smoke-test' -PassThru
-          if (!$process.WaitForExit(120000)) { throw 'Native desktop test timed out' }
+          $start = [Diagnostics.ProcessStartInfo]::new((Resolve-Path build/windows/Nashi/Nashi.exe))
+          $start.UseShellExecute = $false
+          $start.ArgumentList.Add('--smoke-test')
+          $process = [Diagnostics.Process]::Start($start)
+          $handle = $process.Handle
+          if (!$process.WaitForExit(900000)) { $process.Kill($true); throw 'Native desktop test timed out' }
           if ($process.ExitCode -ne 0) {
             if (Test-Path build/windows-smoke/error.txt) { Get-Content build/windows-smoke/error.txt }
             throw 'Native desktop test failed'

@@ -15,6 +15,14 @@ try
 {
     await DownloadChecks.Run(Check,root);
     var parityRoot=Path.Combine(root,"Parity");Directory.CreateDirectory(parityRoot);try{ParityChecks.Run(Check,parityRoot);}finally{Directory.Delete(parityRoot,true);}
+    foreach(var area in new[]{new WindowFrame(0,24,1511,910),new WindowFrame(-1920,-1030,1920,1006),new WindowFrame(1512,40,1727,1090)})
+    {
+        var a=WindowPlacement.LeftThird.Frame(area);var b=WindowPlacement.MiddleThird.Frame(area);var c=WindowPlacement.RightThird.Frame(area);
+        Check(a.X==area.X&&a.Right==b.X&&b.Right==c.X&&c.Right==area.Right,"Window thirds have gaps or cross display bounds");
+        Check(WindowPlacement.LeftHalf.Frame(area).Right==WindowPlacement.RightHalf.Frame(area).X,"Window halves overlap or leave a gap");
+        Check(WindowPlacement.LeftTwoThirds.Frame(area).Right==b.Right&&WindowPlacement.RightTwoThirds.Frame(area).X==b.X,"Two-thirds placement mismatch");
+        foreach(var placement in Enum.GetValues<WindowPlacement>())Check(placement.Frame(area).Height==area.Height&&placement.Frame(area).Y==area.Y,"Window layout changed the usable vertical frame");
+    }
     foreach (var entry in new[] { "../outside", "/absolute", "C:/outside", @"..\outside", @"\\server\share", "file.txt:stream", "CON", "COM1.txt", "trailing.", "trailing ", "folder/../../outside", "a/./b" })
     {
         try { SafePaths.ArchiveEntry(root, entry); throw new Exception("Unsafe path accepted: " + entry); }
@@ -46,7 +54,8 @@ try
     Check(!Directory.EnumerateDirectories(root).Any(), "Staging files survived cancellation");
     var libraryDirectory=Path.Combine(root,"LibraryData");var library=new LibraryStore(libraryDirectory);
     var unicodeFile=Path.Combine(root,"Türkçe 🍐.txt");File.WriteAllText(unicodeFile,"original");library.Record("Pasted text",[unicodeFile]);library.SetAppearance("dark");
-    var reopened=new LibraryStore(libraryDirectory);Check(reopened.Entries.Single().Paths.Single()==unicodeFile&&reopened.Appearance=="dark","Library restart lost paths or settings");
+    library.SetWindowManagement(false);
+    var reopened=new LibraryStore(libraryDirectory);Check(reopened.Entries.Single().Paths.Single()==unicodeFile&&reopened.Appearance=="dark"&&!reopened.WindowManagementEnabled,"Library restart lost paths or settings");
     Check(reopened.Search("Türkçe").Count()==1&&reopened.Search("PASTED").Count()==1&&reopened.Search("absent").Count()==0,"Library search failed");
     File.Delete(unicodeFile);Check(reopened.Entries.Single().AvailablePaths.Length==0,"Missing Library file was available");
     for(var i=0;i<55;i++)library.Record("ZIP "+i,[Path.Combine(root,"Output.txt")]);Check(library.Entries.Count==LibraryStore.Limit,"Library retention limit failed");

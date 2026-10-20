@@ -4,6 +4,7 @@ import NashiCore
 import UniformTypeIdentifiers
 import ServiceManagement
 import NashiUpdates
+import ApplicationServices
 
 struct SettingsView:View {
     @ObservedObject var updater:AppUpdater
@@ -25,6 +26,8 @@ struct SettingsView:View {
     @State private var launchError:String?
     @AppStorage("reduceAnimations") private var reduceAnimations=false
     @AppStorage("appAppearance") private var appAppearance="system"
+    @AppStorage("windowManagementEnabled") private var windowManagementEnabled=true
+    @State private var windowAccessibility=AXIsProcessTrusted()
     @Environment(\.accessibilityReduceMotion) private var systemReducedMotion
     init(updater:AppUpdater,showingUpdates:Bool=false) {
         self.updater=updater
@@ -109,6 +112,27 @@ struct SettingsView:View {
                     Text("Tap the chosen modifier combination while dragging files.").font(.caption).foregroundStyle(.secondary)
                 }.padding(10)
             }.id(shortcutsRevision)
+            GroupBox("Window management") {
+                VStack(alignment:.leading,spacing:13) {
+                    Toggle("Arrange windows while dragging",isOn:$windowManagementEnabled)
+                    Text("Drag a window by its title bar or resize border, then tap Shift or Command. Hover over a layout and release the mouse to place it. Escape cancels.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text("1/3 left · middle · right   /   1/2 left · right   /   2/3 left · right")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if !windowAccessibility {
+                        HStack {
+                            Text("Allow \(WindowManagementController.permissionName) once to move and resize other apps’ windows.").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Open permission settings…") { WindowManagementController.requestAccess() }
+                        }
+                        if Bundle.main.bundleIdentifier == "local.tangerine.replica" {
+                            Text("Upgraded from Tangerine? macOS may still show the previous name. Choose this Nashi app when adding it to \(WindowManagementController.permissionName).").font(.caption).foregroundStyle(.secondary)
+                            Button("Show Nashi in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
+                        }
+                    } else { Label("\(WindowManagementController.permissionName) is enabled",systemImage:"checkmark.circle").font(.caption).foregroundStyle(.secondary) }
+                }.padding(10)
+            }
+            .onReceive(Timer.publish(every:2,on:.main,in:.common).autoconnect()) { _ in windowAccessibility=AXIsProcessTrusted() }
             GroupBox("File actions") {
                 VStack(spacing:16) {
                     HStack { Text("Float Behaviour");Spacer();Picker("Float behavior",selection:$floatBehavior) { Text("Create a New Float").tag("createNew");Text("Add Files to an Existing Float").tag("addToExisting") }.labelsHidden().frame(maxWidth:240) }

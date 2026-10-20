@@ -38,16 +38,8 @@ public sealed class FloatShelf:Window
         {if(e.Key==Key.A){files.SelectAll();e.Handled=true;}else if(e.Key==Key.C){await action(Selection(),"copy");e.Handled=true;}else if(e.Key==Key.V){if(Clipboard.ContainsFileDropList())Add(Clipboard.GetFileDropList().Cast<string>());e.Handled=true;}else if(e.Key==Key.R){foreach(var p in Selection())MainWindow.Reveal(p);e.Handled=true;}else if(e.Key==Key.O){foreach(var p in Selection())MainWindow.OpenUrl(p);e.Handled=true;}}
         }catch(Exception error)when(error is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or System.Runtime.InteropServices.COMException){MessageBox.Show(this,error.Message,"Float action unavailable");}
     }
-    private async void Preview()
+    private void Preview()
     {
-        var path=Selection().FirstOrDefault();if(path is null)return;var window=new Window{Owner=this,Title=Path.GetFileName(path)+" · Preview",Width=760,Height=560,WindowStartupLocation=WindowStartupLocation.CenterOwner};Theme.Attach(window);
-        try
-        {
-            if(FeatureCatalog.IsImage(path))window.Content=new Image{Source=ImageEngine.Load(path),Stretch=Stretch.Uniform,Margin=new(20)};
-            else if(FeatureCatalog.Extension(path)=="pdf"){var pages=await NativePdf.RenderAsync(path,96);var panel=new StackPanel();foreach(var page in pages)panel.Children.Add(new Image{Source=ImageEngine.FromPng(page),MaxHeight=700,Margin=new(8)});window.Content=new ScrollViewer{Content=panel};}
-            else if(FeatureCatalog.IsVideo(path)||FeatureCatalog.IsAudio(path)){var player=new MediaElement{Source=new Uri(path),LoadedBehavior=MediaState.Manual,Stretch=Stretch.Uniform};window.Content=player;window.Loaded+=(_,_)=>player.Play();window.Closed+=(_,_)=>player.Close();}
-            else if(new FileInfo(path).Length<2_000_000)window.Content=new TextBox{Text=await File.ReadAllTextAsync(path),IsReadOnly=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new(20)};
-            else window.Content=new TextBlock{Text="Choose Open to view this file in its default app.",Margin=new(24)};window.PreviewKeyDown+=(_,e)=>{if(e.Key is Key.Escape or Key.Space){window.Close();e.Handled=true;}};window.Show();
-        }catch(Exception error){MessageBox.Show(this,error.Message,"Preview unavailable");}
+        var selected=Selection();if(selected.Length>0)new FilePreviewWindow(this,selected).Show();
     }
 }

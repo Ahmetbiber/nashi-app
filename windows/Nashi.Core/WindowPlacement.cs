@@ -1,0 +1,38 @@
+namespace Nashi.Core;
+
+public enum WindowPlacement
+{
+    LeftThird, MiddleThird, RightThird, LeftHalf, RightHalf, LeftTwoThirds, RightTwoThirds
+}
+
+public readonly record struct WindowFrame(int X,int Y,int Width,int Height)
+{
+    public int Right=>X+Width;
+    public int Bottom=>Y+Height;
+}
+
+public static class WindowPlacements
+{
+    public static string Title(this WindowPlacement placement)=>placement switch
+    {
+        WindowPlacement.LeftThird=>"Left third", WindowPlacement.MiddleThird=>"Middle third",
+        WindowPlacement.RightThird=>"Right third", WindowPlacement.LeftHalf=>"Left half",
+        WindowPlacement.RightHalf=>"Right half", WindowPlacement.LeftTwoThirds=>"Left two-thirds",
+        WindowPlacement.RightTwoThirds=>"Right two-thirds", _=>throw new ArgumentOutOfRangeException(nameof(placement))
+    };
+    public static (double Start,double End) Range(this WindowPlacement placement)=>placement switch
+    {
+        WindowPlacement.LeftThird=>(0,1d/3), WindowPlacement.MiddleThird=>(1d/3,2d/3),
+        WindowPlacement.RightThird=>(2d/3,1), WindowPlacement.LeftHalf=>(0,.5),
+        WindowPlacement.RightHalf=>(.5,1), WindowPlacement.LeftTwoThirds=>(0,2d/3),
+        WindowPlacement.RightTwoThirds=>(1d/3,1), _=>throw new ArgumentOutOfRangeException(nameof(placement))
+    };
+    public static WindowFrame Frame(this WindowPlacement placement,WindowFrame area)
+    {
+        if(area.Width<=0||area.Height<=0)return default;
+        var (start,end)=placement.Range();
+        var left=(int)Math.Round(area.Width*start,MidpointRounding.AwayFromZero);
+        var right=(int)Math.Round(area.Width*end,MidpointRounding.AwayFromZero);
+        return new(area.X+left,area.Y,right-left,area.Height);
+    }
+}

@@ -10,6 +10,7 @@ struct HomeView:View {
     @AppStorage("convertKey") private var convertKey="shift"
     @AppStorage("toolsKey") private var toolsKey="command"
     @AppStorage("actionsKey") private var actionsKey="control"
+    @FocusState private var librarySearchFocused:Bool
     @State private var targeted=false
     @State private var historySearch=""
     @State private var allHistory=false
@@ -29,11 +30,13 @@ struct HomeView:View {
                     Button("Set up tools") {NotificationCenter.default.post(name:.showToolSetup,object:nil)}
                         .buttonStyle(NashiButtonStyle(.secondary,compact:true))
                 }
+                Button("Home") {state.libraryVisible=false}.buttonStyle(NashiButtonStyle(state.libraryVisible ? .quiet:.secondary,compact:true))
+                Button("Library") {state.libraryVisible=true}.buttonStyle(NashiButtonStyle(state.libraryVisible ? .secondary:.quiet,compact:true))
                 NashiPill(title:"On your Mac",symbol:"lock.fill")
                 Button { state.onSettings?() } label:{Image(systemName:"slider.horizontal.3").font(.system(size:15))}
                     .buttonStyle(NashiButtonStyle(.quiet,compact:true)).help("Settings").accessibilityLabel("Settings")
             }.padding(.horizontal,28).padding(.top,19).padding(.bottom,15)
-            ScrollView {
+            if state.libraryVisible { libraryPage } else { ScrollView {
                 VStack(alignment:.leading,spacing:22) {
                     if let version=updater.availableVersion {
                         UpdateBanner(updater:updater,version:version).transition(.opacity.combined(with:.move(edge:.top)))
@@ -75,10 +78,30 @@ struct HomeView:View {
                     }.font(.system(size:10,weight:.medium,design:.rounded)).foregroundStyle(.secondary).padding(.top,1)
                 }.padding(.horizontal,28).padding(.bottom,24)
             }
+        }
         }.frame(minWidth:700,minHeight:580).background(NashiPalette.canvas).tint(.nashi)
             .nashiAnimation(value:state.inputs.isEmpty).nashiAnimation(value:state.working)
             .nashiAnimation(value:updater.availableVersion)
+            .onChange(of:state.libraryFocusRequest) { _ in librarySearchFocused=true }
             .onChange(of:state.inputs) { _ in if !state.working { state.outputs=[];state.error=nil } }
+    }
+    private var libraryPage:some View {
+        ScrollViewReader { scroll in
+            ScrollView {
+                VStack(alignment:.leading,spacing:16) {
+                    Text("Your Library").font(.system(size:30,weight:.bold,design:.rounded))
+                    Text("Freshly made, pasted, and ready for another round.").font(.callout).foregroundStyle(.secondary)
+                    TextField("Find a file or tool · ⌘F",text:$state.libraryQuery).textFieldStyle(.roundedBorder).focused($librarySearchFocused)
+                    if state.filteredHistory.isEmpty {Text(state.history.isEmpty ? "Nothing here yet. Paste something or make your first fresh copy.":"No matches. Try a file name or tool.").foregroundStyle(.secondary).padding(20)}
+                    ForEach(state.filteredHistory) {job in
+                        RecentFileRow(job:job,canReuse:!state.working,onPreview:{state.preview(job)},onReuse:{urls in guard !state.working else{return};state.inputs=urls;state.libraryVisible=false})
+                            .nashiCard(radius:16).overlay(RoundedRectangle(cornerRadius:16).strokeBorder(state.selectedHistoryID==job.id ? Color.nashi:Color.clear,lineWidth:1.5))
+                            .contentShape(Rectangle()).onTapGesture {state.selectedHistoryID=job.id;librarySearchFocused=false}.id(job.id)
+                    }
+                    Text("↑/↓ choose · Space preview · Return use in Nashi").font(.caption).foregroundStyle(.secondary)
+                }.padding(28)
+            }.onChange(of:state.selectedHistoryID) { id in if let id {scroll.scrollTo(id)} }
+        }
     }
     private var dropZone:some View {
         VStack(alignment:.leading,spacing:18) {
@@ -92,6 +115,7 @@ struct HomeView:View {
                     HStack(spacing:9) {
                         Button { state.onChooseFiles?() } label:{Label(state.inputs.isEmpty ? "Choose files":"Add or change files",systemImage:"plus")}
                             .buttonStyle(NashiButtonStyle(state.inputs.isEmpty ? .primary:.secondary)).disabled(state.working)
+                        Button("Paste") {state.pasteContent()}.buttonStyle(NashiButtonStyle(.secondary)).help("⌘V · Paste files, text, an image or link").disabled(state.working)
                         if !state.inputs.isEmpty {
                             Button { state.onOpenWheel?() } label:{Label("Open wheel",systemImage:"circle.hexagongrid")}
                                 .buttonStyle(NashiButtonStyle(.primary)).keyboardShortcut(.return,modifiers:[]).disabled(state.working)
@@ -168,7 +192,7 @@ struct HomeView:View {
             VStack(spacing:3) {
                 if recent.isEmpty { Text("No matches. Try a file name or tool.").font(.callout).foregroundStyle(.secondary).padding(20).frame(maxWidth:.infinity) }
                 ForEach(recent) { job in
-                    RecentFileRow(job:job,canReuse:!state.working,onReuse:{ urls in
+                    RecentFileRow(job:job,canReuse:!state.working,onPreview:{state.preview(job)},onReuse:{ urls in
                         guard !state.working else { return }
                         state.inputs=urls
                     })
@@ -207,6 +231,7 @@ private struct HomeActionTile:View {
 private struct RecentFileRow:View {
     let job:JobRecord
     let canReuse:Bool
+    let onPreview:()->Void
     let onReuse:([URL])->Void
     @State private var hovered=false
     private var urls:[URL] { job.outputs.map{URL(fileURLWithPath:$0)} }
@@ -220,6 +245,7 @@ private struct RecentFileRow:View {
             }
             Spacer()
             if urls.count>1 { Text("\(urls.count) files").font(.caption2).foregroundStyle(.secondary) }
+            Button(action:onPreview) {Image(systemName:"eye").font(.system(size:13))}.buttonStyle(NashiButtonStyle(.quiet,compact:true)).disabled(available.isEmpty).help("Preview").accessibilityLabel("Preview \(urls.first?.lastPathComponent ?? "result")")
             Button { onReuse(available) } label:{Image(systemName:"arrow.up.left").font(.system(size:12,weight:.medium))}
                 .buttonStyle(NashiButtonStyle(.quiet,compact:true)).disabled(available.isEmpty || !canReuse)
                 .help(canReuse ? "Use these files again":"Available after the current task finishes")

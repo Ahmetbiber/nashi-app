@@ -32,7 +32,7 @@ internal static class LocalizationChecks
             var raw=new TextBox{Text="Home\r\nLibrary · Türkçe ıİşğü 🍐"};L10n.Attach(raw);
             check(raw.Text=="Home\r\nLibrary · Türkçe ıİşğü 🍐","Localization modified user text");
             Capture(settings,Path.Combine(directory,"windows-settings-turkish.png"));
-            var wheel=new WheelWindow(null,Enum.GetValues<WindowPlacement>().Select(p=>new ToolChoice(p.ToString(),p.Title(),"",p)).ToArray(),_=>{});
+            var wheel=new WheelWindow(null,Enum.GetValues<WindowPlacement>().Select(p=>new ToolChoice(p.ToString(),p.Title(),"",p)).ToArray(),_=>{},externalDrag:true);
             wheel.Show();DesktopInput.Pump();Capture(wheel,Path.Combine(directory,"windows-window-wheel-turkish.png"));wheel.Close();
             settings.Activate();language.Focus();DesktopInput.Key(settings,Key.Home);DesktopInput.Pump();
             check(prefs.Value.Language=="en"&&Children(owner).OfType<Button>().Any(b=>b.Content as string=="Home"),"Switching back to English left stale Turkish controls");

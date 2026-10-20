@@ -39,39 +39,55 @@ jobs:
         env:
           NASHI_SMOKE_DIRECTORY: '${{ github.workspace }}\build\windows-smoke'
         run: |
+          $proof = $env:NASHI_SMOKE_DIRECTORY
           $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
-          cmd /d /c "call `"$vcvars`" && cl /nologo /std:c++20 /EHsc /W4 /DNASHI_TRACE_LIBRARY /LD windows\Diagnostics\NativeDebugRunner.cpp /Fe:build\NativeShutdownTrace.dll /link dbghelp.lib"
-          if ($LASTEXITCODE -ne 0) { throw 'Native diagnostic observer did not compile' }
-          $env:NASHI_NATIVE_TRACE_LIBRARY = (Resolve-Path build/NativeShutdownTrace.dll).Path
-          $start = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path build/windows/Nashi/Nashi.exe))
-          $start.UseShellExecute = $false
-          $start.ArgumentList.Add('--smoke-test')
-          $process = [System.Diagnostics.Process]::Start($start)
-          try {
-            $processHandle = $process.Handle
-            if (!$process.WaitForExit(900000)) {
-              $process.Kill($true)
-              throw 'Native desktop checks exceeded 15 minutes'
-            }
-            $exitCode = $process.ExitCode
-            Write-Host "Native desktop process exit code: $exitCode"
-            if ($exitCode -ne 0) {
-              $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-              $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
-              cmd /d /c "call `"$vcvars`" && cl /nologo /std:c++20 /EHsc /W4 windows\Diagnostics\NativeDebugRunner.cpp /Fe:build\NativeDebugRunner.exe /link dbghelp.lib"
-              if ($LASTEXITCODE -eq 0) {
-                $env:NASHI_SMOKE_DIRECTORY = Join-Path $env:GITHUB_WORKSPACE 'build/windows-smoke/native-debug'
-                New-Item -ItemType Directory -Force $env:NASHI_SMOKE_DIRECTORY | Out-Null
-                & build/NativeDebugRunner.exe (Resolve-Path build/windows/Nashi/Nashi.exe) --smoke-test 2>&1 | Tee-Object -FilePath build/windows-smoke/native-stack.txt
+          cmd /d /c "call `"$vcvars`" && cl /nologo /std:c++20 /EHsc /W4 /DNASHI_TRACE_LIBRARY /LD windows\Diagnostics\NativeDebugRunner.cpp /Fe:build\NativeShutdownTrace.dll && cl /nologo /std:c++20 /EHsc /W4 windows\Diagnostics\NativeDebugRunner.cpp /Fe:build\NativeDebugRunner.exe /link dbghelp.lib"
+          if ($LASTEXITCODE -ne 0) { throw 'Native diagnostics did not compile' }
+          function Invoke-NativeFixture([string] $directory) {
+            $env:NASHI_SMOKE_DIRECTORY = $directory
+            New-Item -ItemType Directory -Force $directory | Out-Null
+            $start = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path build/windows/Nashi/Nashi.exe))
+            $start.UseShellExecute = $false
+            $start.ArgumentList.Add('--smoke-test')
+            $process = [System.Diagnostics.Process]::Start($start)
+            try {
+              $processHandle = $process.Handle
+              if (!$process.WaitForExit(900000)) {
+                $process.Kill($true)
+                throw 'Native desktop checks exceeded 15 minutes'
               }
-              Start-Sleep -Seconds 3
-              Get-WinEvent -FilterHashtable @{LogName='Application'; Id=1000,1001,1026; StartTime=(Get-Date).AddMinutes(-20)} -ErrorAction SilentlyContinue | Select-Object -First 8 TimeCreated,ProviderName,Id,Message | Format-List | Out-String | Write-Host
-              throw "Native desktop checks exited with code $exitCode"
+              Write-Host "Native desktop process exit code: $($process.ExitCode); fixture: $directory"
+              return $process.ExitCode
+            } finally { $process.Dispose() }
+          }
+          $env:NASHI_NATIVE_TRACE_LIBRARY = (Resolve-Path build/NativeShutdownTrace.dll).Path
+          $exitCode = Invoke-NativeFixture $proof
+          if ($exitCode -eq 0) {
+            Remove-Item Env:NASHI_NATIVE_TRACE_LIBRARY
+            $exitCode = Invoke-NativeFixture (Join-Path $proof 'second-pass')
+          }
+          if ($exitCode -ne 0) {
+            $hasFrames = $false
+            Get-ChildItem $proof -Filter native-exception-stack.txt -Recurse | ForEach-Object {
+              if ((Get-Content $_.FullName -Raw) -match "FRAME\t") {
+                $hasFrames = $true
+                & build/NativeDebugRunner.exe --resolve-stack $_.FullName | Tee-Object -FilePath ($_.FullName + '.resolved.txt')
+              }
             }
-          } finally { $process.Dispose() }
-          if (!(Test-Path build/windows-smoke/smoke.json)) { throw 'No native smoke result' }
-          Get-Content build/windows-smoke/smoke.json
+            if (!$hasFrames) {
+              $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof 'native-debug'
+              New-Item -ItemType Directory -Force $env:NASHI_SMOKE_DIRECTORY | Out-Null
+              & build/NativeDebugRunner.exe (Resolve-Path build/windows/Nashi/Nashi.exe) --smoke-test 2>&1 | Tee-Object -FilePath (Join-Path $proof 'native-stack.txt')
+            }
+            Start-Sleep -Seconds 3
+            Get-WinEvent -FilterHashtable @{LogName='Application'; Id=1000,1001,1026; StartTime=(Get-Date).AddMinutes(-20)} -ErrorAction SilentlyContinue | Select-Object -First 8 TimeCreated,ProviderName,Id,Message | Format-List | Out-String | Write-Host
+            throw "Native desktop checks exited with code $exitCode"
+          }
+          foreach ($directory in @($proof, (Join-Path $proof 'second-pass'))) {
+            if (!(Test-Path (Join-Path $directory 'smoke.json'))) { throw 'No native smoke result' }
+            Get-Content (Join-Path $directory 'smoke.json')
+          }
       - name: Package portable app
         shell: pwsh
         run: |

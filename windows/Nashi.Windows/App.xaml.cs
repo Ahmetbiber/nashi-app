@@ -17,7 +17,9 @@ public partial class App:Application
         if(e.Args.Contains("--smoke-test")){try{SmokeTests.Run();Shutdown(0);}catch(Exception error){Console.Error.WriteLine(error);var directory=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY");if(directory is not null){Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,"error.txt"),error.ToString());}Shutdown(1);}return;}
         if(e.Args.Length==1&&e.Args[0]=="--install-update"){ShutdownMode=ShutdownMode.OnExplicitShutdown;_ = InstallUpdateAsync();return;}
         var main=new MainWindow(e.Args.Where(File.Exists).ToArray());main.Show();
-        windowManagement=new WindowManagement(isEnabled:()=>main.WindowManagementEnabled);
+        windowManagement=new WindowManagement(
+            notice:message=>{MessageBox.Show(message,"Window arrangement",MessageBoxButton.OK,MessageBoxImage.Information);},
+            isEnabled:()=>main.WindowManagementEnabled);
     }
     protected override void OnExit(ExitEventArgs e){windowManagement?.Dispose();base.OnExit(e);}
     private async Task InstallUpdateAsync()

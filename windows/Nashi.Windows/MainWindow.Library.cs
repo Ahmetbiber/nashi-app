@@ -56,7 +56,7 @@ public sealed partial class MainWindow
         var formats=FeatureCatalog.Formats(files);var tools=Choices();
         void Tile(int column,string title,string subtitle,string symbol,IEnumerable<(string,Action)> commands)
         {
-            var label=new DockPanel();var icon=Text(symbol,22,"Gold");icon.Margin=new(0,0,12,0);DockPanel.SetDock(icon,Dock.Left);label.Children.Add(icon);var caption=new StackPanel();caption.Children.Add(Text(title,14));caption.Children.Add(Text(subtitle,10,"Muted"));label.Children.Add(caption);
+            var label=new DockPanel();var icon=Text(symbol,22,"Gold");icon.Margin=new(0,0,12,0);DockPanel.SetDock(icon,Dock.Left);label.Children.Add(icon);var caption=new StackPanel();var heading=Text(title,14);heading.FontWeight=FontWeights.SemiBold;caption.Children.Add(heading);caption.Children.Add(Text(subtitle,11,"Muted"));label.Children.Add(caption);
             var button=Button("",()=>{});button.Content=label;button.HorizontalContentAlignment=HorizontalAlignment.Stretch;button.Padding=new(15);button.Margin=new(column==0?0:6,0,column==2?0:6,0);var menu=new ContextMenu();foreach(var (name,action) in commands){var item=new MenuItem{Header=name};item.Click+=(_,_)=>action();menu.Items.Add(item);}button.IsEnabled=menu.Items.Count>0;button.Click+=(_,_)=>{menu.PlacementTarget=button;menu.IsOpen=true;};Grid.SetColumn(button,column);tiles.Children.Add(button);
         }
         Tile(0,"Convert",$"{formats.Length} ways to change it","⇄",formats.Select(f=>(f.ToUpperInvariant(),(Action)(async()=>await EditAsync(new("convert:"+f,"Convert","↗"))))));

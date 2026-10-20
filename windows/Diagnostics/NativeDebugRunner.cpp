@@ -7,12 +7,8 @@
 #include <vector>
 #pragma comment(lib, "dbghelp.lib")
 
-static void stack(HANDLE process, DWORD threadId, DWORD code, DWORD firstChance) {
-    std::fprintf(stderr,"\nNATIVE EXCEPTION code=0x%08lx firstChance=%lu thread=%lu\n",code,firstChance,threadId);
-    HANDLE thread=OpenThread(THREAD_GET_CONTEXT|THREAD_QUERY_INFORMATION,FALSE,threadId);
-    if(!thread)return;
-    CONTEXT context{};context.ContextFlags=CONTEXT_FULL;
-    if(GetThreadContext(thread,&context)) {
+static void writeStack(FILE* output,HANDLE process,HANDLE thread,CONTEXT context,DWORD code,DWORD firstChance) {
+        std::fprintf(output,"\nNATIVE EXCEPTION code=0x%08lx firstChance=%lu thread=%lu\n",code,firstChance,GetThreadId(thread));
         SymSetOptions(SYMOPT_UNDNAME|SYMOPT_LOAD_LINES|SYMOPT_DEFERRED_LOADS|SYMOPT_FAIL_CRITICAL_ERRORS);
         bool initialized=SymInitialize(process,"srv*build\\native-symbols*https://msdl.microsoft.com/download/symbols",TRUE)!=FALSE;
         if(initialized)SymRefreshModuleList(process);
@@ -24,13 +20,36 @@ static void stack(HANDLE process, DWORD threadId, DWORD code, DWORD firstChance)
             DWORD64 displacement=0;IMAGEHLP_MODULE64 module{};module.SizeOfStruct=sizeof(module);
             SymGetModuleInfo64(process,frame.AddrPC.Offset,&module);
             if(SymFromAddr(process,frame.AddrPC.Offset,&displacement,symbol))
-                std::fprintf(stderr,"%02d %s!%s + 0x%llx\n",n,module.ModuleName,symbol->Name,static_cast<unsigned long long>(displacement));
-            else std::fprintf(stderr,"%02d %s + 0x%llx [0x%llx]\n",n,module.ModuleName,static_cast<unsigned long long>(frame.AddrPC.Offset-module.BaseOfImage),static_cast<unsigned long long>(frame.AddrPC.Offset));
+                std::fprintf(output,"%02d %s!%s + 0x%llx\n",n,module.ModuleName,symbol->Name,static_cast<unsigned long long>(displacement));
+            else std::fprintf(output,"%02d %s + 0x%llx [0x%llx]\n",n,module.ModuleName,static_cast<unsigned long long>(frame.AddrPC.Offset-module.BaseOfImage),static_cast<unsigned long long>(frame.AddrPC.Offset));
             if(!StackWalk64(IMAGE_FILE_MACHINE_AMD64,process,thread,&frame,&context,nullptr,SymFunctionTableAccess64,SymGetModuleBase64,nullptr))break;
         }
         if(initialized)SymCleanup(process);
-    }
-    CloseHandle(thread);std::fflush(stderr);
+        std::fflush(output);
+}
+#if defined(NASHI_TRACE_LIBRARY)
+static wchar_t tracePath[32768]{};
+static volatile LONG tracing=0;
+static LONG CALLBACK traceException(EXCEPTION_POINTERS* exception) {
+    if(exception->ExceptionRecord->ExceptionCode!=0xC000000D||InterlockedCompareExchange(&tracing,1,0)!=0)return EXCEPTION_CONTINUE_SEARCH;
+    FILE* output=nullptr;
+    if(_wfopen_s(&output,tracePath,L"a")==0&&output){writeStack(output,GetCurrentProcess(),GetCurrentThread(),*exception->ContextRecord,exception->ExceptionRecord->ExceptionCode,1);std::fclose(output);}
+    return EXCEPTION_CONTINUE_SEARCH; // Observe only: preserve the original exception and process status.
+}
+extern "C" __declspec(dllexport) void __cdecl InstallTrace() {
+    auto length=GetEnvironmentVariableW(L"NASHI_SMOKE_DIRECTORY",tracePath,32768);
+    if(length==0||length>32700)return;
+    wcscat_s(tracePath,L"\\native-exception-stack.txt");
+    AddVectoredExceptionHandler(1,traceException);
+    FILE* output=nullptr;if(_wfopen_s(&output,tracePath,L"a")==0&&output){std::fprintf(output,"Native exception observer armed; no debugger attached.\n");std::fclose(output);}
+}
+#else
+static void stack(HANDLE process, DWORD threadId, DWORD code, DWORD firstChance) {
+    HANDLE thread=OpenThread(THREAD_GET_CONTEXT|THREAD_QUERY_INFORMATION,FALSE,threadId);
+    if(!thread)return;
+    CONTEXT context{};context.ContextFlags=CONTEXT_FULL;
+    if(GetThreadContext(thread,&context))writeStack(stderr,process,thread,context,code,firstChance);
+    CloseHandle(thread);
 }
 int wmain(int argc,wchar_t** argv) {
     if(argc<2)return 2;
@@ -59,3 +78,4 @@ int wmain(int argc,wchar_t** argv) {
     }
     CloseHandle(process.hProcess);std::fprintf(stderr,"DEBUGGEE EXIT: 0x%08lx\n",result);return static_cast<int>(result);
 }
+#endif

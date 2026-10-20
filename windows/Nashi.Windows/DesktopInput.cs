@@ -26,11 +26,11 @@ internal static class DesktopInput
         var frame=new DispatcherFrame();var timer=new DispatcherTimer(DispatcherPriority.Background){Interval=TimeSpan.FromMilliseconds(milliseconds)};
         timer.Tick+=(_,_)=>{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);
     }
-    internal static void Key(Window window,Key key,bool control=false,bool shift=false)
+    internal static void Key(Window window,Key key,bool control=false,bool shift=false,bool alt=false)
     {
         window.Activate();Pump();var inputs=new List<Input>();
         void Add(int vk,bool up=false)=>inputs.Add(new(){Type=1,Data=new(){Keyboard=new(){Key=(ushort)vk,Flags=up?2u:0u}}});
-        if(control)Add(0x11);if(shift)Add(0x10);Add(KeyInterop.VirtualKeyFromKey(key));Add(KeyInterop.VirtualKeyFromKey(key),true);if(shift)Add(0x10,true);if(control)Add(0x11,true);
+        if(control)Add(0x11);if(shift)Add(0x10);if(alt)Add(0x12);Add(KeyInterop.VirtualKeyFromKey(key));Add(KeyInterop.VirtualKeyFromKey(key),true);if(alt)Add(0x12,true);if(shift)Add(0x10,true);if(control)Add(0x11,true);
         if(SendInput((uint)inputs.Count,inputs.ToArray(),Marshal.SizeOf<Input>())!=inputs.Count)throw new InvalidOperationException("Native keyboard input was unavailable on this Windows desktop.");Pump();
     }
     internal static void Drag(FrameworkElement view,Point from,Point to,bool shift=false)

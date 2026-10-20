@@ -67,8 +67,10 @@ jobs:
           if ([version]$new -le [version]$old) { throw 'Installed version did not advance' }
           if ($null -eq $restarted) { throw 'Updated app did not reopen a native window' }
           $restartedId = $restarted.Id
+          $restartedHandle = $restarted.Handle
           $restarted.CloseMainWindow() | Out-Null
           if (!$restarted.WaitForExit(15000)) { throw 'Updated app did not close normally' }
+          if ($restarted.ExitCode -ne 0) { throw "Updated app exited with code $($restarted.ExitCode)" }
           if ((Get-FileHash $preferences).Hash -ne $preferencesHash) { throw 'Update changed saved preferences' }
           if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $text).Hash -ne $textHash -or (Get-FileHash $image).Hash -ne $imageHash) { throw 'Update changed saved Library or clipboard imports' }
           function Invoke-UpdatedFixture([string] $argument, [string] $directory, [int] $timeout) {

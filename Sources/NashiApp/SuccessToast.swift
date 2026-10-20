@@ -38,7 +38,7 @@ struct SuccessNotice {
         toast.hidesOnDeactivate=false
         toast.animationBehavior = .none
         toast.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary,.transient,.ignoresCycle]
-        toast.contentView=NSHostingView(rootView:SuccessToastView(notice:notice).tint(Color.nashi))
+        toast.contentView=NSHostingView(rootView:SuccessToastView(notice:notice).tint(Color.nashi).nashiLanguage())
         panel=toast
         let shownAt=ProcessInfo.processInfo.systemUptime
         toast.orderFrontRegardless()
@@ -83,7 +83,7 @@ private struct SuccessToastView:View {
         HStack(spacing:13) {
             NashiCheck()
             VStack(alignment:.leading,spacing:5) {
-                Text(notice.title).font(.system(size:13,weight:.semibold,design:.rounded)).lineLimit(2)
+                LText(notice.title).font(.system(size:13,weight:.semibold,design:.rounded)).lineLimit(2)
                 Text(notice.detail).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }.frame(maxWidth:.infinity,alignment:.leading)
             if !notice.files.isEmpty {

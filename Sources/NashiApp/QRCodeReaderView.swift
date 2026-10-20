@@ -72,7 +72,7 @@ struct QRCodeReaderView:View {
                         }.padding(18).nashiCard(radius:18)
                     }
                     ForEach(model.report.errors,id:\.self) { Text($0).font(.caption).foregroundStyle(.orange) }
-                    if let error=model.error { Text(error).font(.caption).foregroundStyle(.orange) }
+                    if let error=model.error { LText(error).font(.caption).foregroundStyle(.orange) }
                 }.padding(20)
             }
             Divider()

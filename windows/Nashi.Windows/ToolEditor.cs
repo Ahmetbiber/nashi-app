@@ -28,9 +28,9 @@ public sealed partial class ToolEditor:Window
         Theme.Attach(this);
         Owner=owner;this.tool=tool;this.input=input;this.media=media;bitmap=preview;Title=title+" · Nashi";Width=1060;Height=780;MinWidth=800;MinHeight=560;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var grid=new Grid{Margin=new(28)};grid.RowDefinitions.Add(new(){Height=GridLength.Auto});grid.RowDefinitions.Add(new(){Height=new(1,GridUnitType.Star)});grid.RowDefinitions.Add(new(){Height=GridLength.Auto});Content=grid;
-        var heading=new StackPanel();heading.Children.Add(new TextBlock{Text=title,FontSize=30,FontWeight=FontWeights.Bold});heading.Children.Add(new TextBlock{Text=Path.GetFileName(input)+"  ·  Original stays safe",Foreground=Theme.Brush("Muted"),Margin=new(0,5,0,22)});grid.Children.Add(heading);
+        var heading=new StackPanel();heading.Children.Add(L10n.Label(new TextBlock{Text=title,FontSize=30,FontWeight=FontWeights.Bold}));heading.Children.Add(new TextBlock{Text=Path.GetFileName(input)+" · "+L10n.Text("Original stays safe"),Foreground=Theme.Brush("Muted"),Margin=new(0,5,0,22)});grid.Children.Add(heading);
         var body=new Grid();body.ColumnDefinitions.Add(new(){Width=new(1.6,GridUnitType.Star)});body.ColumnDefinitions.Add(new(){Width=new(1,GridUnitType.Star)});Grid.SetRow(body,1);grid.Children.Add(body);
-        previewStack.Children.Add(new TextBlock{Text="PREVIEW",FontSize=11,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,0,0,16)});options.Children.Add(new TextBlock{Text="MAKE IT YOURS",FontSize=11,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,0,0,16)});body.Children.Add(new ScrollViewer{Content=previewStack,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});Grid.SetColumn(options,1);body.Children.Add(new ScrollViewer{Content=options,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});Grid.SetColumn(body.Children[^1],1);
+        previewStack.Children.Add(L10n.Label(new TextBlock{Text="PREVIEW",FontSize=11,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,0,0,16)}));options.Children.Add(L10n.Label(new TextBlock{Text="MAKE IT YOURS",FontSize=11,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,0,0,16)}));body.Children.Add(new ScrollViewer{Content=previewStack,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});Grid.SetColumn(options,1);body.Children.Add(new ScrollViewer{Content=options,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});Grid.SetColumn(body.Children[^1],1);
         if(bitmap is not null)
         {
             drawing.Width=bitmap.PixelWidth;drawing.Height=bitmap.PixelHeight;
@@ -43,7 +43,7 @@ public sealed partial class ToolEditor:Window
         {
             player.Source=new Uri(input);previewStack.Children.Add(player);player.MediaOpened+=(_,_)=>{if(player.NaturalDuration.HasTimeSpan)duration=player.NaturalDuration.TimeSpan.TotalSeconds;};
         }
-        else previewStack.Children.Add(new TextBlock{Text="Your files will be saved as new copies.\nChoose options, then save.",FontSize=21,TextWrapping=TextWrapping.Wrap,Margin=new(0,50,20,0)});
+        else previewStack.Children.Add(L10n.Label(new TextBlock{Text="Your files will be saved as new copies.\nChoose options, then save.",FontSize=21,TextWrapping=TextWrapping.Wrap,Margin=new(0,50,20,0)}));
         duration=media?.Duration??1;
         if(media is not null)
         {
@@ -59,12 +59,12 @@ public sealed partial class ToolEditor:Window
             }
             scrubber.Maximum=duration;scrubber.ValueChanged+=(_,_)=>{if(scrubber.IsMouseCaptureWithin)Seek(scrubber.Value);};previewStack.Children.Add(scrubber);
             if(tool is "trimAudio" or "trimVideo" or "redactAudio")previewStack.Children.Add(MainWindow.Button("Play selected range",PlayRange));
-            previewStack.Children.Add(new TextBlock{Text="Space play/pause · ←/→ 1s · Shift+←/→ 1 frame (video), 0.1s (audio) · I/O set range · Enter save",TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Muted")});
+            previewStack.Children.Add(L10n.Label(new TextBlock{Text="Space play/pause · ←/→ 1s · Shift+←/→ 1 frame (video), 0.1s (audio) · I/O set range · Enter save",TextWrapping=TextWrapping.Wrap,Foreground=Theme.Brush("Muted")}));
         }
         if(tool=="convert")
         {
             var formats=outputFormats?.ToHashSet()??(media is not null?(media.Video is null?MediaEngine.AudioFormats:MediaEngine.VideoFormats.Concat(MediaEngine.AudioFormats).ToHashSet()):ImageEngine.Formats.ToHashSet());
-            options.Children.Add(new TextBlock{Text="Output format",FontWeight=FontWeights.SemiBold});format.ItemsSource=formats.Order().ToArray();format.SelectedIndex=0;options.Children.Add(format);
+            options.Children.Add(L10n.Label(new TextBlock{Text="Output format",FontWeight=FontWeights.SemiBold}));format.ItemsSource=formats.Order().ToArray();format.SelectedIndex=0;options.Children.Add(format);
         }
         if(tool is "trimVideo" or "trimAudio" or "redactAudio"){Field("Start",0);Field("End",duration);}
         if(tool=="resize"){Field("Width",bitmap?.PixelWidth??1280);Field("Height",bitmap?.PixelHeight??720);}
@@ -87,12 +87,12 @@ public sealed partial class ToolEditor:Window
         if(tool=="annotate")
         {
             drawingTool.ItemsSource=new[]{"Marker","Rectangle","Arrow","Line","Ellipse","Text","Number","Callout","Magnifier","Image","Freehand","Select / Move"};drawingTool.SelectedIndex=0;
-            options.Children.Add(new TextBlock{Text="Drawing tool"});options.Children.Add(drawingTool);TextField("Annotation text","Note");TextField("Ink color","#FF5200");Field("Stroke width",3);Field("Font size",24);options.Children.Add(new TextBlock{Text="Drag to draw. One active tool per stroke.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)});
+            options.Children.Add(L10n.Label(new TextBlock{Text="Drawing tool"}));options.Children.Add(drawingTool);TextField("Annotation text","Note");TextField("Ink color","#FF5200");Field("Stroke width",3);Field("Font size",24);options.Children.Add(L10n.Label(new TextBlock{Text="Drag to draw. One active tool per stroke.",TextWrapping=TextWrapping.Wrap,Margin=new(4,12,4,12)}));
             options.Children.Add(MainWindow.Button("Undo last mark",()=>{UndoAnnotation();}));
         }
         BuildPhotoOptions(inputs??[input]);BuildInputOrder(inputs??[input]);BuildCropOptions();BuildCompressionOptions();BuildDocumentOptions();BuildMediaOptions();
-        if(options.Children.Count==1)options.Children.Add(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)});
-        var footer=new DockPanel{Margin=new(0,20,0,0),LastChildFill=false};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Primary;save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);var cancel=MainWindow.Button("Cancel",()=>DialogResult=false);DockPanel.SetDock(cancel,Dock.Left);footer.Children.Add(cancel);var reset=MainWindow.Button("↶ Reset",Reset);DockPanel.SetDock(reset,Dock.Left);footer.Children.Add(reset);var safe=new TextBlock{Text="Original stays safe",Foreground=Theme.Brush("Muted"),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new(0,0,16,0)};DockPanel.SetDock(safe,Dock.Right);footer.Children.Add(safe);
+        if(options.Children.Count==1)options.Children.Add(L10n.Label(new TextBlock{Text="Ready to make a fresh copy. No extra settings needed.",TextWrapping=TextWrapping.Wrap,Margin=new(4,20,4,0)}));
+        var footer=new DockPanel{Margin=new(0,20,0,0),LastChildFill=false};Grid.SetRow(footer,2);grid.Children.Add(footer);var save=MainWindow.Button("Save new copy  ↗",Save);save.Background=Theme.Primary;save.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);var cancel=MainWindow.Button("Cancel",()=>DialogResult=false);DockPanel.SetDock(cancel,Dock.Left);footer.Children.Add(cancel);var reset=MainWindow.Button("↶ Reset",Reset);DockPanel.SetDock(reset,Dock.Left);footer.Children.Add(reset);var safe=L10n.Label(new TextBlock{Text="Original stays safe",Foreground=Theme.Brush("Muted"),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new(0,0,16,0)});DockPanel.SetDock(safe,Dock.Right);footer.Children.Add(safe);
         var clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
         clock.Tick+=(_,_)=>{if(!scrubber.IsMouseCaptureWithin)scrubber.Value=Math.Clamp(player.Position.TotalSeconds,0,duration);if(playing){time.Text=$"{player.Position:mm\\:ss\\.fff} / {TimeSpan.FromSeconds(duration):mm\\:ss\\.fff}";if(playingRange&&player.Position.TotalSeconds>=Value("End",duration)){player.Pause();playing=false;playingRange=false;}}};
         player.MediaEnded+=(_,_)=>{playing=false;player.Pause();};clock.Start();
@@ -100,7 +100,7 @@ public sealed partial class ToolEditor:Window
     }
     private static string Number(double n)=>n.ToString("0.###",CultureInfo.CurrentCulture);
     private void Field(string name,double value)=>TextField(name,Number(value));
-    private void TextField(string name,string value){options.Children.Add(new TextBlock{Text=name,Margin=new(4,12,4,0)});var box=new TextBox{Text=value};System.Windows.Automation.AutomationProperties.SetAutomationId(box,name);if(name is "Start" or "End")box.LostKeyboardFocus+=(_,_)=>{try{SyncTimeline();}catch(ArgumentException){}};fields.Add(name,box);defaults.Add(name,value);options.Children.Add(box);}
+    private void TextField(string name,string value){options.Children.Add(L10n.Label(new TextBlock{Text=name,Margin=new(4,12,4,0)}));var box=new TextBox{Text=value};System.Windows.Automation.AutomationProperties.SetAutomationId(box,name);if(name is "Start" or "End")box.LostKeyboardFocus+=(_,_)=>{try{SyncTimeline();}catch(ArgumentException){}};fields.Add(name,box);defaults.Add(name,value);options.Children.Add(box);}
     private void Reset(){foreach(var pair in defaults)fields[pair.Key].Text=pair.Value;while(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);selection=null;activeRectangle=null;activeStroke=null;photoRegions.Clear();videoRegions.Clear();bleepRanges.Clear();ReloadRanges();markNumber=1;flipHorizontal.IsChecked=false;flipVertical.IsChecked=false;QueuePhotoPreview();timeline.Set(duration,0,duration);if(media is not null){if(processedPlayback)PlayOriginalPreview();Seek(0);}}
     private double Value(string key,double fallback=0)
     {

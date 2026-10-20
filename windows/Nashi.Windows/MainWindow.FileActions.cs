@@ -14,8 +14,8 @@ public sealed partial class MainWindow
         {
             switch(action)
             {
-                case "copy":FileActions.Copy(paths);status.Text="Files copied. Paste them wherever you need.";break;
-                case "copyPath":FileActions.CopyPaths(paths);status.Text="File paths copied.";break;
+                case "copy":FileActions.Copy(paths);L10n.SetText(status,"Files copied. Paste them wherever you need.");break;
+                case "copyPath":FileActions.CopyPaths(paths);L10n.SetText(status,"File paths copied.");break;
                 case "terminal":FileActions.Terminal(paths[0]);break;
                 case "share":ShowMain();FileActions.Share(this,paths);break;
                 case "float":

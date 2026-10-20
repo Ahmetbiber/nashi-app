@@ -11,9 +11,9 @@ public sealed partial class ToolEditor
     private void BuildDocumentOptions()
     {
         if(tool=="splitPDF"){Field("Pages per file",1);TextField("Page ranges","");}
-        if(FeatureCatalog.Extension(input)=="pdf"){options.Children.Add(new TextBlock{Text="PDF password (if needed)",Margin=new(4,12,4,0)});options.Children.Add(archivePassword);}
+        if(FeatureCatalog.Extension(input)=="pdf"){options.Children.Add(L10n.Label(new TextBlock{Text="PDF password (if needed)",Margin=new(4,12,4,0)}));options.Children.Add(archivePassword);}
         if(tool is "convert"&&media is null&&bitmap is null)
-        {Field("DPI",144);options.Children.Add(new TextBlock{Text="PDF → Office layout"});options.Children.Add(documentLayout);options.Children.Add(new TextBlock{Text="EPUB layout"});options.Children.Add(epubLayout);}
-        if(tool=="extractArchive"||FeatureCatalog.IsArchive(input)){options.Children.Add(new TextBlock{Text="Archive password (if needed)",Margin=new(4,12,4,0)});options.Children.Add(archivePassword);}
+        {Field("DPI",144);options.Children.Add(L10n.Label(new TextBlock{Text="PDF → Office layout"}));options.Children.Add(documentLayout);options.Children.Add(L10n.Label(new TextBlock{Text="EPUB layout"}));options.Children.Add(epubLayout);}
+        if(tool=="extractArchive"||FeatureCatalog.IsArchive(input)){options.Children.Add(L10n.Label(new TextBlock{Text="Archive password (if needed)",Margin=new(4,12,4,0)}));options.Children.Add(archivePassword);}
     }
 }

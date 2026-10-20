@@ -8,9 +8,9 @@ public sealed partial class ToolEditor
     private string? cropGesture;private Rect cropBefore;private readonly ComboBox aspectRatio=new(){ItemsSource=new[]{"Free","1:1","16:9","9:16","4:3","3:4"},SelectedIndex=0};
     private void BuildCropOptions()
     {
-        if(tool is not ("crop" or "cropVideo"))return;options.Children.Add(new TextBlock{Text="Aspect ratio",Margin=new(4,12,4,0)});options.Children.Add(aspectRatio);
+        if(tool is not ("crop" or "cropVideo"))return;options.Children.Add(L10n.Label(new TextBlock{Text="Aspect ratio",Margin=new(4,12,4,0)}));options.Children.Add(aspectRatio);
         aspectRatio.SelectionChanged+=(_,_)=>{var ratio=CropRatio();if(ratio is null)return;var w=Math.Min(drawing.Width,drawing.Height*ratio.Value);var h=w/ratio.Value;SetCrop(new((drawing.Width-w)/2,(drawing.Height-h)/2,w,h));};
-        options.Children.Add(new TextBlock{Text="Drag inside to move. Drag near a corner to resize. Drag outside to start a new selection.",TextWrapping=TextWrapping.Wrap,Margin=new(4,10,4,10)});
+        options.Children.Add(L10n.Label(new TextBlock{Text="Drag inside to move. Drag near a corner to resize. Drag outside to start a new selection.",TextWrapping=TextWrapping.Wrap,Margin=new(4,10,4,10)}));
     }
     private double? CropRatio(){if(aspectRatio.SelectedItem is not string value||value=="Free")return null;var p=value.Split(':');return double.Parse(p[0],System.Globalization.CultureInfo.InvariantCulture)/double.Parse(p[1],System.Globalization.CultureInfo.InvariantCulture);}
     private bool BeginCropGesture(Point point)

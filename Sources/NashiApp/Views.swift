@@ -26,6 +26,7 @@ struct SettingsView:View {
     @State private var launchError:String?
     @AppStorage("reduceAnimations") private var reduceAnimations=false
     @AppStorage("appAppearance") private var appAppearance="system"
+    @AppStorage("appLanguage") private var appLanguage="en"
     @AppStorage("windowManagementEnabled") private var windowManagementEnabled=true
     @State private var windowAccessibility=AXIsProcessTrusted()
     @Environment(\.accessibilityReduceMotion) private var systemReducedMotion
@@ -60,6 +61,7 @@ struct SettingsView:View {
         .onReceive(NotificationCenter.default.publisher(for:.showUpdateSettings)) { _ in section = .updates }
         .onChange(of:feedback) { UserDefaults.standard.set($0,forKey:"sound") }
         .onChange(of:appAppearance) { NashiAppearance.apply($0) }
+        .onChange(of:appLanguage) { _ in NotificationCenter.default.post(name:.nashiLanguageChanged,object:nil) }
         .onChange(of:terminalApplication) { UserDefaults.standard.set($0=="com.googlecode.iterm2" ? "iTerm2":"Terminal",forKey:"terminalApp") }
     }
     private var sidebar:some View {
@@ -68,7 +70,7 @@ struct SettingsView:View {
                 VStack(spacing:5) {
                     ForEach(SettingsSection.allCases) { item in
                         Button { section=item } label:{
-                            HStack(spacing:10) { Image(systemName:item.symbol).frame(width:19);Text(item.rawValue);Spacer() }
+                            HStack(spacing:10) { Image(systemName:item.symbol).frame(width:19);LText(item.rawValue).lineLimit(1).layoutPriority(1);Spacer() }
                                 .font(.system(size:12,weight:section==item ? .semibold:.medium,design:.rounded))
                                 .foregroundStyle(section==item ? NashiPalette.forest:Color.secondary)
                                 .padding(.horizontal,13).padding(.vertical,12)
@@ -78,13 +80,14 @@ struct SettingsView:View {
                 }
                 Spacer()
                 Label("Local by design",systemImage:"lock.shield").font(.system(size:10,weight:.medium,design:.rounded)).foregroundStyle(.secondary).padding(.bottom,17)
-            }.padding(.horizontal,16).frame(width:180).background(NashiPalette.inset.opacity(0.6))
+            }.padding(.horizontal,16).frame(width:204).background(NashiPalette.inset.opacity(0.6))
     }
     private var general:some View {
         ScrollView { VStack(alignment:.leading,spacing:20) {
             NashiPageHeading(eyebrow:"General",title:"Your kind of flow.",subtitle:"A few small preferences. A smoother everyday.").padding(.bottom,4)
             GroupBox {
                 VStack(spacing:16) {
+                    HStack { Text("Language");Spacer();Picker("Language",selection:$appLanguage) { Text(verbatim:"English").tag("en");Text(verbatim:"Türkçe").tag("tr") }.labelsHidden().frame(width:230).accessibilityIdentifier("AppLanguage") }
                     HStack { Text("Appearance");Spacer();Picker("Appearance",selection:$appAppearance) { Text("System").tag("system");Text("Light").tag("light");Text("Dark").tag("dark") }.labelsHidden().pickerStyle(.segmented).frame(width:230) }
                     HStack { Text("Wheel finish");Spacer();Picker("Wheel finish",selection:$fanTheme) { Text("Glass").tag("glass");Text("Solid").tag("metallic") }.labelsHidden().pickerStyle(.segmented).frame(width:230) }
                     Divider()
@@ -106,8 +109,8 @@ struct SettingsView:View {
             GroupBox("Drag shortcuts") {
                 VStack(alignment:.leading,spacing:16) {
                     ForEach(WheelShortcut.allCases) { wheel in HStack {
-                        Text(wheel.title);Spacer()
-                        Picker(wheel.title,selection:shortcut(wheel)) { ForEach(ModifierPreferences.available(for:wheel)) { chord in Text("\(chord.symbols)  \(chord.title)").tag(chord.rawValue) } }.labelsHidden().frame(maxWidth:240)
+                        LText(wheel.title);Spacer()
+                        Picker(LocalizedStringKey(wheel.title),selection:shortcut(wheel)) { ForEach(ModifierPreferences.available(for:wheel)) { chord in Text("\(chord.symbols)  \(chord.title)").tag(chord.rawValue) } }.labelsHidden().frame(maxWidth:240)
                     } }
                     Text("Tap the chosen modifier combination while dragging files.").font(.caption).foregroundStyle(.secondary)
                 }.padding(10)
@@ -153,7 +156,7 @@ struct SettingsView:View {
                 List(selection:$selectedFormat) {
                     ForEach(FormatPreferenceItem.groups,id:\.0) { group in
                         let entries=FormatPreferenceItem.all.filter{$0.group==group.0 && (formatSearch.isEmpty || $0.title.localizedCaseInsensitiveContains(formatSearch) || $0.id.localizedCaseInsensitiveContains(formatSearch))}
-                        if !entries.isEmpty { Section(group.0) { ForEach(entries) { item in Text(item.id=="gz" ? "GZIP":item.id.uppercased()).tag(item.id) } } }
+                        if !entries.isEmpty { Section(LocalizedStringKey(group.0)) { ForEach(entries) { item in Text(item.id=="gz" ? "GZIP":item.id.uppercased()).tag(item.id) } } }
                     }
                 }.listStyle(.sidebar)
             }.frame(width:154).background(NashiPalette.surface)
@@ -194,13 +197,13 @@ private struct FormatSettingsDetail:View {
     var body:some View {
         ScrollView { VStack(alignment:.leading,spacing:20) {
             NashiPageHeading(eyebrow:"Format preferences",title:"\(format.title) \(format.isInputOnly ? "input":"exports")",subtitle:format.isInputOnly ? "Bring this format in, then choose its next form.":"Your go-to settings whenever you save a \(format.title) file.")
-            Text(format.compatibilityLabel).font(.caption).foregroundStyle(.secondary)
+            LText(format.compatibilityLabel).font(.caption).foregroundStyle(.secondary)
             if format.isInputOnly { Text("This format can be imported. Choose an output format in the sidebar to configure its defaults.").foregroundStyle(.secondary).padding(.vertical,14) }
             else if hasControls {
                 GroupBox { VStack(alignment:.leading,spacing:18) {
                     HStack { Text("Conversion Settings").font(.headline);Spacer();Button("Restore Defaults") { preferences.restoreDefaults(for:format.id) }.controlSize(.small) }
                     Divider()
-                    if hasQuality { row("Quality") { Picker("Quality",selection:profile(\.quality)) { ForEach(OutputQuality.allCases) { Text($0.title).tag($0) } }.labelsHidden() } }
+                    if hasQuality { row("Quality") { Picker("Quality",selection:profile(\.quality)) { ForEach(OutputQuality.allCases) { LText($0.title).tag($0) } }.labelsHidden() } }
                     if hasMetadata { Toggle("Preserve metadata",isOn:profile(\.preserveMetadata)) }
                     if hasAudioBitrate { row("Bitrate") { Picker("Audio bitrate",selection:profile(\.audioBitrate)) { ForEach([128,192,256,320],id:\.self) { Text("\($0) kbps").tag($0) } }.labelsHidden() } }
                     if hasDepth { row("Sample depth") { Picker("Sample depth",selection:profile(\.audioSampleDepth)) { Text("Match Source").tag("matchSource");Text("16-bit integer").tag("pcm16");Text("24-bit integer").tag("pcm24");Text("32-bit integer").tag("pcm32");Text("32-bit float").tag("float32") }.labelsHidden() } }
@@ -238,7 +241,7 @@ private struct FormatSettingsDetail:View {
     private func profile<T>(_ key:WritableKeyPath<OutputFormatProfile,T>)->Binding<T> {
         Binding(get:{preferences.profile(for:format.id)[keyPath:key]},set:{value in var p=preferences.profile(for:format.id);p[keyPath:key]=value;preferences.save(p,for:format.id)})
     }
-    private func row<Content:View>(_ title:String,@ViewBuilder content:()->Content)->some View { HStack(alignment:.center,spacing:12) { Text(title);Spacer(minLength:8);content().frame(maxWidth:260) } }
+    private func row<Content:View>(_ title:String,@ViewBuilder content:()->Content)->some View { HStack(alignment:.center,spacing:12) { LText(title);Spacer(minLength:8);content().frame(maxWidth:260) } }
     private func compressionPicker(_ binding:Binding<String>)->some View { Picker("Compression",selection:binding) { Text("Faster").tag("fast");Text("Balanced").tag("balanced");Text("Smallest").tag("maximum") }.labelsHidden() }
 }
 
@@ -255,7 +258,7 @@ private struct FolderSettingsView:View {
                 VStack(alignment:.leading,spacing:3) { Text(URL(fileURLWithPath:grant.path).lastPathComponent);Text(grant.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
                 Spacer();Button { FolderAccessPreferences.remove(grant);refresh() } label:{Image(systemName:"minus.circle")}.buttonStyle(.plain).help("Remove folder access")
             } } }.listStyle(.inset) }
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { LText(error).font(.caption).foregroundStyle(.red) }
             HStack { Button("Allow Folder…") { choose(home:false) };Button("Allow Home Folder Access…") { choose(home:true) };Spacer() }
         }.padding(24).onAppear(perform:refresh)
     }
@@ -276,7 +279,7 @@ private struct CompatibilitySettingsView:View {
         VStack(alignment:.leading,spacing:20) {
             Text("Format Compatibility").font(.title2.weight(.semibold))
             Text("Choose an input format to see its available outputs.").foregroundStyle(.secondary)
-            Picker("Input format",selection:$source) { ForEach(FormatPreferenceItem.all.filter{!$0.isOutputOnly}) { Text($0.title).tag($0.id) } }.frame(width:270)
+            Picker("Input format",selection:$source) { ForEach(FormatPreferenceItem.all.filter{!$0.isOutputOnly}) { LText($0.title).tag($0.id) } }.frame(width:270)
             Divider()
             Text("Convert to").font(.headline)
             LazyVGrid(columns:[GridItem(.adaptive(minimum:105))],alignment:.leading,spacing:12) { ForEach(targets,id:\.self) { format in Button { onSelectFormat(format) } label:{ Text(format=="gz" ? "GZIP":format.uppercased()).frame(maxWidth:.infinity).padding(.vertical,9) } } }

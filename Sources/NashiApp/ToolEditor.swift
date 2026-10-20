@@ -98,7 +98,7 @@ struct ToolEditor:View {
                     WindowDragRegion()
                     HStack(spacing:13) {
                         Image(systemName:FeatureCatalog.toolSymbols[tool] ?? "slider.horizontal.3").font(.system(size:19,weight:.medium)).foregroundStyle(Color.nashi).frame(width:44,height:44).background(NashiPalette.sand,in:RoundedRectangle(cornerRadius:14))
-                        VStack(alignment:.leading,spacing:5) { Text(tool.title).font(.system(size:21,weight:.bold,design:.rounded)).tracking(-0.5);Text(toolHint).font(.system(size:11)).foregroundStyle(.secondary) }
+                        VStack(alignment:.leading,spacing:5) { LText(tool.title).font(.system(size:21,weight:.bold,design:.rounded)).tracking(-0.5);LText(toolHint).font(.system(size:11)).foregroundStyle(.secondary) }
                         Spacer()
                         NashiPill(title:inputs.count>1 ? "\(inputs.count) files":input?.pathExtension.uppercased() ?? "FILE",symbol:"doc")
                     }.allowsHitTesting(false)
@@ -119,10 +119,10 @@ struct ToolEditor:View {
                 }
                 ScrollView {
                     VStack(alignment:.leading,spacing:18) {
-                        Text(sideBySide ? "MAKE IT YOURS":"\(inputs.count>1 ? "\(inputs.count) FILES":input?.lastPathComponent ?? "")").font(.system(size:10,weight:.bold,design:.rounded)).tracking(0.8).foregroundStyle(.secondary).lineLimit(2)
+                        Text(sideBySide ? L10n.text("MAKE IT YOURS"):"\(inputs.count>1 ? "\(inputs.count) FILES":input?.lastPathComponent ?? "")").font(.system(size:10,weight:.bold,design:.rounded)).tracking(0.8).foregroundStyle(.secondary).lineLimit(2)
                         if isLoading { ProgressView("Preparing your file…").font(.caption) }
                         controls.disabled(isLoading || !readyToApply)
-                        if let previewError { HStack { Text(previewError).font(.callout).foregroundStyle(.orange);Spacer();Button { self.previewError=nil } label:{Image(systemName:"xmark")}.accessibilityLabel("Dismiss preview error") } }
+                        if let previewError { HStack { LText(previewError).font(.callout).foregroundStyle(.orange);Spacer();Button { self.previewError=nil } label:{Image(systemName:"xmark")}.accessibilityLabel("Dismiss preview error") } }
                     }.padding(24).frame(maxWidth:sideBySide ? .infinity:720,alignment:.leading)
                 }.frame(width:sideBySide ? 380:nil).frame(maxWidth:sideBySide ? nil:.infinity,maxHeight:.infinity)
             }
@@ -130,7 +130,7 @@ struct ToolEditor:View {
                 VStack(alignment:.leading,spacing:6) {
                     JobProgressView(state:state)
                     if tool == .compress,!state.working,!state.outputs.isEmpty {
-                        Text(compressionResultText).font(.caption).foregroundStyle(.secondary)
+                        LText(compressionResultText).font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.horizontal,20).padding(.vertical,10)
             }
@@ -139,7 +139,7 @@ struct ToolEditor:View {
                 Button { reset() } label:{Label("Reset",systemImage:"arrow.counterclockwise")}.buttonStyle(NashiButtonStyle(.quiet))
                 Spacer()
                 Label("Original stays safe",systemImage:"lock").font(.system(size:10)).foregroundStyle(.secondary)
-                Button { apply() } label:{Label(primaryTitle,systemImage:"arrow.up.right")}.buttonStyle(NashiButtonStyle(.primary)).disabled(!canApply).help(isCropTool ? "Save a cropped copy (Return or ⌘S)":"Save a fresh copy (⌘S)")
+                Button { apply() } label:{Label { LText(primaryTitle) } icon:{ Image(systemName:"arrow.up.right") }}.buttonStyle(NashiButtonStyle(.primary)).disabled(!canApply).help(isCropTool ? "Save a cropped copy (Return or ⌘S)":"Save a fresh copy (⌘S)")
             }.padding(.horizontal,20).padding(.vertical,15)
         }.frame(minWidth:sideBySide ? 900:480,minHeight:420).background(NashiPalette.canvas).tint(.nashi).buttonStyle(NashiButtonStyle(.secondary,compact:true)).textFieldStyle(.roundedBorder)
             .nashiAnimation(value:state.working).task(id:loadRevision) { await load() }
@@ -262,7 +262,7 @@ struct ToolEditor:View {
     }
     var compressionControls:some View {
         VStack(alignment:.leading,spacing:18) {
-            if let input,let size=try? input.resourceValues(forKeys:[.fileSizeKey]).fileSize { Text("Original size: \(ByteCountFormatter.string(fromByteCount:Int64(size),countStyle:.file))").fontWeight(.semibold) }
+            if let input,let size=try? input.resourceValues(forKeys:[.fileSizeKey]).fileSize { LText("Original size: \(ByteCountFormatter.string(fromByteCount:Int64(size),countStyle:.file))").fontWeight(.semibold) }
             Text("Compression preset").font(.headline)
             Picker("Preset",selection:$preset) { Text("Balanced").tag("Balanced");Text("Strong").tag("Strong") }.pickerStyle(.segmented).labelsHidden()
             Text(preset=="Balanced" ? "Smaller files with less quality loss.":"Smaller files with stronger compression.").foregroundStyle(.secondary).font(.callout)
@@ -286,7 +286,7 @@ struct ToolEditor:View {
             if tool == .cropImage,inputs.count>1 {
                 Text("This crop applies to every selected image and must fit inside each one.").font(.caption).foregroundStyle(.secondary)
             }
-            Picker("Aspect ratio",selection:$aspect) { ForEach(["Free","1:1","16:9","9:16","4:3","3:4"],id:\.self) { Text($0) } }.pickerStyle(.segmented).onChange(of:aspect) { value in
+            Picker("Aspect ratio",selection:$aspect) { ForEach(["Free","1:1","16:9","9:16","4:3","3:4"],id:\.self) { LText($0) } }.pickerStyle(.segmented).onChange(of:aspect) { value in
                 guard value != "Free" else { return };let a=value.split(separator:":").compactMap{Double($0)};if a.count==2 { let ratio=a[0]/a[1];let w=min(imageSize.width,imageSize.height*ratio),h=w/ratio;setCrop(EditRect(x:(imageSize.width-w)/2,y:(imageSize.height-h)/2,width:w,height:h)) }
             }
             HStack { number("W",value:cropDimension(width:true));number("H",value:cropDimension(width:false));Text("px").foregroundStyle(.secondary) }
@@ -321,7 +321,7 @@ struct ToolEditor:View {
             HStack { Button("Rotate Left") { options.rotation-=90;swap(&width,&height) };Button("Rotate Right") { options.rotation+=90;swap(&width,&height) };Toggle("Flip",isOn:$options.flipHorizontal) }
             dimensionFields
             Group {
-                Text("Light").font(.headline).foregroundStyle(.secondary)
+                Text("Lighting").font(.headline).foregroundStyle(.secondary)
                 slider("Exposure",value:$options.imageAdjustments.exposure,range:-3...3,unit:"EV")
                 slider("Brightness",value:$options.imageAdjustments.brightness,range:-1...1)
                 slider("Contrast",value:relative($options.imageAdjustments.contrast),range:-1...1)
@@ -355,19 +355,19 @@ struct ToolEditor:View {
     }
     var annotationControls:some View {
         VStack(alignment:.leading,spacing:12) {
-            Picker("Tool",selection:$annotationKind) { ForEach(ImageAnnotationKind.allCases,id:\.self) { Text($0.rawValue.capitalized).tag($0) } }.onChange(of:annotationKind) { _ in selectingAnnotations=false }
+            Picker("Tool",selection:$annotationKind) { ForEach(ImageAnnotationKind.allCases,id:\.self) { LText($0.rawValue.capitalized).tag($0) } }.onChange(of:annotationKind) { _ in selectingAnnotations=false }
             Toggle(isOn:$selectingAnnotations) { Label("Select / Move",systemImage:"cursorarrow") }.toggleStyle(.button)
             TextField("Text or callout",text:$annotationText);ColorPicker("Color",selection:$annotationColor)
             Picker("Font",selection:$annotationFontFamily) { Text("System").tag("system");Text("Rounded").tag("rounded");Text("Serif").tag("serif");Text("Monospaced").tag("monospaced") }
             slider("Stroke width",value:$annotationStroke,range:1...40,unit:"px");slider("Text size",value:$annotationFont,range:8...160,unit:"px")
-            Text(selectingAnnotations ? "Drag an existing annotation to move it; drag its handles to resize. Turn off Select / Move to draw.":"Drag to draw with the selected tool. Use Select / Move to edit an existing annotation.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+            LText(selectingAnnotations ? "Drag an existing annotation to move it; drag its handles to resize. Turn off Select / Move to draw.":"Drag to draw with the selected tool. Use Select / Move to edit an existing annotation.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
             HStack { Button("Undo") { if !options.imageAnnotations.isEmpty { options.imageAnnotations.removeLast() } };Button("Clear") { options.imageAnnotations=[] } }
             ForEach(Array(options.imageAnnotations.enumerated()),id:\.offset) { index,a in HStack { Text("\(index+1). \(a.kind.rawValue.capitalized)");Spacer();Button("Delete") { options.imageAnnotations.remove(at:index) } } }
         }
     }
     var frameControls:some View {
         VStack(alignment:.leading,spacing:14) {
-            Picker("Background",selection:frame(\.backdrop)) { ForEach(ImageBackdrop.allCases,id:\.self) { Text($0.rawValue.capitalized).tag($0) } }
+            Picker("Background",selection:frame(\.backdrop)) { ForEach(ImageBackdrop.allCases,id:\.self) { LText($0.rawValue.capitalized).tag($0) } }
             if options.imageFrame?.backdrop == .gradient { HStack { ForEach(0..<3) { index in
                 let colors=[["#FF6B79","#FFD85C","#895CE0"],["#4B79A1","#283E51"],["#A8FF78","#78FFD6"]][index]
                 Button { var f=options.imageFrame ?? .init();f.backdrop = .gradient;f.gradientColors=colors;options.imageFrame=f } label:{RoundedRectangle(cornerRadius:6).fill(LinearGradient(colors:colors.map{Color(cgColor:ImageEngine.color($0))},startPoint:.topLeading,endPoint:.bottomTrailing)).frame(width:60,height:36)}.buttonStyle(.plain)
@@ -386,7 +386,7 @@ struct ToolEditor:View {
     }
     var collageControls:some View {
         VStack(alignment:.leading,spacing:14) {
-            Picker("Style",selection:collage(\.layout)) { ForEach(CollageLayout.allCases,id:\.self) { Text($0.rawValue.capitalized).tag($0) } }
+            Picker("Style",selection:collage(\.layout)) { ForEach(CollageLayout.allCases,id:\.self) { LText($0.rawValue.capitalized).tag($0) } }
             Stepper("Columns: \(options.collage?.columns ?? 2)",value:collage(\.columns),in:1...12)
             Picker("Canvas",selection:collage(\.aspectRatio)) { Text("Square · 1:1").tag(1.0);Text("Landscape · 16:9").tag(16.0/9);Text("Portrait · 9:16").tag(9.0/16);Text("Portrait · 4:5").tag(4.0/5) }
             number("Canvas width",value:collage(\.width))
@@ -406,14 +406,14 @@ struct ToolEditor:View {
             if tool == .redactVideo { timeRangeFields }
             Text("\(options.redactions.count) area\(options.redactions.count==1 ? "":"s") selected")
             if tool == .redactVideo { ForEach(Array(options.videoRedactions.enumerated()),id:\.offset) { index,redaction in HStack {
-                Text("Area \(index+1)");TextField("Start",value:Binding(get:{options.videoRedactions[index].start},set:{options.videoRedactions[index].start=$0}),format:.number)
+                LText("Area \(index+1)");TextField("Start",value:Binding(get:{options.videoRedactions[index].start},set:{options.videoRedactions[index].start=$0}),format:.number)
                 TextField("End",value:Binding(get:{options.videoRedactions[index].end ?? duration},set:{options.videoRedactions[index].end=$0}),format:.number)
             } } }
             Button("Undo Area") { if !options.redactions.isEmpty { options.redactions.removeLast() };if tool == .redactVideo,!options.videoRedactions.isEmpty { options.videoRedactions.removeLast() } }
         }
     }
     var trimControls:some View {
-        VStack(spacing:14) { timeRangeFields;if tool == .trimAudio { Toggle("Remove silence from beginning and end",isOn:$options.trimSilence);if options.trimSilence { slider("Silence threshold",value:$options.silenceThresholdDb,range:-80 ... -10,unit:"dB") } };Text("Selected duration: \(timeLabel(max(0,(options.end ?? duration)-options.start)))").font(.caption).foregroundStyle(.secondary) }
+        VStack(spacing:14) { timeRangeFields;if tool == .trimAudio { Toggle("Remove silence from beginning and end",isOn:$options.trimSilence);if options.trimSilence { slider("Silence threshold",value:$options.silenceThresholdDb,range:-80 ... -10,unit:"dB") } };LText("Selected duration: \(timeLabel(max(0,(options.end ?? duration)-options.start)))").font(.caption).foregroundStyle(.secondary) }
     }
     var timeRangeFields:some View {
         HStack { Text("Start");TextField("Seconds",value:$options.start,format:.number.precision(.fractionLength(3)));Text("End");TextField("Seconds",value:Binding(get:{options.end ?? duration},set:{options.end=$0}),format:.number.precision(.fractionLength(3))) }.textFieldStyle(.roundedBorder)
@@ -428,7 +428,7 @@ struct ToolEditor:View {
             ScrollView(.horizontal,showsIndicators:false) {
                 HStack(spacing:5) { ForEach(Array(splitIntervals.enumerated()),id:\.offset) { index,range in
                     Button { selectedSplitClip=index;if processedPlayback { playOriginal(play:false) };seek(range.start) } label:{
-                        VStack(spacing:4) { Text("Clip \(index+1)").font(.caption.bold());Text(timeLabel(range.end-range.start)).font(.caption2.monospacedDigit()) }.frame(width:max(65,300*(range.end-range.start)/max(0.001,duration)),height:46).strikethrough(options.discardedClips.contains(index)).foregroundStyle(options.discardedClips.contains(index) ? Color.secondary:Color.primary).background(selectedSplitClip==index ? Color.nashi.opacity(0.3):Color.primary.opacity(0.08)).cornerRadius(6)
+                        VStack(spacing:4) { LText("Clip \(index+1)").font(.caption.bold());Text(timeLabel(range.end-range.start)).font(.caption2.monospacedDigit()) }.frame(width:max(65,300*(range.end-range.start)/max(0.001,duration)),height:46).strikethrough(options.discardedClips.contains(index)).foregroundStyle(options.discardedClips.contains(index) ? Color.secondary:Color.primary).background(selectedSplitClip==index ? Color.nashi.opacity(0.3):Color.primary.opacity(0.08)).cornerRadius(6)
                     }.buttonStyle(.plain).opacity(options.discardedClips.contains(index) ? 0.4:1)
                 } }.focusable()
             }
@@ -473,7 +473,7 @@ struct ToolEditor:View {
             TextField("Search metadata",text:$metadataSearch)
             ForEach(metadataGroups,id:\.self) { group in
                 VStack(alignment:.leading,spacing:8) {
-                    Text(group).font(.headline).foregroundStyle(.secondary)
+                    LText(group).font(.headline).foregroundStyle(.secondary)
                     ForEach(visibleMetadata.filter{metadataGroup($0)==group},id:\.self) { key in HStack(alignment:.top) {
                         Text(key).font(.caption).frame(width:130,alignment:.leading).textSelection(.enabled)
                         if isGIFMetadata || (usesImageMetadata && !ImageMetadataEngine.isWritable(key)) { Text(metadata[key] ?? "").frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled) }
@@ -530,7 +530,7 @@ struct ToolEditor:View {
             if (audio && tool != .audioToVideo && tool != .trimAudio) || tool == .redactVideo { HStack { Button("Original") { playOriginal() };Button(previewBusy ? "Preparing…":"Preview Processed") { processedPreview() }.disabled(previewBusy || (tool == .redactVideo || tool == .redactAudio) && !canApply) } }
             if tool == .redactVideo,processedPlayback { Text("Processed preview. Choose Original to edit areas.").font(.caption).foregroundStyle(.secondary) }
             if tool == .trimAudio || tool == .trimVideo { Button("Play Selected Range",action:playSelectedRange).help("Play selected range (⇧Space)") }
-            Text(mediaShortcutHint).font(.system(size:10)).foregroundStyle(.secondary)
+            LText(mediaShortcutHint).font(.system(size:10)).foregroundStyle(.secondary)
                 .fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
         }
     }
@@ -552,7 +552,7 @@ struct ToolEditor:View {
                 MediaTimeRangeLane(duration:duration,current:playhead,ranges:options.audioRedactions,label:options.audioMode == "mute" ? "Mute":"Bleep",onSeek:seek,onChange:{i,r in options.audioRedactions[i]=r},onAdd:{options.audioRedactions.append($0)})
             } else if tool == .redactVideo {
                 ForEach(Array(options.videoRedactions.enumerated()),id:\.offset) { i,r in
-                    HStack { Text("Area \(i+1)").font(.caption).frame(width:45);MediaTimeRangeLane(duration:duration,current:playhead,ranges:[TimeRange(start:r.start,end:r.end ?? duration)],label:"",onSeek:seek,onChange:{_,range in options.videoRedactions[i].start=range.start;options.videoRedactions[i].end=range.end}) }
+                    HStack { LText("Area \(i+1)").font(.caption).frame(width:45);MediaTimeRangeLane(duration:duration,current:playhead,ranges:[TimeRange(start:r.start,end:r.end ?? duration)],label:"",onSeek:seek,onChange:{_,range in options.videoRedactions[i].start=range.start;options.videoRedactions[i].end=range.end}) }
                 }
             } else if let source=playbackURL ?? input,tool == .splitVideo || tool == .videoSnapshots {
                 VideoPointTimeline(source:source,duration:duration,current:playhead,points:tool == .splitVideo ? options.splitPoints:[],onSeek:seek,onChange:{i,time in options.equalClips=nil;let lower=i>0 ? options.splitPoints[i-1]+0.05:0.05;let upper=i+1<options.splitPoints.count ? options.splitPoints[i+1]-0.05:duration-0.05;options.splitPoints[i]=min(max(time,lower),max(lower,upper))})
@@ -560,7 +560,7 @@ struct ToolEditor:View {
         }
     }
     func channelWaveform(_ title:String,peaks:[Float],gain:Double)->some View {
-        HStack { Text(title).font(.caption.bold()).frame(width:15);AudioWaveformView(peaks:peaks.map{min(1,$0*Float(gain))},duration:duration,current:playhead,selection:nil,redactions:[],rangeEnabled:false,onSeek:seek,onRange:{_,_ in}).frame(height:50) }
+        HStack { LText(title).font(.caption.bold()).frame(width:15);AudioWaveformView(peaks:peaks.map{min(1,$0*Float(gain))},duration:duration,current:playhead,selection:nil,redactions:[],rangeEnabled:false,onSeek:seek,onRange:{_,_ in}).frame(height:50) }
     }
     func load() async {
         guard let input else { return }
@@ -829,7 +829,7 @@ struct ToolEditor:View {
     func collage<T>(_ key:WritableKeyPath<CollageOptions,T>)->Binding<T> { Binding(get:{(options.collage ?? .init())[keyPath:key]},set:{var value=options.collage ?? .init();value[keyPath:key]=$0;options.collage=value}) }
     func relative(_ value:Binding<Double>)->Binding<Double> { Binding(get:{value.wrappedValue-1},set:{value.wrappedValue=$0+1}) }
     func number(_ label:String,value:Binding<Int>)->some View { HStack { Text(label);TextField("",value:value,format:.number).textFieldStyle(.roundedBorder).frame(minWidth:60) } }
-    func slider(_ title:String,value:Binding<Double>,range:ClosedRange<Double>,unit:String="")->some View { HStack { Text(title).font(.callout).frame(width:105,alignment:.leading);Slider(value:value,in:range).tint(.nashi);Text("\(value.wrappedValue,specifier:"%.2f") \(unit)").font(.caption.monospacedDigit()).frame(width:70,alignment:.trailing);Button { value.wrappedValue=["Playback speed":1,"Target loudness":-16,"Loudness range":11,"True peak limit":-1.5,"Left volume":1,"Right volume":1,"Padding":160,"Corners":24,"Shadow":24,"Stroke width":3,"Text size":24][title] ?? 0 } label:{Image(systemName:"arrow.counterclockwise").font(.caption)}.buttonStyle(.plain) } }
+    func slider(_ title:String,value:Binding<Double>,range:ClosedRange<Double>,unit:String="")->some View { HStack { LText(title).font(.callout).frame(width:105,alignment:.leading);Slider(value:value,in:range).tint(.nashi);Text("\(value.wrappedValue,specifier:"%.2f") \(unit)").font(.caption.monospacedDigit()).frame(width:70,alignment:.trailing);Button { value.wrappedValue=["Playback speed":1,"Target loudness":-16,"Loudness range":11,"True peak limit":-1.5,"Left volume":1,"Right volume":1,"Padding":160,"Corners":24,"Shadow":24,"Stroke width":3,"Text size":24][title] ?? 0 } label:{Image(systemName:"arrow.counterclockwise").font(.caption)}.buttonStyle(.plain) } }
     func colorBinding(_ string:Binding<String>,preservingOpacity:Bool=false)->Binding<Color> {
         Binding(get:{Color(cgColor:ImageEngine.color(string.wrappedValue))},set:{
             string.wrappedValue=preservingOpacity ? ImageColorCodec.backgroundHex(NSColor($0)):hex($0)

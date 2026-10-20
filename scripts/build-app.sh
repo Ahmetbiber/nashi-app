@@ -24,6 +24,9 @@ mkdir -p "$application/Contents/MacOS" "$application/Contents/Resources/Tools"
 cp "$binary_dir/Nashi" "$application/Contents/MacOS/Nashi"
 if [[ "$configuration" == release ]]; then /usr/bin/strip -S "$application/Contents/MacOS/Nashi"; fi
 cp Resources/Info.plist "$application/Contents/Info.plist"
+python3 scripts/generate-localizations.py
+ditto Resources/Localizations "$application/Contents/Resources"
+if [[ -d "$binary_dir/Nashi_NashiCore.bundle" ]]; then ditto "$binary_dir/Nashi_NashiCore.bundle" "$application/Contents/Resources/Nashi_NashiCore.bundle"; fi
 python3 scripts/configure-updates.py "$application/Contents/Info.plist" "${NASHI_UPDATE_CONFIG:-Configuration/Updates.plist}"
 if [[ "$nashi_signing_mode" != ad-hoc && "$nashi_public_build" == false ]]; then
   python3 scripts/build-credential-broker.py --app "$application"

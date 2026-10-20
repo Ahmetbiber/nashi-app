@@ -61,7 +61,7 @@ struct UpdateSettingsView:View {
                 }.padding(18).nashiCard()
                 if let error=updater.configurationError {
                     GroupBox("Updates are being set up") {
-                        Text(error).font(.system(size:13)).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(10)
+                        LText(error).font(.system(size:13)).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(10)
                     }
                 } else {
                     GroupBox {

@@ -21,7 +21,7 @@ internal static class Theme
     internal static void Attach(Window window)
     {
         window.SetResourceReference(Window.BackgroundProperty,"Paper");window.SetResourceReference(Window.ForegroundProperty,"Ink");
-        window.Loaded+=(_,_)=>{if(window.WindowStyle!=WindowStyle.None)DesktopGeometry.FitToWorkArea(window);};
+        window.Loaded+=(_,_)=>{if(window.WindowStyle!=WindowStyle.None)DesktopGeometry.FitToWorkArea(window);L10n.Bind(window,Window.TitleProperty,window.Title);L10n.Attach(window);};
         window.SourceInitialized+=(_,_)=>ApplyTitleBar(window);
     }
     internal static void Entrance(UIElement element)

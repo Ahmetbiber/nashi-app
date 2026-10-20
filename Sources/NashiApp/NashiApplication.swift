@@ -12,6 +12,10 @@ enum NashiApplication {
     @MainActor static func main() {
         if CommandLine.arguments.count>1,["convert","tool","inspect","catalog","dependencies"].contains(CommandLine.arguments[1]) { exit(NashiCommandLine.run()) }
         let app=NSApplication.shared
+        if let index=CommandLine.arguments.firstIndex(of:"--localization-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=LocalizationSmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
         if CommandLine.arguments.contains("--window-management-status") {
             let status:[String:Any]=["bundleIdentifier":Bundle.main.bundleIdentifier ?? "", "displayName":Bundle.main.object(forInfoDictionaryKey:"CFBundleDisplayName") as? String ?? "", "accessibilityTrusted":AXIsProcessTrusted()]
             if let data=try? JSONSerialization.data(withJSONObject:status,options:[.sortedKeys]),let text=String(data:data,encoding:.utf8) { print(text) }
@@ -112,11 +116,13 @@ enum NashiApplication {
         statusItem.button?.image=NashiArtwork.menuIcon()
         statusItem.menu=menu;menu.delegate=self
         appMenu.delegate=self
+        L10n.localize(mainMenu);L10n.localize(menu)
+        NotificationCenter.default.publisher(for:.nashiLanguageChanged).sink { _ in L10n.localize(NSApp.mainMenu);L10n.localize(menu);L10n.updateWindowTitles() }.store(in:&updateObservations)
         state.$working.sink { [weak self] working in guard let self else{return};self.updater.setBusy(working || self.toolSetupWorking) }.store(in:&updateObservations)
         updater.$availableVersion.sink { [weak self] version in
             guard let self else { return }
             let title=version.map { "Update to \($0)…" } ?? "Check for Updates…"
-            for updateMenu in [appMenu,menu] { updateMenu.items.first { $0.action == #selector(self.checkForUpdates) }?.title=title }
+            for updateMenu in [appMenu,menu] { updateMenu.items.first { $0.action == #selector(self.checkForUpdates) } .map { L10n.menuTitle($0,source:title) } }
             self.statusItem.button?.image=NashiArtwork.menuIcon(updateAvailable:version != nil)
         }.store(in:&updateObservations)
         for name in [NSApplication.didResignActiveNotification,NSApplication.didBecomeActiveNotification,NSWindow.didMiniaturizeNotification,NSWindow.willCloseNotification] {
@@ -220,7 +226,7 @@ enum NashiApplication {
             let panel=ToolPanel(contentRect:NSRect(x:0,y:0,width:760,height:520),styleMask:[.borderless,.closable],backing:.buffered,defer:false)
             panel.title="Welcome to Nashi";panel.isReleasedWhenClosed=false;panel.isOpaque=false;panel.backgroundColor = .clear;panel.hasShadow=true;panel.hidesOnDeactivate=false
             let view=WelcomeView(onDone:{ [weak self] in UserDefaults.standard.set(true,forKey:"hasCompletedWelcome");self?.welcome?.close();self?.welcome=nil;self?.showHome() },onClose:{ [weak self] in self?.welcome?.close();self?.welcome=nil },onMinimize:{ [weak self] in self?.welcome?.orderOut(nil) })
-            panel.contentView=NSHostingView(rootView:view);panel.center();welcome=panel
+            panel.contentView=NSHostingView(rootView:view.nashiLanguage());panel.center();welcome=panel
         }
         welcome?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
@@ -264,12 +270,12 @@ enum NashiApplication {
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool { showHome();return true }
     func makeWindow<V:View>(title:String,size:NSSize,view:V)->NSWindow {
         let window=NSWindow(contentRect:NSRect(origin:.zero,size:size),styleMask:[.titled,.closable,.miniaturizable,.resizable,.fullSizeContentView],backing:.buffered,defer:false)
-        window.title=title;window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.isReleasedWhenClosed=false;window.contentView=NSHostingView(rootView:view.tint(Color.nashi));window.center();fitToScreen(window);return window
+        L10n.windowTitle(window,source:title);window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.isReleasedWhenClosed=false;window.contentView=NSHostingView(rootView:view.tint(Color.nashi).nashiLanguage());window.center();fitToScreen(window);return window
     }
     func makeToolWindow<V:View>(title:String,size:NSSize,view:V)->NSWindow {
         let window=ToolPanel(contentRect:NSRect(origin:.zero,size:size),styleMask:[.borderless,.closable,.resizable],backing:.buffered,defer:false)
-        window.title=title;window.isReleasedWhenClosed=false;window.isOpaque=false;window.backgroundColor = .clear;window.hasShadow=true;window.isMovableByWindowBackground=false;window.hidesOnDeactivate=false
-        let hosting=NSHostingView(rootView:view.tint(Color.nashi));hosting.wantsLayer=true;hosting.layer?.cornerRadius=24;hosting.layer?.masksToBounds=true;window.contentView=hosting;window.center();fitToScreen(window);return window
+        L10n.windowTitle(window,source:title);window.isReleasedWhenClosed=false;window.isOpaque=false;window.backgroundColor = .clear;window.hasShadow=true;window.isMovableByWindowBackground=false;window.hidesOnDeactivate=false
+        let hosting=NSHostingView(rootView:view.tint(Color.nashi).nashiLanguage());hosting.wantsLayer=true;hosting.layer?.cornerRadius=24;hosting.layer?.masksToBounds=true;window.contentView=hosting;window.center();fitToScreen(window);return window
     }
     private func fitToScreen(_ window:NSWindow) {
         guard let visible=(window.screen ?? NSScreen.main)?.visibleFrame.insetBy(dx:16,dy:16) else { return }

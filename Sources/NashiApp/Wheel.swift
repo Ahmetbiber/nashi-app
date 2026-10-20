@@ -147,7 +147,7 @@ final class WheelView:NSView {
             let layout:WheelLabelLayout.Content
             if let cached=labelLayouts[i] { layout=cached }
             else {
-                layout=WheelLabelLayout.fitted(item.title.uppercased(),font:font,color:.labelColor,
+                layout=WheelLabelLayout.fitted(L10n.uppercase(item.title),font:font,color:.labelColor,
                                                inside:path,centers:geometry.labelCenters(i),
                                                maximumWidth:84*scale,iconSize:source == nil ? nil:20*scale,scale:scale)
                 labelLayouts[i]=layout
@@ -168,7 +168,7 @@ final class WheelView:NSView {
         func key(_ setting:String,_ fallback:String)->String { let name=UserDefaults.standard.string(forKey:setting) ?? fallback;return ModifierChord.legacy(name)?.symbols ?? name }
         let emptyTitle=mode == .tools ? "No file tools\n\(key("convertKey","shift")) Convert\n\(key("actionsKey","control")) Actions":"No formats\n\(key("toolsKey","command")) Tools\n\(key("actionsKey","control")) Actions"
         let title=selected.flatMap{items.indices.contains($0) ? items[$0].title:nil} ?? (items.isEmpty ? emptyTitle:(centerTitle ?? mode.rawValue.capitalized))
-        let layout=WheelLabelLayout.fitted(title,font:NSFont.systemFont(ofSize:(items.isEmpty ? 10:11)*geometry.scale,weight:.semibold),
+        let layout=WheelLabelLayout.fitted(L10n.text(title),font:NSFont.systemFont(ofSize:(items.isEmpty ? 10:11)*geometry.scale,weight:.semibold),
                                            color:.labelColor,inside:disc,centers:[center],
                                            maximumWidth:inner*2-16*geometry.scale,scale:geometry.scale)
         WheelLabelLayout.draw(layout)
@@ -177,7 +177,7 @@ final class WheelView:NSView {
     func updateAccessibility() {
         setAccessibilityLabel(inputs.first?.isFileURL == false ? "Nashi web media wheel":"Nashi \(mode.rawValue) wheel")
         let children=items.enumerated().map { index,item -> WheelAccessibilityItem in
-            let child=WheelAccessibilityItem();child.setAccessibilityRole(.button);child.setAccessibilityEnabled(true);child.setAccessibilityLabel(item.operation?.title ?? item.title);child.setAccessibilityParent(self)
+            let child=WheelAccessibilityItem();child.setAccessibilityRole(.button);child.setAccessibilityEnabled(true);child.setAccessibilityLabel(L10n.text(item.operation?.title ?? item.title));child.setAccessibilityParent(self)
             if let window { child.setAccessibilityFrame(window.convertToScreen(convert(petal(index).bounds,to:nil))) }
             child.activate = { [weak self] in guard let self else { return false };self.onSelect?(item);return true };return child
         }

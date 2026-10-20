@@ -28,19 +28,19 @@ public sealed partial class ToolEditor
         }
         if(tool=="frameImage")
         {
-            options.Children.Add(new TextBlock{Text="Background"});options.Children.Add(backdrop);TextField("Background color","#FFFFFF");TextField("Gradient end","#FFD85C");
+            options.Children.Add(L10n.Label(new TextBlock{Text="Background"}));options.Children.Add(backdrop);TextField("Background color","#FFFFFF");TextField("Gradient end","#FFD85C");
             options.Children.Add(MainWindow.Button("Choose background image…",()=>{var picker=new OpenFileDialog{Filter="Images|*.png;*.jpg;*.webp;*.heic;*.avif;*.tiff;*.bmp"};if(picker.ShowDialog(this)==true){backgroundImage=picker.FileName;backdrop.SelectedItem="image";QueuePhotoPreview();}}));
             Field("Padding",80);Field("Corner radius",24);Field("Shadow radius",24);Field("Shadow opacity",.25);Field("Background blur",0);Field("Image scale",1);Field("Position X",.5);Field("Position Y",.5);Field("Canvas width",(bitmap?.PixelWidth??1000)+160);Field("Canvas height",(bitmap?.PixelHeight??1000)+160);
         }
         if(tool=="createCollage")
         {
-            options.Children.Add(new TextBlock{Text="Layout"});options.Children.Add(collageLayout);Field("Columns",2);Field("Canvas width",2048);Field("Canvas height",2048);Field("Spacing",12);Field("Padding",16);Field("Corner radius",0);TextField("Background color","#FFFFFF");
+            options.Children.Add(L10n.Label(new TextBlock{Text="Layout"}));options.Children.Add(collageLayout);Field("Columns",2);Field("Canvas width",2048);Field("Canvas height",2048);Field("Spacing",12);Field("Padding",16);Field("Corner radius",0);TextField("Background color","#FFFFFF");
             for(var n=0;n<inputs.Count;n++)imageOrder.Items.Add(new ListBoxItem{Content=System.IO.Path.GetFileName(inputs[n]),Tag=n});options.Children.Add(imageOrder);options.Children.Add(fitCollage);fitCollage.Click+=(_,_)=>QueuePhotoPreview();
             var buttons=new WrapPanel();buttons.Children.Add(MainWindow.Button("Move up",()=>MoveImage(-1)));buttons.Children.Add(MainWindow.Button("Move down",()=>MoveImage(1)));options.Children.Add(buttons);
         }
         if(tool=="redactImage")
         {
-            options.Children.Add(new TextBlock{Text="Cover style"});options.Children.Add(redactionStyle);
+            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);
             options.Children.Add(MainWindow.Button("Detect text",async()=>await DetectPhoto(true,false)));options.Children.Add(MainWindow.Button("Detect faces",async()=>await DetectPhoto(false,true)));
             options.Children.Add(MainWindow.Button("Undo area",()=>{if(photoRegions.Count==0)return;photoRegions.RemoveAt(photoRegions.Count-1);if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
@@ -48,18 +48,18 @@ public sealed partial class ToolEditor
         {
             photoPreview=new(){Interval=TimeSpan.FromMilliseconds(300)};photoPreview.Tick+=async(_,_)=>{photoPreview.Stop();await PreviewPhoto();};
             foreach(var box in fields.Values)box.TextChanged+=(_,_)=>QueuePhotoPreview();backdrop.SelectionChanged+=(_,_)=>QueuePhotoPreview();collageLayout.SelectionChanged+=(_,_)=>QueuePhotoPreview();Closed+=(_,_)=>photoPreview.Stop();
-            var original=new CheckBox{Content="Show original",Margin=new(4,14,4,4)};original.Checked+=(_,_)=>{showingOriginal=true;photoPreview.Stop();photoGeneration++;SetPhotoPreview(bitmap!);};original.Unchecked+=(_,_)=>{showingOriginal=false;QueuePhotoPreview();};previewStack.Children.Add(original);Loaded+=(_,_)=>QueuePhotoPreview();
+            var original=L10n.Content(new CheckBox{Content="Show original",Margin=new(4,14,4,4)});original.Checked+=(_,_)=>{showingOriginal=true;photoPreview.Stop();photoGeneration++;SetPhotoPreview(bitmap!);};original.Unchecked+=(_,_)=>{showingOriginal=false;QueuePhotoPreview();};previewStack.Children.Add(original);Loaded+=(_,_)=>QueuePhotoPreview();
         }
         if(tool=="annotate")options.Children.Add(MainWindow.Button("Choose annotation image…",()=>{var picker=new OpenFileDialog{Filter="Images|*.png;*.jpg;*.webp;*.heic;*.avif;*.bmp"};if(picker.ShowDialog(this)==true){annotationImage=picker.FileName;drawingTool.SelectedIndex=9;}}));
     }
     private void RotatePhoto(int degrees){fields["Degrees"].Text=Number(Value("Degrees")+degrees);var width=fields["Width"].Text;fields["Width"].Text=fields["Height"].Text;fields["Height"].Text=width;QueuePhotoPreview();}
     private void PhotoGroup(string title,(string Name,double Minimum,double Maximum)[] controls)
     {
-        options.Children.Add(new TextBlock{Text=title,FontSize=15,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,16,4,4)});
+        options.Children.Add(L10n.Label(new TextBlock{Text=title,FontSize=15,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,16,4,4)}));
         foreach(var setting in controls)
         {
             var property=typeof(PhotoAdjustments).GetProperty(setting.Name)!;var value=(double)property.GetValue(new PhotoAdjustments())!;Field(setting.Name,value);var field=fields[setting.Name];options.Children.Remove(field);var label=(UIElement)options.Children[options.Children.Count-1];options.Children.Remove(label);
-            var row=new DockPanel{Margin=new(4,8,4,0)};field.Width=72;field.Margin=new(4,0,0,0);field.Padding=new(7,3,7,3);DockPanel.SetDock(field,Dock.Right);row.Children.Add(field);row.Children.Add(new TextBlock{Text=setting.Name=="NoiseReduction"?"Noise reduction":setting.Name,VerticalAlignment=VerticalAlignment.Center});options.Children.Add(row);
+            var row=new DockPanel{Margin=new(4,8,4,0)};field.Width=72;field.Margin=new(4,0,0,0);field.Padding=new(7,3,7,3);DockPanel.SetDock(field,Dock.Right);row.Children.Add(field);row.Children.Add(L10n.Label(new TextBlock{Text=setting.Name=="NoiseReduction"?"Noise reduction":setting.Name,VerticalAlignment=VerticalAlignment.Center}));options.Children.Add(row);
             var slider=new Slider{Minimum=setting.Minimum,Maximum=setting.Maximum,Value=value,Margin=new(4,7,4,7),ToolTip=setting.Name};var syncing=false;
             slider.ValueChanged+=(_,_)=>{if(syncing)return;syncing=true;field.Text=Number(slider.Value);syncing=false;};field.TextChanged+=(_,_)=>{if(syncing||!double.TryParse(field.Text,System.Globalization.CultureInfo.CurrentCulture,out var number)||!double.IsFinite(number))return;syncing=true;slider.Value=number;syncing=false;};options.Children.Add(slider);
         }
@@ -68,7 +68,7 @@ public sealed partial class ToolEditor
     {
         var zoom=1d;var result=new StackPanel();var controls=new StackPanel{Orientation=Orientation.Horizontal};var viewbox=new Viewbox{Child=visual,Stretch=Stretch.Uniform,Width=600,Height=420};var scroll=new ScrollViewer{Content=viewbox,Height=420,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
         void SetZoom(double value){zoom=Math.Clamp(value,.25,4);var height=Math.Clamp(ActualHeight-360,180,420);scroll.Height=height;viewbox.Width=Math.Max(100,scroll.ViewportWidth)*zoom;viewbox.Height=(scroll.ViewportHeight>0?scroll.ViewportHeight:height)*zoom;}
-        var percent=new TextBlock{Text="100%",VerticalAlignment=VerticalAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(8,0,8,0)};
+        var percent=L10n.Label(new TextBlock{Text="100%",VerticalAlignment=VerticalAlignment.Center,Foreground=Theme.Brush("Muted"),Margin=new(8,0,8,0)});
         void Apply(double value){SetZoom(value);percent.Text=$"{zoom*100:0}%";}
         controls.Children.Add(MainWindow.Button("−",()=>Apply(zoom/1.25)));controls.Children.Add(MainWindow.Button("Fit",()=>Apply(1)));controls.Children.Add(MainWindow.Button("+",()=>Apply(zoom*1.25)));controls.Children.Add(percent);result.Children.Add(controls);result.Children.Add(scroll);System.Windows.Automation.AutomationProperties.SetAutomationId(scroll,"ImagePreviewViewport");scroll.SizeChanged+=(_,_)=>SetZoom(zoom);scroll.ScrollChanged+=(_,e)=>{if(Math.Abs(e.ViewportWidthChange)>.1||Math.Abs(e.ViewportHeightChange)>.1)SetZoom(zoom);};SizeChanged+=(_,_)=>SetZoom(zoom);return result;
     }

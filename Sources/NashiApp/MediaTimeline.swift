@@ -41,7 +41,7 @@ private struct MediaRangeClip:View {
     var body:some View {
         ZStack {
             RoundedRectangle(cornerRadius:5).fill(Color.nashi.opacity(0.25)).overlay(RoundedRectangle(cornerRadius:5).stroke(Color.nashi,lineWidth:2))
-            Text(label).font(.caption2.bold()).foregroundStyle(.white).lineLimit(1).padding(.horizontal,10)
+            LText(label).font(.caption2.bold()).foregroundStyle(.white).lineLimit(1).padding(.horizontal,10)
             HStack(spacing:0) { handle(start:true);Spacer(minLength:0);handle(start:false) }
         }
     }

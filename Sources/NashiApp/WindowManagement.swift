@@ -197,7 +197,7 @@ enum WindowPlacementGlyph {
         }
         let frame=placement.frame(in:screen.visibleFrame,scale:screen.backingScaleFactor)
         if preview?.frame != frame { preview?.setFrame(frame,display:true) }
-        if let view=preview?.contentView as? WindowPlacementPreviewView { view.title=placement.title+" · "+placement.fraction;view.needsDisplay=true }
+        if let view=preview?.contentView as? WindowPlacementPreviewView { view.title=L10n.text(placement.title)+" · "+placement.fraction;view.needsDisplay=true }
         if lastPlacement != placement || preview?.isVisible != true { preview?.orderFrontRegardless() }
         lastPlacement=placement
     }

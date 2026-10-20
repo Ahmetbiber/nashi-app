@@ -9,7 +9,7 @@ public sealed partial class ToolEditor
     {
         if(tool!="convert")return;
         if(!fields.ContainsKey("Quality (%)"))Field("Quality (%)",85);
-        if(media is not null){Field("Audio bitrate (kbps)",256);Field("Maximum video height (0 = original)",0);Field("GIF frames per second",15);Field("GIF width",960);options.Children.Add(new TextBlock{Text="Audio sample depth"});options.Children.Add(sampleDepth);}
+        if(media is not null){Field("Audio bitrate (kbps)",256);Field("Maximum video height (0 = original)",0);Field("GIF frames per second",15);Field("GIF width",960);options.Children.Add(L10n.Label(new TextBlock{Text="Audio sample depth"}));options.Children.Add(sampleDepth);}
         options.Children.Add(preserveMetadata);
         void Apply(){if(format.SelectedItem is not string value)return;
             void Show(string name,bool visible){if(!fields.TryGetValue(name,out var box))return;var index=options.Children.IndexOf(box);box.Visibility=visible?System.Windows.Visibility.Visible:System.Windows.Visibility.Collapsed;if(index>0&&options.Children[index-1] is TextBlock label)label.Visibility=box.Visibility;}

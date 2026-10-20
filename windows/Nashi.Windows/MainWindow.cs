@@ -70,13 +70,13 @@ public sealed partial class MainWindow:Window
         libraryPage.Children.Add(Text("Your Library",30));libraryPage.Children.Add(Text("Freshly made, pasted, and ready for another round.",14,"Muted"));
         var searchLabel=Text("Find a file or tool  ·  Ctrl+F",12,"Muted");searchLabel.Margin=new(4,20,4,0);libraryPage.Children.Add(searchLabel);libraryPage.Children.Add(search);libraryPage.Children.Add(libraryRows);search.TextChanged+=(_,_)=>RenderLibrary();
         AutomationProperties.SetAutomationId(search,"LibrarySearch");AutomationProperties.SetAutomationId(link,"DownloadLink");AutomationProperties.SetAutomationId(list,"SelectedFiles");
-        Closing+=(_,e)=>{if(busy){e.Cancel=true;status.Text="Finish the current operation or choose Cancel before closing Nashi.";}};
+        Closing+=(_,e)=>{if(busy){e.Cancel=true;L10n.SetText(status,"Finish the current operation or choose Cancel before closing Nashi.");}};
         DragOver+=(_,e)=>{e.Effects=!busy&&(e.Data.GetDataPresent(DataFormats.FileDrop)||e.Data.GetDataPresent(DataFormats.UnicodeText)||e.Data.GetDataPresent(DataFormats.Html)||e.Data.GetDataPresent("UniformResourceLocatorW"))?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;};
         Drop+=(_,e)=>{if(!busy){if(!e.Data.GetDataPresent(DataFormats.FileDrop)&&DragPayload.Parse(e.Data) is not null)OnGlobalDrop("download:auto",e.Data,null);else Import(e.Data);}e.Handled=true;};
         PreviewKeyDown+=(_,e)=>{if(HandleShortcut(e.Key,Keyboard.Modifiers,Keyboard.FocusedElement as DependencyObject))e.Handled=true;};
         if(initial is not null)Add(initial);else Refresh();ShowLibrary(false);RenderLibrary();Loaded+=(_,_)=>Theme.Entrance(LibraryVisible?libraryPage:home);
-        if(this.library.RecoveryNotice is {} notice)status.Text=notice;
-        else if(preferences.RecoveryNotice is {} settingsNotice)status.Text=settingsNotice;
+        if(this.library.RecoveryNotice is {} notice)L10n.SetText(status,notice);
+        else if(preferences.RecoveryNotice is {} settingsNotice)L10n.SetText(status,settingsNotice);
         if(checkForUpdates)
         {
             Loaded+=(_,_)=>SetupDesktop();Closed+=(_,_)=>globalDrag?.Dispose();
@@ -84,13 +84,18 @@ public sealed partial class MainWindow:Window
             var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromHours(1)};timer.Tick+=async(_,_)=>{if(preferences.Value.AutomaticUpdateChecks)await CheckUpdatesAsync(false);};Closed+=(_,_)=>timer.Stop();timer.Start();
         }
     }
-    private static TextBlock Text(string value,double size,string? color=null)
+    private IEnumerable<LibraryEntry> SearchLibrary(string query)
     {
-        var text=new TextBlock{Text=value,FontSize=size,TextWrapping=TextWrapping.Wrap,VerticalAlignment=VerticalAlignment.Center,FontWeight=size>=17?FontWeights.SemiBold:FontWeights.Normal};if(color is not null)text.SetResourceReference(TextBlock.ForegroundProperty,color);return text;
+        var original=library.Search(query).Select(e=>e.Id).ToHashSet();
+        return library.Entries.Where(e=>original.Contains(e.Id)||AppLocalization.Matches(e.Action,query,L10n.Language));
+    }
+    private static TextBlock Text(string value,double size,string? color=null,bool localize=true)
+    {
+        var text=new TextBlock{Text=value,FontSize=size,TextWrapping=TextWrapping.Wrap,VerticalAlignment=VerticalAlignment.Center,FontWeight=size>=17?FontWeights.SemiBold:FontWeights.Normal};if(color is not null)text.SetResourceReference(TextBlock.ForegroundProperty,color);return localize?L10n.Label(text):text;
     }
     internal bool WindowManagementEnabled=>library.WindowManagementEnabled;
     private static Border Card(UIElement content){var card=new Border{CornerRadius=new(24),Padding=new(22),Margin=new(0,0,0,6),Child=content,BorderThickness=new(1)};card.SetResourceReference(Border.BackgroundProperty,"Surface");card.SetResourceReference(Border.BorderBrushProperty,"Line");return card;}
-    public static Button Button(string title,Action action){var button=new Button{Content=title};button.Click+=(_,_)=>action();return button;}
+    public static Button Button(string title,Action action){var button=L10n.Content(new Button{Content=title});button.Click+=(_,_)=>action();return button;}
     private static Button Primary(string title,Action action){var button=Button(title,action);button.Background=Theme.Primary;button.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));return button;}
     public static void OpenUrl(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
     public static void Reveal(string path){var info=new ProcessStartInfo("explorer.exe"){UseShellExecute=false};info.ArgumentList.Add("/select,"+Path.GetFullPath(path));Process.Start(info);}
@@ -99,13 +104,13 @@ public sealed partial class MainWindow:Window
     internal void ShowLibrary(bool visible)
     {
         var changed=LibraryVisible!=visible;
-        if(!busy)status.Text="Files stay on your computer.";
+        if(!busy)L10n.SetText(status,"Files stay on your computer.");
         selectedLibraryId=selectedLibraryId??library.Entries.FirstOrDefault()?.Id;home.Visibility=visible?Visibility.Collapsed:Visibility.Visible;libraryPage.Visibility=visible?Visibility.Visible:Visibility.Collapsed;
         homeButton.SetResourceReference(Control.BackgroundProperty,visible?"Surface":"Sage");libraryButton.SetResourceReference(Control.BackgroundProperty,visible?"Sage":"Surface");if(visible)RenderLibrary();if(changed&&IsLoaded)Theme.Entrance(visible?libraryPage:home);
     }
     private void Record(string label,IReadOnlyList<string> paths)
     {
-        try{library.Record(label,paths);RenderLibrary();}catch(Exception error)when(error is IOException or UnauthorizedAccessException){status.Text="Your files are ready, but Library could not be saved.";}
+        try{library.Record(label,paths);RenderLibrary();}catch(Exception error)when(error is IOException or UnauthorizedAccessException){L10n.SetText(status,"Your files are ready, but Library could not be saved.");}
     }
     internal void Import(IDataObject data)
     {
@@ -113,14 +118,14 @@ public sealed partial class MainWindow:Window
         try
         {
             var result=ClipboardImport.Read(data,library);ShowLibrary(false);
-            if(result.Link is {} url){var payload=WebMediaPayload.Parse(url);link.Text=payload?.Url??url;if(payload is not null)SetDownloadKind(payload);OpenDownload();link.Focus();status.Text="Link ready. Choose a format, then Download.";return;}
-            files.Clear();Add(result.Paths);Record(result.Label,result.Paths);status.Text=result.Label+". Choose a tool or create a ZIP.";
+            if(result.Link is {} url){var payload=WebMediaPayload.Parse(url);link.Text=payload?.Url??url;if(payload is not null)SetDownloadKind(payload);OpenDownload();link.Focus();L10n.SetText(status,"Link ready. Choose a format, then Download.");return;}
+            files.Clear();Add(result.Paths);Record(result.Label,result.Paths);L10n.SetText(status,result.Label+". Choose a tool or create a ZIP.");
         }
-        catch(Exception error)when(ClipboardImport.IsClipboardError(error)){status.Text="Couldn’t paste: "+error.Message;}
+        catch(Exception error)when(ClipboardImport.IsClipboardError(error)){L10n.SetText(status,"Couldn’t paste: "+error.Message);}
     }
     private void PasteClipboard()
     {
-        if(busy)return;try{Import(Clipboard.GetDataObject()??new DataObject());}catch(Exception error)when(ClipboardImport.IsClipboardError(error)){status.Text="Clipboard is busy. Try Paste again.";}
+        if(busy)return;try{Import(Clipboard.GetDataObject()??new DataObject());}catch(Exception error)when(ClipboardImport.IsClipboardError(error)){L10n.SetText(status,"Clipboard is busy. Try Paste again.");}
     }
     internal bool HandleShortcut(Key key,ModifierKeys modifiers,DependencyObject? focus)
     {
@@ -144,18 +149,18 @@ public sealed partial class MainWindow:Window
     }
     private void RenderLibrary()
     {
-        libraryCards.Clear();libraryRows.Children.Clear();recentRows.Children.Clear();var filtered=library.Search(search.Text).ToArray();
+        libraryCards.Clear();libraryRows.Children.Clear();recentRows.Children.Clear();var filtered=SearchLibrary(search.Text).ToArray();
         if(filtered.Length==0)libraryRows.Children.Add(Card(Text(library.Entries.Count==0?"Nothing here yet. Paste something or make your first fresh copy.":"No matches. Try a file name or tool.",14,"Muted")));
         foreach(var entry in filtered)libraryRows.Children.Add(LibraryRow(entry));
-        recentCount.Text=library.Entries.Count.ToString();foreach(var entry in library.Search(recentSearch.Text).Take(3))recentRows.Children.Add(LibraryRow(entry,true));
+        recentCount.Text=library.Entries.Count.ToString();foreach(var entry in SearchLibrary(recentSearch.Text).Take(3))recentRows.Children.Add(LibraryRow(entry,true));
         if(library.Entries.Count==0)recentRows.Children.Add(Card(Text("Your next fresh copy will land here.",13,"Muted")));
     }
     private Border LibraryRow(LibraryEntry entry,bool compact=false)
     {
         var row=new DockPanel();var available=entry.AvailablePaths;var buttons=new WrapPanel{VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(buttons,Dock.Right);row.Children.Add(buttons);
-        var reuse=Button("↖",()=>{if(busy)return;var existing=entry.AvailablePaths.ToArray();if(existing.Length==0){status.Text="These files have moved or were deleted.";RenderLibrary();return;}files.Clear();Add(existing);ShowLibrary(false);status.Text=existing.Length==entry.Paths.Length?"Ready for another round.":"Available files selected. Some files have moved or were deleted.";});reuse.IsEnabled=!busy&&available.Length>0;reuse.ToolTip="Use in Nashi";AutomationProperties.SetName(reuse,"Use "+entry.Name+" again");buttons.Children.Add(reuse);
-        var reveal=Button("▱",()=>{var existing=entry.AvailablePaths;if(existing.Length>0)Reveal(existing[0]);else{status.Text="This file has moved or was deleted.";RenderLibrary();}});reveal.IsEnabled=available.Length>0;reveal.ToolTip="Show in Explorer";AutomationProperties.SetName(reveal,"Show "+entry.Name+" in Explorer");buttons.Children.Add(reveal);
-        var fileIcon=new Image{Source=FileArtwork.Icon(entry.Paths[0]),Width=29,Height=29,Margin=new(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(fileIcon,Dock.Left);row.Children.Add(fileIcon);var text=new StackPanel{Margin=new(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};var name=Text(entry.Name,12);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.ToolTip=string.Join(Environment.NewLine,entry.Paths);text.Children.Add(name);text.Children.Add(Text(entry.Action+"  ·  "+entry.Created.ToLocalTime().ToString("g")+(available.Length<entry.Paths.Length?"  ·  Files missing":""),10,"Muted"));row.Children.Add(text);
+        var reuse=Button("↖",()=>{if(busy)return;var existing=entry.AvailablePaths.ToArray();if(existing.Length==0){L10n.SetText(status,"These files have moved or were deleted.");RenderLibrary();return;}files.Clear();Add(existing);ShowLibrary(false);L10n.SetText(status,existing.Length==entry.Paths.Length?"Ready for another round.":"Available files selected. Some files have moved or were deleted.");});reuse.IsEnabled=!busy&&available.Length>0;reuse.ToolTip="Use in Nashi";AutomationProperties.SetName(reuse,"Use "+entry.Name+" again");buttons.Children.Add(reuse);
+        var reveal=Button("▱",()=>{var existing=entry.AvailablePaths;if(existing.Length>0)Reveal(existing[0]);else{L10n.SetText(status,"This file has moved or was deleted.");RenderLibrary();}});reveal.IsEnabled=available.Length>0;reveal.ToolTip="Show in Explorer";AutomationProperties.SetName(reveal,"Show "+entry.Name+" in Explorer");buttons.Children.Add(reveal);
+        var fileIcon=new Image{Source=FileArtwork.Icon(entry.Paths[0]),Width=29,Height=29,Margin=new(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(fileIcon,Dock.Left);row.Children.Add(fileIcon);var text=new StackPanel{Margin=new(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};var name=Text(entry.Name,12,localize:false);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.ToolTip=string.Join(Environment.NewLine,entry.Paths);text.Children.Add(name);var info=new StackPanel{Orientation=Orientation.Horizontal};info.Children.Add(Text(entry.Action,10,"Muted"));info.Children.Add(Text("  ·  "+entry.Created.ToLocalTime().ToString("g"),10,"Muted",localize:false));if(available.Length<entry.Paths.Length)info.Children.Add(Text("Files missing",10,"Muted"));text.Children.Add(info);row.Children.Add(text);
         var preview=Button("◉",()=>PreviewEntry(entry));preview.IsEnabled=available.Length>0;preview.ToolTip="Preview";AutomationProperties.SetName(preview,"Preview "+entry.Name);buttons.Children.Insert(0,preview);
         var card=Card(row);if(!compact)ConfigureLibraryRow(card,entry);card.Padding=new(14,10,14,10);if(compact){card.CornerRadius=new(12);card.BorderThickness=new(0);card.Margin=new(0,0,0,2);}return card;
     }
@@ -163,7 +168,7 @@ public sealed partial class MainWindow:Window
     {
         if(webWindow?.IsVisible==true){webWindow.Activate();link.Focus();return;}
         var dialog=new Window{Owner=this,Title="Download from the web · Nashi",Width=800,Height=650,MinWidth=640,MinHeight=400,WindowStartupLocation=WindowStartupLocation.CenterOwner,Content=new ScrollViewer{Content=webContent,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}};Theme.Attach(dialog);webWindow=dialog;
-        dialog.Closing+=(_,e)=>{if(busy){e.Cancel=true;status.Text="Finish or cancel the current operation first.";}};
+        dialog.Closing+=(_,e)=>{if(busy){e.Cancel=true;L10n.SetText(status,"Finish or cancel the current operation first.");}};
         dialog.Closed+=(_,_)=>{inspection?.Cancel();if(dialog.Content is ScrollViewer scroll)scroll.Content=null;dialog.Content=null;webWindow=null;};dialog.PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape&&!busy){dialog.Close();e.Handled=true;}};dialog.Show();link.Focus();
     }
     private void SetBusy(bool value){busy=value;updateButton.IsEnabled=!value&&!checking;workArea.IsEnabled=!value;webContent.IsEnabled=!value;RenderLibrary();}
@@ -232,8 +237,8 @@ public sealed partial class MainWindow:Window
         if(label=="Move"||preferences.Value.OutputMode=="ask"||(files.Count==0&&owner==this)){var folder=new OpenFolderDialog{Title="Save new files to…",InitialDirectory=Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)};if(folder.ShowDialog(owner)!=true)return;destination=folder.FolderName;}
         else destination=owner==webWindow?preferences.Value.DownloadFolder:preferences.Value.OutputMode=="folder"&&!string.IsNullOrWhiteSpace(preferences.Value.OutputFolder)?preferences.Value.OutputFolder:Path.GetDirectoryName(files[0])!;
         SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(owner,cancellation.Cancel);toast.Show();
-        try{var outputs=await work(destination,new Progress<OperationProgress>(toast.Update),cancellation.Token);toast.Complete(outputs);Record(label,outputs);status.Text=$"Saved {outputs.Count} new {(outputs.Count==1?"file":"files")}. Originals kept.";if(preferences.Value.RevealFinished&&outputs.Count>0)Reveal(outputs[0]);}
-        catch(OperationCanceledException){toast.Close();status.Text="Cancelled. Originals kept.";}
+        try{var outputs=await work(destination,new Progress<OperationProgress>(toast.Update),cancellation.Token);toast.Complete(outputs);Record(label,outputs);L10n.SetText(status,$"Saved {outputs.Count} new {(outputs.Count==1?"file":"files")}. Originals kept.");if(preferences.Value.RevealFinished&&outputs.Count>0)Reveal(outputs[0]);}
+        catch(OperationCanceledException){toast.Close();L10n.SetText(status,"Cancelled. Originals kept.");}
         catch(Exception error){toast.Close();MessageBox.Show(this,error.Message,"Couldn’t finish",MessageBoxButton.OK,MessageBoxImage.Information);}
         finally{SetBusy(false);}
     }
@@ -252,24 +257,24 @@ public sealed partial class MainWindow:Window
     }
     private async Task SetupAsync()
     {
-        if(busy)return;if(tools.Ready){status.Text="Media tools are already installed.";return;}
+        if(busy)return;if(tools.Ready){L10n.SetText(status,"Media tools are already installed.");return;}
         if(MessageBox.Show(this,"Download FFmpeg (~180 MB), yt-dlp and Deno directly from their official GitHub releases? SHA-256 hashes are verified before use. FFmpeg is GPL; the other upstream licenses and source links are listed on our Features page. No administrator password is needed.","Set up media tools",MessageBoxButton.OKCancel,MessageBoxImage.Information)!=MessageBoxResult.OK)return;
         SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();
-        try{await tools.InstallAsync(new Progress<OperationProgress>(toast.Update),cancellation.Token);toast.Close();status.Text="Media tools ready. You can edit, convert and download media.";}
-        catch(OperationCanceledException){toast.Close();status.Text="Setup cancelled.";}catch(Exception error){toast.Close();MessageBox.Show(this,error.Message,"Setup couldn’t finish");}finally{SetBusy(false);}
+        try{await tools.InstallAsync(new Progress<OperationProgress>(toast.Update),cancellation.Token);toast.Close();L10n.SetText(status,"Media tools ready. You can edit, convert and download media.");}
+        catch(OperationCanceledException){toast.Close();L10n.SetText(status,"Setup cancelled.");}catch(Exception error){toast.Close();MessageBox.Show(this,error.Message,"Setup couldn’t finish");}finally{SetBusy(false);}
     }
     internal void OfferUpdate(WindowsUpdate candidate){update=candidate;updateButton.Content="Update to "+candidate.Version;if(updateBanner is not null)updateBanner.Visibility=Visibility.Visible;tray?.UpdateAvailable(candidate.Version);}
     private async Task CheckUpdatesAsync(bool user)
     {
-        if(busy||checking)return;checking=true;updateButton.IsEnabled=false;if(user)status.Text="Checking for updates…";try
+        if(busy||checking)return;checking=true;updateButton.IsEnabled=false;if(user)L10n.SetText(status,"Checking for updates…");try
         {
-            if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)status.Text="You have the latest published Windows version.";return;}OfferUpdate(update);if(!user)return;}
+            if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)L10n.SetText(status,"You have the latest published Windows version.");return;}OfferUpdate(update);if(!user)return;}
             if(busy)return;
             if(MessageBox.Show(this,"Download, verify and install Nashi "+update.Version+"? The app will restart. No account or token is needed.","Nashi update",MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
             SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();
             try{await UpdateInstaller.StageAsync(update,new Progress<OperationProgress>(toast.Update),cancellation.Token);busy=false;Application.Current.Shutdown();}finally{toast.Close();SetBusy(false);}
         }
-        catch(OperationCanceledException){status.Text="Update cancelled.";}catch(Exception error){if(user)MessageBox.Show(this,error.Message,"Couldn’t check for updates");}
+        catch(OperationCanceledException){L10n.SetText(status,"Update cancelled.");}catch(Exception error){if(user)MessageBox.Show(this,error.Message,"Couldn’t check for updates");}
         finally{checking=false;updateButton.IsEnabled=!busy;}
     }
 }

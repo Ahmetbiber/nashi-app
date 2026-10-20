@@ -31,7 +31,7 @@ struct WelcomeView:View {
                 }.frame(width:310,height:330).id("art-\(page)").transition(.opacity)
                 VStack(alignment:.leading,spacing:17) {
                     NashiPill(title:names[page].uppercased(),symbol:page==5 ? "checkmark":"sparkle",color:page==5 ? NashiPalette.forest:.nashi)
-                    Text(titles[page]).font(.system(size:33,weight:.bold,design:.rounded)).tracking(-1).fixedSize(horizontal:false,vertical:true)
+                    LText(titles[page]).font(.system(size:33,weight:.bold,design:.rounded)).tracking(-1).fixedSize(horizontal:false,vertical:true)
                     detail
                 }.frame(width:310,alignment:.leading).id("copy-\(page)").transition(.opacity)
             }.frame(maxWidth:.infinity,maxHeight:.infinity)

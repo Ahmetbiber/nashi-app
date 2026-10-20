@@ -11,7 +11,7 @@ import NashiCore
     func show(_ urls:[URL]) {
         guard !urls.isEmpty else{return};self.urls=urls;index=0
         if window == nil {
-            let w=NSWindow(contentRect:NSRect(x:0,y:0,width:800,height:620),styleMask:[.titled,.closable,.resizable,.miniaturizable],backing:.buffered,defer:false);w.isReleasedWhenClosed=false;w.minSize=NSSize(width:560,height:400);w.center();window=w
+            let w=NSWindow(contentRect:NSRect(x:0,y:0,width:800,height:620),styleMask:[.titled,.closable,.resizable,.miniaturizable],backing:.buffered,defer:false);w.backgroundColor=NSColor(NashiPalette.canvas);w.isReleasedWhenClosed=false;w.minSize=NSSize(width:560,height:400);w.center();window=w
             monitor=NSEvent.addLocalMonitorForEvents(matching:.keyDown) { [weak self] event in
                 guard let self,event.window===self.window else{return event}
                 if event.keyCode==53 {self.close();return nil}

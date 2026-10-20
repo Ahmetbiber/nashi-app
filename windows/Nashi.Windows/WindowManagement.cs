@@ -86,7 +86,7 @@ internal sealed class WindowManagement:IDisposable
     {
         wheel=new WheelWindow(null,placements.Select(p=>new ToolChoice(p.ToString(),p.Title(),"",p)).ToArray(),_=>{},externalDrag:true);
         PassThrough(wheel);wheel.Show();
-        var dpi=Native.GetDpiForWindow(target);var size=(int)Math.Round(360*(dpi>0?dpi:96)/96d);
+        var dpi=Native.GetDpiForWindow(target);var size=(int)Math.Round(WheelPresentation.Diameter*(dpi>0?dpi:96)/96d);
         var work=WorkArea(point);
         var x=Math.Clamp(point.X-size/2,work.X+4,Math.Max(work.X+4,work.Right-size-4));
         var y=Math.Clamp(point.Y-size/2,work.Y+4,Math.Max(work.Y+4,work.Bottom-size-4));

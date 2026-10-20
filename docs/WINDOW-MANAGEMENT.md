@@ -24,7 +24,7 @@ Some apps enforce minimum dimensions or disallow programmatic resizing. If the r
 
 ## Windows
 
-The Home checkbox enables/disables window management and persists outside the portable installation with the user's Nashi preferences. Native `MOVESIZESTART`/`MOVESIZEEND` events identify window gestures; no global keyboard hook or text monitoring is installed. The overlay is non-activating and passes pointer events through to the original app. DWM's invisible window borders are compensated so the visible frame aligns with the target area. Elevated/protected applications may reject resizing. A refused placement shows the same window-arrangement explanation as on macOS.
+The **Settings → General → Window management** checkbox enables/disables window management and persists outside the portable installation with the user's Nashi preferences. Native `MOVESIZESTART`/`MOVESIZEEND` events identify window gestures; no global keyboard hook or text monitoring is installed. The overlay is non-activating and passes pointer events through to the original app. DWM's invisible window borders are compensated so the visible frame aligns with the target area. Elevated/protected applications may reject resizing. A refused placement shows the same window-arrangement explanation as on macOS.
 
 ## Verification
 

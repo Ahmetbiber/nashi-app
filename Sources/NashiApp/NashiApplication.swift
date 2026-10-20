@@ -27,6 +27,10 @@ enum NashiApplication {
             let fixture=WindowManagementFixtureDelegate();app.delegate=fixture;app.setActivationPolicy(.accessory)
             withExtendedLifetime(fixture) { app.run() };return
         }
+        if let index=CommandLine.arguments.firstIndex(of:"--desktop-parity-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=DesktopParitySmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
         let delegate=AppDelegate()
         app.delegate=delegate
         app.setActivationPolicy(.accessory)

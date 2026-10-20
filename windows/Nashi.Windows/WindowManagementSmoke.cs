@@ -74,7 +74,7 @@ internal static class WindowManagementSmoke
                 mouse_event(2,0,0,0,0);down=true;Thread.Sleep(70);SetCursorPos(x+30,y+26);Thread.Sleep(80);
                 keybd_event(key,0,0,0);SetCursorPos(x+55,y+41);
                 nint wheel=0;var frame=default(WindowFrame);var deadline=DateTime.UtcNow.AddSeconds(3);
-                var dpi=WindowManagement.Native.GetDpiForWindow(target);var expectedSize=(int)Math.Round(360*(dpi>0?dpi:96)/96d);
+                var dpi=WindowManagement.Native.GetDpiForWindow(target);var expectedSize=(int)Math.Round(WheelPresentation.Diameter*(dpi>0?dpi:96)/96d);
                 while(DateTime.UtcNow<deadline)
                 {
                     Thread.Sleep(50);var candidate=FindWindow(null,"Nashi Window Management");

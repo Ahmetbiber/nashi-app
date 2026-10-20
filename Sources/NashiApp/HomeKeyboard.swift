@@ -17,7 +17,7 @@ import AppKit
         }
         guard libraryVisible,flags.isEmpty else{return false}
         // Down from the Library search transfers focus to the matching results.
-        if editing,event.keyCode==125 {window.makeFirstResponder(window.contentView);selectedHistoryID=filteredHistory.first?.id;return true}
+        if editing,event.keyCode==125 {window.makeFirstResponder(nil);selectedHistoryID=filteredHistory.first?.id;return true}
         guard !editing,!(window.firstResponder is NSButton) else{return false}
         if [125,126].contains(event.keyCode) {navigateLibrary(event.keyCode==125 ? 1:-1);return true}
         if [49,36,76].contains(event.keyCode),let row=filteredHistory.first(where:{$0.id==selectedHistoryID}) ?? filteredHistory.first {

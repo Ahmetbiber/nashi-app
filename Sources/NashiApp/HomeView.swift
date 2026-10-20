@@ -161,12 +161,12 @@ struct HomeView:View {
     private var selectionActions:some View {
         VStack(alignment:.leading,spacing:12) {
             HStack(spacing:12) {
-                Menu { ForEach(formats,id:\.self) { format in Button(format=="gz" ? "GZIP":format.uppercased()) { state.select(.convert(format)) } } } label:{HomeActionTile(title:"Convert",subtitle:formats.isEmpty ? "No output formats":"\(formats.count) ways to change it",symbol:"arrow.triangle.2.circlepath",color:.nashi)}
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).disabled(formats.isEmpty || state.working)
-                Menu { ForEach(tools,id:\.self) { tool in Button(tool.title) { state.select(.tool(tool)) } } } label:{HomeActionTile(title:"Fine-tune",subtitle:tools.isEmpty ? "No tools for this selection":"Edit, compress, and more",symbol:"slider.horizontal.3",color:NashiPalette.forest)}
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).disabled(tools.isEmpty || state.working)
-                Menu { ForEach(FileAction.allCases,id:\.self) { action in Button(action.title) { state.perform(action) } } } label:{HomeActionTile(title:"Move & share",subtitle:"Send it on its way",symbol:"paperplane",color:Color(red:0.34,green:0.47,blue:0.67))}
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).disabled(state.working)
+                Button { HomeActionMenu.show(formats.map{format in (format=="gz" ? "GZIP":format.uppercased(),{state.select(.convert(format))})}) } label:{HomeActionTile(title:"Convert",subtitle:formats.isEmpty ? "No output formats":"\(formats.count) ways to change it",symbol:"arrow.triangle.2.circlepath",color:.nashi)}
+                    .buttonStyle(.plain).disabled(formats.isEmpty || state.working)
+                Button { HomeActionMenu.show(tools.map{tool in (tool.title,{state.select(.tool(tool))})}) } label:{HomeActionTile(title:"Fine-tune",subtitle:tools.isEmpty ? "No tools for this selection":"Edit, compress, and more",symbol:"slider.horizontal.3",color:NashiPalette.forest)}
+                    .buttonStyle(.plain).disabled(tools.isEmpty || state.working)
+                Button { HomeActionMenu.show(FileAction.allCases.map{action in (action.title,{state.perform(action)})}) } label:{HomeActionTile(title:"Move & share",subtitle:"Send it on its way",symbol:"paperplane",color:Color(red:0.34,green:0.47,blue:0.67))}
+                    .buttonStyle(.plain).disabled(state.working)
             }
             if !formats.isEmpty {
                 HStack(spacing:7) {
@@ -301,5 +301,19 @@ struct JobProgressView:View {
                 }.padding(15).background(Color.orange.opacity(0.07)).background(NashiPalette.canvas).clipShape(RoundedRectangle(cornerRadius:17)).transition(.opacity)
             }
         }.nashiAnimation(value:state.working).nashiAnimation(value:state.outputs.count).nashiAnimation(value:state.error != nil)
+    }
+}
+
+/// Keep the complete tile as the button label; NSPopUpButton otherwise flattens it to an icon/title.
+@MainActor private enum HomeActionMenu {
+    private final class Action:NSObject {
+        let run:()->Void
+        init(_ run:@escaping()->Void){self.run=run}
+        @objc func invoke(){run()}
+    }
+    static func show(_ choices:[(String,()->Void)]) {
+        let menu=NSMenu();let handlers=choices.map{Action($0.1)}
+        for (index,choice) in choices.enumerated(){let item=NSMenuItem(title:choice.0,action:#selector(Action.invoke),keyEquivalent:"");item.target=handlers[index];menu.addItem(item)}
+        withExtendedLifetime(handlers){menu.popUp(positioning:nil,at:NSEvent.mouseLocation,in:nil)}
     }
 }

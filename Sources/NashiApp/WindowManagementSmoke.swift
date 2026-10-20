@@ -90,7 +90,11 @@ import Darwin
             mouse(.leftMouseDragged,CGPoint(x:from.x+(selected.x-from.x)*fraction,y:from.y+(selected.y-from.y)*fraction),flags:flags);try await pause(30)
         }
         mouse(.leftMouseDragged,selected,flags:flags);try await pause(180)
-        if log.isEmpty { try captureWheel(pid:managerPID) }
+        if log.isEmpty {
+            try captureWheel(pid:managerPID)
+            // Explicit live visual QA only; normal test runs and the app never pause here.
+            if CommandLine.arguments.contains("--hold-for-capture") { try await pause(6000) }
+        }
         if cancel { keyboard(53,down:true,flags:flags);try await pause(80);keyboard(53,down:false,flags:flags);try await pause(100) }
         // Releasing the modifier must keep the choice available until mouse-up.
         keyboard(key,down:false);heldKey=nil;try await pause(100)

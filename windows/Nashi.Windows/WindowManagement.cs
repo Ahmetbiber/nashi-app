@@ -44,6 +44,8 @@ internal sealed class WindowManagement:IDisposable
         }
         else if(type==0x000B&&window==target)
         {
+            // Escape can end the native move loop before the next timer tick sees it.
+            if((Native.GetAsyncKeyState(0x1B)&0x8000)!=0)cancelled=true;
             Native.GetCursorPos(out var point);wheel?.HoverScreen(new(point.X,point.Y));
             var selected=wheel?.SelectedIndex??-1;var captured=target;
             var choice=selected>=0&&selected<placements.Length&&!cancelled?placements[selected]:(WindowPlacement?)null;

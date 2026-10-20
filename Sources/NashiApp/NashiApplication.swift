@@ -17,6 +17,12 @@ enum NashiApplication {
             if let data=try? JSONSerialization.data(withJSONObject:status,options:[.sortedKeys]),let text=String(data:data,encoding:.utf8) { print(text) }
             return
         }
+        if let index=CommandLine.arguments.firstIndex(of:"--window-management-smoke"),CommandLine.arguments.count>index+2,
+           let managerPID=Int32(CommandLine.arguments[index+1]) {
+            let runner=WindowManagementSmokeDelegate(managerPID:managerPID,output:URL(fileURLWithPath:CommandLine.arguments[index+2],isDirectory:true))
+            app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner) { app.run() };return
+        }
         if CommandLine.arguments.contains("--window-management-fixture") {
             let fixture=WindowManagementFixtureDelegate();app.delegate=fixture;app.setActivationPolicy(.accessory)
             withExtendedLifetime(fixture) { app.run() };return

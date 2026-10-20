@@ -30,5 +30,6 @@ The Home checkbox enables/disables window management and persists outside the po
 
 - Swift regression tests cover all seven layouts, odd/Retina/negative screen coordinates, ordinary content drags, fresh-file precedence and Escape cancellation.
 - The Windows core verifier covers the same partitions and preference persistence.
+- The explicit macOS `--window-management-smoke <manager-pid> <output-directory>` mode runs from the installed Nashi identity after access is granted. It admits only a manager running that same executable and a newly launched disposable Nashi fixture. It tests all seven physical Shift/Command drags, releasing the modifier before mouse-up, and Escape cancellation. Input is released on failure or interruption; the fixture closes and the pointer is restored. Missing access fails before posting any input.
 - The Windows native smoke test launches a separate disposable Nashi fixture process, applies all seven layouts using real window APIs, exercises real Shift/Alt title-bar drags and Escape, and captures the wheel. It does not move the user's other windows.
 - macOS cross-app drag verification requires the installed Nashi build's Accessibility permission. Compilation and geometry tests do not establish that this permission has been granted or that the live drag path has passed.

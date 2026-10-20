@@ -125,6 +125,10 @@ struct SettingsView:View {
                             Spacer()
                             Button("Enable Accessibility…") { WindowManagementController.requestAccess() }
                         }
+                        if Bundle.main.bundleIdentifier == "local.tangerine.replica" {
+                            Text("Upgraded from Tangerine? macOS may still show the previous name. Choose this Nashi app when adding it to Accessibility.").font(.caption).foregroundStyle(.secondary)
+                            Button("Show Nashi in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
+                        }
                     } else { Label("Accessibility is enabled",systemImage:"checkmark.circle").font(.caption).foregroundStyle(.secondary) }
                 }.padding(10)
             }

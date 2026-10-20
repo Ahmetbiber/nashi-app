@@ -20,7 +20,8 @@ internal static class WindowManagementSmoke
     {
         using var manager=new WindowManagement();
         var trace=Path.Combine(output,"window-management-trace.txt");
-        manager.Trace=message=>File.AppendAllText(trace,DateTime.UtcNow.ToString("O")+" "+message+Environment.NewLine);
+        var traceLock=new object();
+        manager.Trace=message=>{lock(traceLock)File.AppendAllText(trace,DateTime.UtcNow.ToString("O")+" "+message+Environment.NewLine);};
         using var fixture=Process.Start(new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,ArgumentList={"--window-management-fixture"}})??throw new Exception("Window fixture could not start.");
         nint handle=0;var deadline=DateTime.UtcNow.AddSeconds(10);
         while(handle==0&&DateTime.UtcNow<deadline){DesktopInput.Pump(100);handle=FindWindow(null,"Nashi Window Layout Fixture");}
@@ -35,14 +36,19 @@ internal static class WindowManagementSmoke
                 DesktopInput.Pump(100);var actual=WindowManagement.Bounds(handle);
                 check(Math.Abs(actual.X-expected.X)<3&&Math.Abs(actual.Y-expected.Y)<3&&Math.Abs(actual.Width-expected.Width)<3&&Math.Abs(actual.Height-expected.Height)<3,"Native window bounds mismatch: "+placement);
             }
-            Gesture(handle,manager,output,WindowPlacement.LeftHalf,shift:true,cancel:false);
-            var left=WindowPlacement.LeftHalf.Frame(area);var result=WindowManagement.Bounds(handle);
-            check(Math.Abs(result.X-left.X)<3&&Math.Abs(result.Width-left.Width)<3,"Shift native title-bar drag did not arrange the window. Expected "+left+"; actual "+result);
-            Gesture(handle,manager,output,WindowPlacement.RightThird,shift:false,cancel:false);
-            var right=WindowPlacement.RightThird.Frame(area);result=WindowManagement.Bounds(handle);
-            check(Math.Abs(result.X-right.X)<3&&Math.Abs(result.Width-right.Width)<3,"Alt native title-bar drag did not arrange the window. Expected "+right+"; actual "+result);
-            Gesture(handle,manager,output,WindowPlacement.LeftTwoThirds,shift:true,cancel:true);
-            check(manager.ActiveWheel is null,"Escape left the window wheel open.");
+            var index=0;
+            foreach(var placement in Enum.GetValues<WindowPlacement>())
+            {
+                var shift=index++%2==0;
+                Gesture(handle,manager,placement,shift:shift,cancel:false);
+                var expected=placement.Frame(area);var actual=WindowManagement.Bounds(handle);
+                check(Math.Abs(actual.X-expected.X)<3&&Math.Abs(actual.Y-expected.Y)<3&&Math.Abs(actual.Width-expected.Width)<3&&Math.Abs(actual.Height-expected.Height)<3,
+                    $"{(shift?"Shift":"Alt")} native title-bar drag failed for {placement}. Expected {expected}; actual {actual}");
+            }
+            Gesture(handle,manager,WindowPlacement.LeftTwoThirds,shift:true,cancel:true);
+            check(manager.ActiveWheel is null&&!manager.PlacementPending,"Escape left the window wheel open or queued a placement.");
+            var cancelled=WindowManagement.Bounds(handle);
+            check(Math.Abs(cancelled.Width-620)<3&&Math.Abs(cancelled.Height-420)<3,"Escape applied a layout instead of preserving the native drag size.");
 
             var wheel=new WheelWindow(null,Enum.GetValues<WindowPlacement>().Select(p=>new ToolChoice(p.ToString(),p.Title(),"",p)).ToArray(),_=>{},externalDrag:true);
             wheel.Show();wheel.UpdateLayout();DesktopInput.Pump();
@@ -50,7 +56,7 @@ internal static class WindowManagementSmoke
         }
         finally{fixture.CloseMainWindow();if(!fixture.WaitForExit(2000))fixture.Kill();}
     }
-    private static void Gesture(nint target,WindowManagement manager,string output,WindowPlacement choice,bool shift,bool cancel)
+    private static void Gesture(nint target,WindowManagement manager,WindowPlacement choice,bool shift,bool cancel)
     {
         var reset=new WindowFrame(80,90,620,420);_ =WindowManagement.Apply(target,reset);DesktopInput.Pump(150);
         var task=Task.Run(()=>
@@ -64,7 +70,7 @@ internal static class WindowManagementSmoke
                 nint wheel=0;var deadline=DateTime.UtcNow.AddSeconds(3);
                 while(wheel==0&&DateTime.UtcNow<deadline){Thread.Sleep(50);wheel=FindWindow(null,"Nashi Window Management");}
                 if(wheel==0)throw new Exception("Window wheel did not open during a native move.");
-                var frame=WindowManagement.Bounds(wheel);File.AppendAllText(Path.Combine(output,"window-management-trace.txt"),$"test wheel={frame} choice={choice}\n");var index=Array.IndexOf(Enum.GetValues<WindowPlacement>(),choice);
+                var frame=WindowManagement.Bounds(wheel);manager.Trace?.Invoke($"test wheel={frame} choice={choice}");var index=Array.IndexOf(Enum.GetValues<WindowPlacement>(),choice);
                 var angle=(-90+index*360d/7)*Math.PI/180;
                 SetCursorPos((int)(frame.X+frame.Width*(.5+.33*Math.Cos(angle))),(int)(frame.Y+frame.Height*(.5+.33*Math.Sin(angle))));Thread.Sleep(180);
                 if(cancel){keybd_event(0x1B,0,0,0);Thread.Sleep(100);keybd_event(0x1B,0,2,0);Thread.Sleep(100);}
@@ -72,6 +78,8 @@ internal static class WindowManagementSmoke
             finally{if(down)mouse_event(4,0,0,0,0);keybd_event(key,0,2,0);}
         });
         var timeout=DateTime.UtcNow.AddSeconds(8);while(!task.IsCompleted&&DateTime.UtcNow<timeout)DesktopInput.Pump(50);
-        if(!task.IsCompleted)throw new Exception("Native window drag timed out.");task.GetAwaiter().GetResult();DesktopInput.Pump(350);
+        if(!task.IsCompleted)throw new Exception("Native window drag timed out.");task.GetAwaiter().GetResult();
+        var completion=DateTime.UtcNow.AddSeconds(3);
+        do{DesktopInput.Pump(100);}while((manager.ActiveWheel is not null||manager.PlacementPending)&&DateTime.UtcNow<completion);
     }
 }

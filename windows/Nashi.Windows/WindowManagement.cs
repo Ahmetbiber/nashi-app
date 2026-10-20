@@ -25,6 +25,7 @@ internal sealed class WindowManagement:IDisposable
     internal Action<string>? Trace { get; set; }
     private static readonly WindowPlacement[] placements=Enum.GetValues<WindowPlacement>();
     internal WheelWindow? ActiveWheel=>wheel;
+    internal bool PlacementPending { get; private set; }
 
     internal WindowManagement(Action<string>? notice=null,Func<bool>? isEnabled=null)
     {
@@ -49,8 +50,9 @@ internal sealed class WindowManagement:IDisposable
             var work=WorkArea(point);Trace?.Invoke($"end pointer={point.X},{point.Y} selected={selected} cancelled={cancelled}");Clear();
             if(choice is {} placement)
             {
+                PlacementPending=true;
                 var apply=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};
-                apply.Tick+=(_,_)=>{apply.Stop();if(disposed||!Native.IsWindow(captured))return;var result=Apply(captured,placement.Frame(work));Trace?.Invoke($"apply {placement} success={result} actual={Bounds(captured)}");if(!result)notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
+                apply.Tick+=(_,_)=>{apply.Stop();PlacementPending=false;if(disposed||!Native.IsWindow(captured))return;var result=Apply(captured,placement.Frame(work));Trace?.Invoke($"apply {placement} success={result} actual={Bounds(captured)}");if(!result)notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
             }
         }
     }

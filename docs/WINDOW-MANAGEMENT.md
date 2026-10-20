@@ -16,6 +16,8 @@ The preview and placement use the destination display's usable work area. The me
 
 Enable the feature in **Settings → General → Window management**. Grant Nashi Accessibility access once through **Enable Accessibility…**. The app checks permission without prompting repeatedly; it never changes macOS privacy settings automatically. Accessibility APIs move and resize the window that was captured at the beginning of the drag.
 
+Upgraded installations retain the `local.tangerine.replica` bundle identity to preserve update and user-data compatibility. macOS may cache the previous Tangerine display name in its Accessibility list; the reference app (`com.th.Tangerine`) is a separate permission. Nashi checks its own `AXIsProcessTrusted()` result. If an old row is enabled but Nashi still reports no access, use **Show Nashi in Finder** to select the current installed app when adding it through macOS settings. Nashi does not reset or edit the privacy database.
+
 The window must actually move or resize before the wheel can activate. Fresh file/web drag payloads, a visible file wheel, editable text controls, scrollbars, minimized windows, full-screen windows and non-resizable/dialog windows are excluded. The overlay does not activate Nashi or capture mouse events from the app being dragged. No window titles, typed content or accessibility trees are recorded.
 
 Some apps enforce minimum dimensions or disallow programmatic resizing. If the requested rectangle cannot be applied, Nashi reports it rather than claiming successful placement.

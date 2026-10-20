@@ -125,6 +125,13 @@ import Darwin
         }
     }
     private func windowBounds(pid:pid_t,title:String)->CGRect? {
+        // Accessibility is already required for this test. Do not require Screen Recording
+        // merely to find a separately running Nashi panel; its CG title may be redacted.
+        let app=AXUIElementCreateApplication(pid);AXUIElementSetMessagingTimeout(app,0.1)
+        let matches=(WindowManagementController.attribute(app,kAXWindowsAttribute) as? [AXUIElement] ?? []).filter {
+            WindowManagementController.attribute($0,kAXTitleAttribute) as? String==title
+        }
+        if matches.count==1,let frame=WindowManagementController.frame(of:matches[0]) { return frame }
         guard let info=windowInfo(pid:pid,title:title),let bounds=info[kCGWindowBounds as String] as? [String:Any] else { return nil }
         return CGRect(dictionaryRepresentation:bounds as CFDictionary)
     }

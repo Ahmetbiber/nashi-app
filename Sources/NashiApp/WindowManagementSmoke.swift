@@ -89,7 +89,8 @@ import Darwin
         var wheel:CGRect?
         for _ in 0..<40 { wheel=windowBounds(pid:managerPID,title:"Nashi Window Management");if wheel != nil { break };try await pause(50) }
         guard let wheel else { throw Failure(description:"The live window wheel did not appear.") }
-        let angle=(-90+Double(index)*360/7)*Double.pi/180
+        let geometry=WheelGeometry(bounds:.zero,count:WindowPlacement.allCases.count)
+        let angle=(-Double(geometry.startAngle)+Double(index)*360/Double(geometry.count))*Double.pi/180
         let selected=CGPoint(x:wheel.midX+wheel.width*0.32*cos(angle),y:wheel.midY+wheel.height*0.32*sin(angle))
         for step in 1...8 {
             let fraction=CGFloat(step)/8,from=point
@@ -154,7 +155,7 @@ import Darwin
     private func cleanup() { releaseInput();fixture?.terminate();fixture=nil;if let originalPointer { mouse(.mouseMoved,originalPointer) };signals.forEach{$0.cancel()} }
     private func save(passed:Bool,error:String?)throws {
         try FileManager.default.createDirectory(at:output,withIntermediateDirectories:true)
-        let report:[String:Any]=["passed":passed,"error":error as Any? ?? NSNull(),"checks":log,"scope":"Installed Nashi, disposable native fixture, seven physical Shift/Command drags, modifier release and Escape. No other windows are moved."]
+        let report:[String:Any]=["passed":passed,"error":error as Any? ?? NSNull(),"checks":log,"scope":"Installed Nashi, disposable native fixture, all \(WindowPlacement.allCases.count) physical Shift/Command layout drags, modifier release and Escape. No other windows are moved."]
         try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:output.appendingPathComponent("mac-window-management.json"))
     }
 }

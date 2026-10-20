@@ -2,7 +2,7 @@ namespace Nashi.Core;
 
 public enum WindowPlacement
 {
-    LeftThird, MiddleThird, RightThird, LeftHalf, RightHalf, LeftTwoThirds, RightTwoThirds
+    LeftThird, MiddleThird, RightThird, LeftHalf, RightHalf, LeftTwoThirds, RightTwoThirds, Maximize
 }
 
 public readonly record struct WindowFrame(int X,int Y,int Width,int Height)
@@ -18,14 +18,16 @@ public static class WindowPlacements
         WindowPlacement.LeftThird=>"Left third", WindowPlacement.MiddleThird=>"Middle third",
         WindowPlacement.RightThird=>"Right third", WindowPlacement.LeftHalf=>"Left half",
         WindowPlacement.RightHalf=>"Right half", WindowPlacement.LeftTwoThirds=>"Left two-thirds",
-        WindowPlacement.RightTwoThirds=>"Right two-thirds", _=>throw new ArgumentOutOfRangeException(nameof(placement))
+        WindowPlacement.RightTwoThirds=>"Right two-thirds", WindowPlacement.Maximize=>"Maximize",
+        _=>throw new ArgumentOutOfRangeException(nameof(placement))
     };
     public static (double Start,double End) Range(this WindowPlacement placement)=>placement switch
     {
         WindowPlacement.LeftThird=>(0,1d/3), WindowPlacement.MiddleThird=>(1d/3,2d/3),
         WindowPlacement.RightThird=>(2d/3,1), WindowPlacement.LeftHalf=>(0,.5),
         WindowPlacement.RightHalf=>(.5,1), WindowPlacement.LeftTwoThirds=>(0,2d/3),
-        WindowPlacement.RightTwoThirds=>(1d/3,1), _=>throw new ArgumentOutOfRangeException(nameof(placement))
+        WindowPlacement.RightTwoThirds=>(1d/3,1), WindowPlacement.Maximize=>(0,1),
+        _=>throw new ArgumentOutOfRangeException(nameof(placement))
     };
     public static WindowFrame Frame(this WindowPlacement placement,WindowFrame area,int minimumWidth=0)
     {

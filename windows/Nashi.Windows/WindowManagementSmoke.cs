@@ -65,7 +65,7 @@ internal static class WindowManagementSmoke
                 // and DWM invisible resize borders settle before measuring it.
                 _=WindowManagement.Apply(limited,new(80,90,160,420));DesktopInput.Pump(300);
                 var minimum=WindowManagement.Bounds(limited).Width;
-                foreach(var placement in new[]{WindowPlacement.LeftThird,WindowPlacement.MiddleThird,WindowPlacement.RightThird})
+                foreach(var placement in new[]{WindowPlacement.LeftThird,WindowPlacement.MiddleThird,WindowPlacement.RightThird,WindowPlacement.Maximize})
                 {
                     Gesture(limited,manager,placement,shift:true,cancel:false);var expected=placement.Frame(area,minimum);var actual=WindowManagement.Bounds(limited);
                     check(Math.Abs(actual.X-expected.X)<3&&Math.Abs(actual.Width-expected.Width)<3&&Math.Abs(actual.Y-expected.Y)<3&&Math.Abs(actual.Height-expected.Height)<3,"Minimum-width window lost its selected anchor: "+placement+"; "+actual);
@@ -101,8 +101,9 @@ internal static class WindowManagementSmoke
                     wheel=candidate;frame=bounds;break;
                 }
                 if(wheel==0)throw new Exception("Window wheel did not finish positioning during a native move.");
-                manager.Trace?.Invoke($"test wheel={frame} choice={choice} resizeBorder={resize}");var index=Array.IndexOf(Enum.GetValues<WindowPlacement>(),choice);
-                var angle=(-90+index*360d/7)*Math.PI/180;
+                var placements=Enum.GetValues<WindowPlacement>();
+                manager.Trace?.Invoke($"test wheel={frame} choice={choice} resizeBorder={resize}");var index=Array.IndexOf(placements,choice);
+                var angle=(WheelPresentation.StartAngle(placements.Length)+index*360d/placements.Length)*Math.PI/180;
                 SetCursorPos((int)(frame.X+frame.Width*(.5+.33*Math.Cos(angle))),(int)(frame.Y+frame.Height*(.5+.33*Math.Sin(angle))));Thread.Sleep(180);
                 if(cancel){keybd_event(0x1B,0,0,0);Thread.Sleep(100);keybd_event(0x1B,0,2,0);Thread.Sleep(100);}
             }

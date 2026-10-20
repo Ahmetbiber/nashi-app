@@ -32,4 +32,4 @@ Windows uses Explorer, Windows keyboard conventions and Windows Share. Apple Air
 
 The released code passed 198 engine checks and two native runs of 231 assertions with actual exit code 0: [Windows evidence](https://github.com/orkunisitmak/nashi-app/actions/runs/39454458596). Post-publication update evidence is recorded in [the real update workflow](https://github.com/orkunisitmak/nashi-app/actions/runs/39458173367).
 
-The combined desktop branch also includes the seven-layout window wheel and the follow-up Home/Library/preview/clipboard/media alignment. See [the desktop comparison and shortcut map](../docs/DESKTOP-PARITY.md) for the current behavior and native platform adaptations.
+The combined desktop branch also includes the eight-layout window wheel (including Maximize) and the follow-up Home/Library/preview/clipboard/media alignment. See [the desktop comparison and shortcut map](../docs/DESKTOP-PARITY.md) for the current behavior and native platform adaptations.

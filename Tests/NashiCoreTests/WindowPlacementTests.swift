@@ -13,8 +13,22 @@ final class WindowPlacementTests: XCTestCase {
         XCTAssertEqual(WindowPlacement.rightHalf.frame(in:area,minimumSize:minimum).maxX,area.maxX)
         XCTAssertEqual(WindowPlacement.leftThird.frame(in:area,minimumSize:CGSize(width:4000,height:200)),area)
     }
-    func testSevenRequestedPlacementsPartitionOddAndRetinaScreens() {
-        XCTAssertEqual(WindowPlacement.allCases.count, 7)
+    func testMaximizeFillsTheExactUsableAreaAcrossDisplaysAndMinimumWidths() {
+        for area in [CGRect(x:0,y:30,width:1511,height:910),
+                     CGRect(x:-1920,y:-1030,width:1920,height:1006),
+                     CGRect(x:1512.25,y:40.5,width:1727.25,height:1090.5)] {
+            for scale:CGFloat in [1,2] {
+                for minimum:CGFloat in [0,1000,4000] {
+                    XCTAssertEqual(WindowPlacement.maximize.frame(in:area,scale:scale,
+                        minimumSize:CGSize(width:minimum,height:200)),area)
+                }
+            }
+        }
+        XCTAssertEqual(WindowPlacement.maximize.frame(in:.zero),.zero)
+        XCTAssertEqual(WindowPlacement.maximize.frame(in:CGRect(x:0,y:0,width:100,height:CGFloat.infinity)),.zero)
+    }
+    func testRequestedPlacementsPartitionOddAndRetinaScreens() {
+        XCTAssertEqual(WindowPlacement.allCases.count, 8)
         for area in [CGRect(x:0,y:24,width:1511,height:910),
                      CGRect(x:-1920,y:-1030,width:1920,height:1006),
                      CGRect(x:1512,y:40,width:1727.5,height:1090)] {

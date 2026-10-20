@@ -21,6 +21,7 @@ try
         var a=WindowPlacement.LeftThird.Frame(area);var b=WindowPlacement.MiddleThird.Frame(area);var c=WindowPlacement.RightThird.Frame(area);
         Check(a.X==area.X&&a.Right==b.X&&b.Right==c.X&&c.Right==area.Right,"Window thirds have gaps or cross display bounds");
         Check(WindowPlacement.LeftHalf.Frame(area).Right==WindowPlacement.RightHalf.Frame(area).X,"Window halves overlap or leave a gap");
+        var constrained=1000;Check(WindowPlacement.LeftThird.Frame(area,constrained).X==area.X,"Constrained left placement lost its edge");Check(WindowPlacement.RightThird.Frame(area,constrained).Right==area.Right,"Constrained right placement lost its edge");Check(Math.Abs(WindowPlacement.MiddleThird.Frame(area,constrained).X+(double)WindowPlacement.MiddleThird.Frame(area,constrained).Width/2-(area.X+area.Width/2d))<=.5,"Constrained middle placement lost its center");Check(WindowPlacement.LeftThird.Frame(area,area.Width*2)==area,"An oversized minimum escaped the display");
         Check(WindowPlacement.LeftTwoThirds.Frame(area).Right==b.Right&&WindowPlacement.RightTwoThirds.Frame(area).X==b.X,"Two-thirds placement mismatch");
         foreach(var placement in Enum.GetValues<WindowPlacement>())Check(placement.Frame(area).Height==area.Height&&placement.Frame(area).Y==area.Y,"Window layout changed the usable vertical frame");
     }

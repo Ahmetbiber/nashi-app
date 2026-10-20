@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Coordinates belong to the usable screen frame, excluding the menu bar and Dock/taskbar.
 public enum WindowPlacement: String, CaseIterable, Sendable, Codable {
@@ -36,7 +39,7 @@ public enum WindowPlacement: String, CaseIterable, Sendable, Codable {
         }
     }
 
-    public func frame(in workArea: CGRect, scale: CGFloat = 1) -> CGRect {
+    public func frame(in workArea: CGRect, scale: CGFloat = 1, minimumSize: CGSize = .zero) -> CGRect {
         guard workArea.width > 0, workArea.height > 0, !workArea.isInfinite,
               workArea.origin.x.isFinite, workArea.origin.y.isFinite else { return .zero }
         let pixels = scale.isFinite && scale > 0 ? scale : 1
@@ -44,8 +47,15 @@ public enum WindowPlacement: String, CaseIterable, Sendable, Codable {
         // Adjacent regions share the same rounded boundary even at odd display widths.
         let start = (workArea.width * range.lowerBound * pixels).rounded()/pixels
         let end = (workArea.width * range.upperBound * pixels).rounded()/pixels
-        return CGRect(x: workArea.minX+start, y: workArea.minY,
-                      width: end-start, height: workArea.height)
+        let requested=end-start
+        let minimum=minimumSize.width.isFinite ? max(0,minimumSize.width):0
+        if minimum<=requested {return CGRect(x:workArea.minX+start,y:workArea.minY,width:requested,height:workArea.height)}
+        let width=min(workArea.width,max(requested,minimum))
+        let x:CGFloat
+        if range.lowerBound==0 {x=workArea.minX}
+        else if range.upperBound==1 {x=workArea.maxX-width}
+        else {x=workArea.midX-width/2}
+        return CGRect(x:x,y:workArea.minY,width:width,height:workArea.height)
     }
 }
 

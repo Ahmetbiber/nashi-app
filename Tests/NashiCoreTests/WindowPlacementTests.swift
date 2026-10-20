@@ -2,6 +2,17 @@ import XCTest
 @testable import NashiCore
 
 final class WindowPlacementTests: XCTestCase {
+    func testMinimumWindowWidthKeepsSelectedEdgeAndFitsTheDisplay() {
+        let area=CGRect(x:-1920,y:30,width:1920,height:960),minimum=CGSize(width:1000,height:200)
+        let left=WindowPlacement.leftThird.frame(in:area,minimumSize:minimum)
+        let center=WindowPlacement.middleThird.frame(in:area,minimumSize:minimum)
+        let right=WindowPlacement.rightThird.frame(in:area,minimumSize:minimum)
+        XCTAssertEqual(left.width,1000);XCTAssertEqual(left.minX,area.minX)
+        XCTAssertEqual(center.width,1000);XCTAssertEqual(center.midX,area.midX)
+        XCTAssertEqual(right.width,1000);XCTAssertEqual(right.maxX,area.maxX)
+        XCTAssertEqual(WindowPlacement.rightHalf.frame(in:area,minimumSize:minimum).maxX,area.maxX)
+        XCTAssertEqual(WindowPlacement.leftThird.frame(in:area,minimumSize:CGSize(width:4000,height:200)),area)
+    }
     func testSevenRequestedPlacementsPartitionOddAndRetinaScreens() {
         XCTAssertEqual(WindowPlacement.allCases.count, 7)
         for area in [CGRect(x:0,y:24,width:1511,height:910),

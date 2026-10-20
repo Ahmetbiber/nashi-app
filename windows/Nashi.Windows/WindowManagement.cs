@@ -63,7 +63,7 @@ internal sealed class WindowManagement:IDisposable
             {
                 PlacementPending=true;
                 var apply=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};
-                apply.Tick+=(_,_)=>{apply.Stop();PlacementPending=false;if(disposed||!Native.IsWindow(captured))return;var result=Apply(captured,placement.Frame(work));Trace?.Invoke($"apply {placement} success={result} actual={Bounds(captured)}");if(!result)notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
+                apply.Tick+=(_,_)=>{apply.Stop();PlacementPending=false;if(disposed||!Native.IsWindow(captured))return;var result=Apply(captured,placement.Frame(work),placement);Trace?.Invoke($"apply {placement} success={result} actual={Bounds(captured)}");if(!result)notice("This window could not be arranged. The app may restrict resizing.");};apply.Start();
             }
         }
     }
@@ -128,12 +128,19 @@ internal sealed class WindowManagement:IDisposable
         if(Native.DwmGetWindowAttribute(handle,9,out var visible,Marshal.SizeOf<Native.Rect>())==0)r=visible;
         return new(r.Left,r.Top,r.Right-r.Left,r.Bottom-r.Top);
     }
-    internal static bool Apply(nint handle,WindowFrame frame)
+    internal static bool Apply(nint handle,WindowFrame frame,WindowPlacement? placement=null)
     {
         if(frame.Width<=0||frame.Height<=0||!Native.IsWindow(handle)||!Native.GetWindowRect(handle,out var raw))return false;
         var visual=Bounds(handle);var left=visual.X-raw.Left;var top=visual.Y-raw.Top;
         var right=raw.Right-visual.Right;var bottom=raw.Bottom-visual.Bottom;
         if(!Native.SetWindowPos(handle,0,frame.X-left,frame.Y-top,frame.Width+left+right,frame.Height+top+bottom,0x10|0x4))return false;
+        var observed=Bounds(handle);
+        if(placement is {} choice&&observed.Width>frame.Width+3)
+        {
+            var work=WorkArea(new Native.Point{X=frame.X+frame.Width/2,Y=frame.Y+frame.Height/2});
+            var fitted=choice.Frame(work,observed.Width);
+            return Apply(handle,fitted); // One bounded retry with the app's real minimum width.
+        }
         return Native.GetWindowRect(handle,out var actual)&&Math.Abs(actual.Left-(frame.X-left))<3&&Math.Abs(actual.Top-(frame.Y-top))<3&&Math.Abs(actual.Right-actual.Left-(frame.Width+left+right))<3&&Math.Abs(actual.Bottom-actual.Top-(frame.Height+top+bottom))<3;
     }
 

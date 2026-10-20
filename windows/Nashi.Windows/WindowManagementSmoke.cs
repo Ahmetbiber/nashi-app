@@ -56,6 +56,18 @@ internal static class WindowManagementSmoke
             var wheel=new WheelWindow(null,Enum.GetValues<WindowPlacement>().Select(p=>new ToolChoice(p.ToString(),p.Title(),"",p)).ToArray(),_=>{},externalDrag:true);
             wheel.Show();wheel.UpdateLayout();DesktopInput.Pump();
             var capture=new RenderTargetBitmap((int)wheel.ActualWidth,(int)wheel.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(wheel);ImageEngine.Save(capture,Path.Combine(output,"windows-window-management.png"),"png");wheel.Close();
+            using var constrained=Process.Start(new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,ArgumentList={"--window-management-fixture","--minimum-window-width","1000"}})??throw new Exception("Constrained fixture could not start.");
+            nint limited=0;deadline=DateTime.UtcNow.AddSeconds(10);while(limited==0&&DateTime.UtcNow<deadline){DesktopInput.Pump(100);limited=FindWindow(null,"Nashi Constrained Layout Fixture");}
+            try
+            {
+                check(limited!=0,"Constrained window fixture did not appear");var minimum=WindowManagement.Bounds(limited).Width;
+                foreach(var placement in new[]{WindowPlacement.LeftThird,WindowPlacement.MiddleThird,WindowPlacement.RightThird})
+                {
+                    Gesture(limited,manager,placement,shift:true,cancel:false);var expected=placement.Frame(area,minimum);var actual=WindowManagement.Bounds(limited);
+                    check(Math.Abs(actual.X-expected.X)<3&&Math.Abs(actual.Width-expected.Width)<3&&Math.Abs(actual.Y-expected.Y)<3&&Math.Abs(actual.Height-expected.Height)<3,"Minimum-width window lost its selected anchor: "+placement+"; "+actual);
+                }
+            }
+            finally{constrained.CloseMainWindow();if(!constrained.WaitForExit(2000))constrained.Kill();}
         }
         finally{fixture.CloseMainWindow();if(!fixture.WaitForExit(2000))fixture.Kill();}
     }

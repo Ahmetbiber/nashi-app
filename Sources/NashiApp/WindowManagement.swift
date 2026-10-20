@@ -34,6 +34,7 @@ enum WindowPlacementGlyph {
     private var qaCaptureAttempted=false
     private var accessibilityTrusted=false
     private var nextAccessibilityCheck:TimeInterval=0
+    private var placementTask:Task<Void,Never>?
     private let fileWheelIsVisible:()->Bool
     var onNotice:((String)->Void)?
 
@@ -45,7 +46,7 @@ enum WindowPlacementGlyph {
         RunLoop.main.add(timer!,forMode:.common)
     }
 
-    func stop() { timer?.invalidate();timer=nil;cancel();target=nil }
+    func stop() { placementTask?.cancel();timer?.invalidate();timer=nil;cancel();target=nil }
 
     static var permissionName:String {
         ProcessInfo.processInfo.operatingSystemVersion.majorVersion>=27 ? "Device Control and Data Access":"Accessibility"
@@ -69,7 +70,7 @@ enum WindowPlacementGlyph {
         defer { wasDown=down }
         guard UserDefaults.standard.bool(forKey:"enabled"),
               UserDefaults.standard.bool(forKey:"windowManagementEnabled"),accessibilityTrusted else {
-            cancel();target=nil;return
+            placementTask?.cancel();cancel();target=nil;return
         }
         if !down {
             if wasDown,let captured=target,let placement=currentPlacement(at:point),
@@ -77,13 +78,16 @@ enum WindowPlacementGlyph {
                 let screen=screen(at:point)
                 cancel();target=nil
                 // Let the originating app finish its native tracking loop before resizing it.
-                DispatchQueue.main.asyncAfter(deadline:.now()+0.08) { [weak self] in
-                    self?.apply(placement,to:captured.element,pid:captured.pid,on:screen)
+                placementTask?.cancel()
+                placementTask=Task { [weak self] in
+                    try? await Task.sleep(nanoseconds:80_000_000)
+                    guard !Task.isCancelled else{return}
+                    await self?.apply(placement,to:captured.element,pid:captured.pid,on:screen)
                 }
             } else { cancel();target=nil }
             return
         }
-        if !wasDown { target=capture(at:point) }
+        if !wasDown { placementTask?.cancel();target=capture(at:point) }
         guard var candidate=target else { return }
         if CGEventSource.keyState(.combinedSessionState,key:53) {
             candidate.intent.cancel();target=candidate;cancel();return
@@ -201,11 +205,27 @@ enum WindowPlacementGlyph {
     private func cancel() { wheelPanel?.orderOut(nil);wheel?.selected=nil;preview?.orderOut(nil);lastPlacement=nil }
     private func screen(at point:NSPoint)->NSScreen { NSScreen.screens.first(where:{$0.frame.contains(point)}) ?? NSScreen.main ?? NSScreen.screens[0] }
 
-    private func apply(_ placement:WindowPlacement,to window:AXUIElement,pid:pid_t,on screen:NSScreen) {
+    private func apply(_ placement:WindowPlacement,to window:AXUIElement,pid:pid_t,on screen:NSScreen) async {
         guard AXIsProcessTrusted(),Self.isUsable(window,pid:pid) else { return }
-        let wanted=placement.frame(in:screen.visibleFrame,scale:screen.backingScaleFactor)
-        let result=Self.setFrame(wanted,of:window)
-        if !result { onNotice?("This window could not be arranged. The app may restrict resizing.") }
+        AXUIElementSetMessagingTimeout(window,0.5)
+        var wanted=placement.frame(in:screen.visibleFrame,scale:screen.backingScaleFactor)
+        for attempt in 0..<4 {
+            guard !Task.isCancelled,Self.isUsable(window,pid:pid) else{return}
+            let acknowledged=Self.requestFrame(wanted,of:window)
+            // AX writes can be acknowledged before Chrome/Electron applies the
+            // native layout. Do not report an error from the immediate read.
+            try? await Task.sleep(nanoseconds:120_000_000)
+            guard !Task.isCancelled,let actual=Self.frame(of:window) else{return}
+            let origin=Self.accessibilityPoint(NSPoint(x:wanted.minX,y:wanted.maxY))
+            if abs(actual.width-wanted.width)<3,abs(actual.height-wanted.height)<3,
+               abs(actual.minX-origin.x)<3,abs(actual.minY-origin.y)<3 {return}
+            if acknowledged,attempt>=1,actual.width>wanted.width+3,abs(actual.height-wanted.height)<3 {
+                // Respect an app's minimum width, while retaining the chosen
+                // left/center/right anchor instead of rejecting the placement.
+                wanted=placement.frame(in:screen.visibleFrame,scale:screen.backingScaleFactor,minimumSize:actual.size)
+            }
+        }
+        if !Task.isCancelled {onNotice?("This window could not be arranged. The app may restrict resizing.")}
     }
 
     static func attribute(_ element:AXUIElement,_ name:String)->CFTypeRef? {
@@ -233,6 +253,12 @@ enum WindowPlacementGlyph {
         CGPoint(x:point.x,y:(NSScreen.screens.first?.frame.maxY ?? 0)-point.y)
     }
     static func setFrame(_ frame:NSRect,of window:AXUIElement)->Bool {
+        guard requestFrame(frame,of:window),let actual=Self.frame(of:window) else{return false}
+        let position=accessibilityPoint(NSPoint(x:frame.minX,y:frame.maxY))
+        return abs(actual.width-frame.width)<3 && abs(actual.height-frame.height)<3 &&
+               abs(actual.minX-position.x)<3 && abs(actual.minY-position.y)<3
+    }
+    private static func requestFrame(_ frame:NSRect,of window:AXUIElement)->Bool {
         var size=frame.size,position=accessibilityPoint(NSPoint(x:frame.minX,y:frame.maxY))
         guard let s=AXValueCreate(.cgSize,&size),let p=AXValueCreate(.cgPoint,&position) else { return false }
         guard AXUIElementSetAttributeValue(window,kAXSizeAttribute as CFString,s) == .success,
@@ -240,9 +266,7 @@ enum WindowPlacementGlyph {
         // Some apps constrain the first resize to the old display. Repeat after the move.
         _=AXUIElementSetAttributeValue(window,kAXSizeAttribute as CFString,s)
         _=AXUIElementSetAttributeValue(window,kAXPositionAttribute as CFString,p)
-        guard let actual=Self.frame(of:window) else { return false }
-        return abs(actual.width-size.width)<3 && abs(actual.height-size.height)<3 &&
-               abs(actual.minX-position.x)<3 && abs(actual.minY-position.y)<3
+        return true
     }
 }
 

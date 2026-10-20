@@ -27,12 +27,15 @@ public static class WindowPlacements
         WindowPlacement.RightHalf=>(.5,1), WindowPlacement.LeftTwoThirds=>(0,2d/3),
         WindowPlacement.RightTwoThirds=>(1d/3,1), _=>throw new ArgumentOutOfRangeException(nameof(placement))
     };
-    public static WindowFrame Frame(this WindowPlacement placement,WindowFrame area)
+    public static WindowFrame Frame(this WindowPlacement placement,WindowFrame area,int minimumWidth=0)
     {
         if(area.Width<=0||area.Height<=0)return default;
         var (start,end)=placement.Range();
         var left=(int)Math.Round(area.Width*start,MidpointRounding.AwayFromZero);
         var right=(int)Math.Round(area.Width*end,MidpointRounding.AwayFromZero);
-        return new(area.X+left,area.Y,right-left,area.Height);
+        var width=Math.Min(area.Width,Math.Max(right-left,minimumWidth));
+        if(width==right-left)return new(area.X+left,area.Y,width,area.Height);
+        var x=start==0?area.X:end==1?area.Right-width:area.X+(area.Width-width)/2;
+        return new(x,area.Y,width,area.Height);
     }
 }

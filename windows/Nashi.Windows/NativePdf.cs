@@ -3,34 +3,18 @@ using System.Windows.Media;
 using System.Windows;
 using global::Windows.Storage;
 using global::Windows.Storage.Streams;
-using global::Windows.Data.Pdf;
 using global::Windows.Graphics.Imaging;
 using global::Windows.Media.Ocr;
 using global::Windows.Media.FaceAnalysis;
 using Nashi.Core;
-using System.Runtime.InteropServices;
 namespace Nashi.Windows;
 public static class NativePdf
 {
-    private static bool used;
-    [DllImport("ole32.dll")]private static extern void CoFreeUnusedLibrariesEx(uint unloadDelay,uint reserved);
-    internal static async Task<global::Windows.Data.Pdf.PdfDocument> OpenAsync(string path,string password="")
+    public static Task<byte[][]> RenderAsync(string path,int dpi=144,CancellationToken token=default,string password="")=>Task.Run(()=>
     {
-        used=true;var source=await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));return await global::Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(source,password);
-    }
-    internal static void ReleaseUnusedResourcesOnExit()
-    {
-        if(!used)return;
-        // Release closed preview/page wrappers while COM and the Windows thread
-        // pool still exist. Otherwise the PDF/WARP module can clean its timers
-        // during LdrShutdownProcess, after the native pool has been torn down.
-        GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();CoFreeUnusedLibrariesEx(0,0);
-    }
-    public static async Task<byte[][]> RenderAsync(string path,int dpi=144,CancellationToken token=default,string password="")
-    {
-        var pdf=await OpenAsync(path,password);if(pdf.PageCount>1000)throw new InvalidDataException("Choose a PDF with at most 1,000 pages.");var images=new List<byte[]>();
-        for(uint i=0;i<pdf.PageCount;i++){token.ThrowIfCancellationRequested();using var page=pdf.GetPage(i);var width=(uint)Math.Max(1,Math.Round(page.Size.Width*dpi/96));var height=(uint)Math.Max(1,Math.Round(page.Size.Height*dpi/96));if((ulong)width*height>100_000_000)throw new InvalidDataException("PDF page exceeds 100 MP.");using var stream=new InMemoryRandomAccessStream();await page.RenderToStreamAsync(stream,new PdfPageRenderOptions{DestinationWidth=width,DestinationHeight=height});using var output=new MemoryStream();await stream.AsStreamForRead().CopyToAsync(output,token);images.Add(output.ToArray());if(images.Sum(p=>(long)p.Length)>512_000_000)throw new InvalidDataException("Rendered pages exceed 512 MB. Choose a lower DPI or split the PDF first.");}return images.ToArray();
-    }
+        using var pdf=PdfRasterDocument.Open(path,password);var images=new List<byte[]>();long total=0;
+        for(var i=0;i<pdf.PageCount;i++){token.ThrowIfCancellationRequested();var image=pdf.RenderPage(i,dpi,token);total+=image.LongLength;if(total>512_000_000)throw new InvalidDataException("Rendered pages exceed 512 MB. Choose a lower DPI or split the PDF first.");images.Add(image);}return images.ToArray();
+    },token);
     public static async Task<Rect[]> DetectAsync(BitmapSource image,bool text,bool faces)
     {
         using var stream=new InMemoryRandomAccessStream();using(var writer=new DataWriter(stream.GetOutputStreamAt(0))){writer.WriteBytes(ImageEngine.PngBytes(image));await writer.StoreAsync();}stream.Seek(0);var decoder=await global::Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream);using var bitmap=await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8,BitmapAlphaMode.Premultiplied);var regions=new List<Rect>();

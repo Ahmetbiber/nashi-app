@@ -12,6 +12,7 @@ internal sealed class FilePreviewWindow:Window
     private readonly Toolchain tools;private readonly OfficeRuntime office;private readonly string temporary=Path.Combine(Path.GetTempPath(),"Nashi-quick-preview-"+Guid.NewGuid().ToString("N"));private CancellationTokenSource lifetime=new();
     private readonly ContentControl content=new();private readonly TextBlock caption=new(){TextTrimming=TextTrimming.CharacterEllipsis,VerticalAlignment=VerticalAlignment.Center};
     private MediaElement? player;private bool playing;private readonly Slider scrub=new(){Minimum=0,Maximum=1,MinWidth=140};
+    private PdfRasterDocument? pdfDocument;
     private readonly System.Windows.Threading.DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(150)};
     private readonly StackPanel transport=new(){Orientation=Orientation.Horizontal};private bool updating;
     internal string PreviewStatus=>content.Content is TextBlock text?text.Text:content.Content?.GetType().Name??"Empty";
@@ -33,7 +34,7 @@ internal sealed class FilePreviewWindow:Window
             if(modifiers is not (ModifierKeys.None or ModifierKeys.Alt))return;
             if(key==Key.Space){if(player is null)Close();else Toggle();e.Handled=true;}
             else if(key is Key.Left or Key.Right){var direction=key==Key.Left?-1:1;if(player is not null&&modifiers==ModifierKeys.None){player.Position=TimeSpan.FromSeconds(Math.Clamp(player.Position.TotalSeconds+direction,0,scrub.Maximum));}else Navigate(direction);e.Handled=true;}};
-        Loaded+=async(_,_)=>await Load();Closed+=(_,_)=>{lifetime.Cancel();lifetime.Dispose();timer.Stop();CloseMedia();_ = Cleanup();};
+        Loaded+=async(_,_)=>await Load();Closed+=(_,_)=>{lifetime.Cancel();lifetime.Dispose();timer.Stop();CloseMedia();pdfDocument?.Dispose();pdfDocument=null;_ = Cleanup();};
     }
     internal void Navigate(int delta){if(paths.Length<2)return;index=(index+delta+paths.Length)%paths.Length;_ = Load();}
     private void CloseMedia(){player?.Stop();player?.Close();player=null;playing=false;transport.Visibility=Visibility.Collapsed;timer.Stop();}
@@ -41,7 +42,7 @@ internal sealed class FilePreviewWindow:Window
     private async Task Cleanup(){for(var n=0;n<10;n++){try{if(Directory.Exists(temporary))Directory.Delete(temporary,true);return;}catch(IOException){await Task.Delay(250);}catch(UnauthorizedAccessException){return;}}}
     private async Task Load()
     {
-        lifetime.Cancel();lifetime.Dispose();lifetime=new();var token=lifetime.Token;CloseMedia();content.Content=new TextBlock{Text="Preparing preview…",Margin=new(20)};
+        lifetime.Cancel();lifetime.Dispose();lifetime=new();var token=lifetime.Token;CloseMedia();pdfDocument?.Dispose();pdfDocument=null;content.Content=new TextBlock{Text="Preparing preview…",Margin=new(20)};
         var path=CurrentPath;caption.Text=$"{Path.GetFileName(path)}  ·  {index+1} / {paths.Length}";Title=Path.GetFileName(path)+" · Preview · Nashi";
         try
         {
@@ -56,9 +57,9 @@ internal sealed class FilePreviewWindow:Window
             else if(FeatureCatalog.Extension(path)=="pdf")
             {
                 // Load pages on demand rather than decoding every page before showing the first.
-                var pdf=await NativePdf.OpenAsync(path);token.ThrowIfCancellationRequested();
+                var pdf=await Task.Run(()=>PdfRasterDocument.Open(path),token);if(token.IsCancellationRequested){pdf.Dispose();return;}pdfDocument=pdf;
                 var pageIndex=0;var panel=new DockPanel();var controls=new StackPanel{Orientation=Orientation.Horizontal};DockPanel.SetDock(controls,Dock.Bottom);panel.Children.Add(controls);var image=new Image{Stretch=Stretch.Uniform};panel.Children.Add(image);
-                async Task Page(int delta){pageIndex=Math.Clamp(pageIndex+delta,0,(int)pdf.PageCount-1);var requested=pageIndex;using var page=pdf.GetPage((uint)requested);using var stream=new global::Windows.Storage.Streams.InMemoryRandomAccessStream();await page.RenderToStreamAsync(stream,new global::Windows.Data.Pdf.PdfPageRenderOptions{DestinationWidth=1200});using var memory=new MemoryStream();await stream.AsStreamForRead().CopyToAsync(memory,token);if(!token.IsCancellationRequested&&requested==pageIndex)image.Source=ImageEngine.FromPng(memory.ToArray());}
+                async Task Page(int delta){try{token.ThrowIfCancellationRequested();pageIndex=Math.Clamp(pageIndex+delta,0,pdf.PageCount-1);var requested=pageIndex;var png=await Task.Run(()=>pdf.RenderPage(requested,144,token),token);if(!token.IsCancellationRequested&&requested==pageIndex)image.Source=ImageEngine.FromPng(png);}catch(Exception error){if(!token.IsCancellationRequested&&ReferenceEquals(pdfDocument,pdf))content.Content=new TextBlock{Text="Preview unavailable. "+error.Message,TextWrapping=TextWrapping.Wrap};}}
                 controls.Children.Add(MainWindow.Button("Previous page",async()=>{try{await Page(-1);}catch(OperationCanceledException){}}));controls.Children.Add(MainWindow.Button("Next page",async()=>{try{await Page(1);}catch(OperationCanceledException){}}));controls.Children.Add(new TextBlock{Text=$"{pdf.PageCount} pages",VerticalAlignment=VerticalAlignment.Center});content.Content=panel;await Page(0);
             }
             else if(FeatureCatalog.IsVideo(path)||FeatureCatalog.IsAudio(path))

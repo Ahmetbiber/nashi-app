@@ -43,7 +43,9 @@ enum NashiApplication {
     private var window:NSWindow?
     func applicationDidFinishLaunching(_ notification:Notification) {
         let w=NSWindow(contentRect:NSRect(x:220,y:200,width:620,height:420),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
-        w.title="Nashi Window Layout Fixture";w.minSize=NSSize(width:160,height:120);w.isReleasedWhenClosed=false
+        let key=CommandLine.arguments.firstIndex(of:"--minimum-window-width")
+        let minimum=key.flatMap{$0+1<CommandLine.arguments.count ? Double(CommandLine.arguments[$0+1]):nil} ?? 160
+        w.title="Nashi Window Layout Fixture";w.minSize=NSSize(width:min(1200,max(160,minimum)),height:120);w.isReleasedWhenClosed=false
         let label=NSTextField(labelWithString:"Nashi window arrangement test fixture")
         label.font=NSFont.systemFont(ofSize:20,weight:.medium);label.frame=NSRect(x:26,y:300,width:560,height:40)
         w.contentView?.addSubview(label);w.makeKeyAndOrderFront(nil);window=w

@@ -116,10 +116,12 @@ internal static class SmokeTests
         var appearance=Descendants(themeSettings).OfType<ComboBox>().Single(c=>c.Items.Contains("dark"));appearance.Focus();DesktopInput.Key(themeSettings,Key.Home);DesktopInput.Key(themeSettings,Key.Down);Check(!Theme.Dark&&library.Appearance=="light","Settings appearance keyboard selection did not apply and persist light theme");window.UpdateLayout();Capture(window,"windows-home-light.png");DesktopInput.Key(themeSettings,Key.End);Check(Theme.Dark&&library.Appearance=="dark","Dark theme selection failed");themeSettings.Close();
         if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true")checks+=ParitySmokeTests.Run(root,window,source,bitmap,testTools);
         DesktopParityChecks.Run(root,window,source,importedText,importedImage,testTools,Check);
+        PdfPreviewChecks.Run(root,Check);
         var toast=new ToastWindow(window,null);toast.Show();Check(toast.WindowStyle==WindowStyle.None&&toast.ResizeMode==ResizeMode.NoResize,"Toast has window chrome");toast.Update(new(.42,"Encoding your fresh copy…"));toast.UpdateLayout();Capture(toast,"windows-progress.png");toast.Close();window.Close();
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");Capture(restarted,"windows-home-empty.png");restarted.Close();
         WindowManagementSmoke.Run(root,Check);
+        Check(PdfRasterDocument.OpenDocuments==0,"Closed PDF previews retained native documents or pinned source buffers");
         File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations.",extendedParity=Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true"}));
         void Capture(Window view,string name){view.UpdateLayout();var capture=new RenderTargetBitmap((int)view.ActualWidth,(int)view.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(view);ImageEngine.Save(capture,Path.Combine(root,name),"png");}
     }

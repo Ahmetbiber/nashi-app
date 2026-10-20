@@ -18,6 +18,11 @@ import Darwin
     private var interrupted=false
     private var signals:[DispatchSourceSignal]=[]
     private var originalPointer:CGPoint?
+    private var minimumWidth:CGFloat {
+        guard let index=CommandLine.arguments.firstIndex(of:"--minimum-window-width"),index+1<CommandLine.arguments.count,
+              let value=Double(CommandLine.arguments[index+1]),value.isFinite else{return 160}
+        return min(1200,max(160,value))
+    }
     private struct Failure:Error,CustomStringConvertible { let description:String }
 
     init(managerPID:pid_t,output:URL) { self.managerPID=managerPID;self.output=output }
@@ -44,7 +49,7 @@ import Darwin
         guard let manager=NSRunningApplication(processIdentifier:managerPID) else { throw Failure(description:"The selected Nashi manager is not running.") }
         try require(managerPID != ProcessInfo.processInfo.processIdentifier&&manager.executableURL?.standardizedFileURL==own,"The manager must be the same installed Nashi executable.")
         try FileManager.default.createDirectory(at:output,withIntermediateDirectories:true)
-        let configuration=NSWorkspace.OpenConfiguration();configuration.arguments=["--window-management-fixture"];configuration.createsNewApplicationInstance=true;configuration.activates=false
+        let configuration=NSWorkspace.OpenConfiguration();configuration.arguments=["--window-management-fixture","--minimum-window-width",String(Double(minimumWidth))];configuration.createsNewApplicationInstance=true;configuration.activates=false
         fixture=try await NSWorkspace.shared.openApplication(at:Bundle.main.bundleURL,configuration:configuration)
         guard let fixture else { throw Failure(description:"Fixture did not launch.") }
         try require(fixture.executableURL?.standardizedFileURL==own,"Fixture executable differs from installed Nashi.")
@@ -65,7 +70,7 @@ import Darwin
     private func gesture(window:AXUIElement,placement:WindowPlacement,index:Int,screen:NSScreen,cancel:Bool,resize:Bool=false)async throws {
         guard let fixture,!fixture.isTerminated else { throw Failure(description:"Fixture exited.") }
         let work=screen.visibleFrame
-        let initial=CGRect(x:work.minX+70,y:work.midY-210,width:min(620,work.width-140),height:420)
+        let initial=CGRect(x:work.minX+70,y:work.midY-210,width:min(max(620,minimumWidth),work.width-140),height:420)
         try require(WindowManagementController.setFrame(initial,of:window),"Fixture could not be prepared.")
         fixture.activate(options:[.activateIgnoringOtherApps]);try await pause(200)
         guard let frame=WindowManagementController.frame(of:window) else { throw Failure(description:"Fixture bounds are unavailable.") }
@@ -101,7 +106,7 @@ import Darwin
         keyboard(key,down:false);heldKey=nil;try await pause(100)
         if !cancel { try require(windowBounds(pid:managerPID,title:"Nashi Window Management") != nil,"Releasing the modifier dismissed the wheel.") }
         mouse(.leftMouseUp,selected);mouseDown=false
-        let expected=cancel ? initial:placement.frame(in:work,scale:screen.backingScaleFactor)
+        let expected=cancel ? initial:placement.frame(in:work,scale:screen.backingScaleFactor,minimumSize:CGSize(width:minimumWidth,height:120))
         let axOrigin=WindowManagementController.accessibilityPoint(CGPoint(x:expected.minX,y:expected.maxY))
         var actual:CGRect?
         for _ in 0..<40 {

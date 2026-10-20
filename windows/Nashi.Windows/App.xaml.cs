@@ -17,7 +17,8 @@ public partial class App:Application
         base.OnStartup(e);
         if(e.Args.Contains("--window-management-fixture"))
         {
-            new Window{Title="Nashi Window Layout Fixture",Width=620,Height=420,Left=80,Top=90,WindowStartupLocation=WindowStartupLocation.Manual,
+            var key=Array.IndexOf(e.Args,"--minimum-window-width");var minimum=key>=0&&key+1<e.Args.Length&&int.TryParse(e.Args[key+1],out var parsed)?Math.Clamp(parsed,160,1200):160;
+            new Window{Title=minimum>620?"Nashi Constrained Layout Fixture":"Nashi Window Layout Fixture",Width=Math.Max(620,minimum),MinWidth=minimum,Height=420,Left=80,Top=90,WindowStartupLocation=WindowStartupLocation.Manual,
                 Content=new System.Windows.Controls.TextBlock{Text="Nashi window arrangement test fixture",Margin=new Thickness(30),FontSize=22}}.Show();return;
         }
         if(e.Args.Length==2&&e.Args[0]=="--apply-update"){try{Shutdown(UpdateInstaller.Apply(e.Args[1]));}catch(Exception error){MessageBox.Show(error.Message,"Nashi update could not finish");Shutdown(1);}return;}
@@ -33,7 +34,7 @@ public partial class App:Application
     {
         try{await instance!.Notify(paths);Shutdown(0);}catch(Exception error)when(error is IOException or OperationCanceledException or UnauthorizedAccessException){MessageBox.Show("Nashi is already running but is still starting. Open it from the system tray or try again in a moment.","Nashi");Shutdown(1);}
     }
-    protected override void OnExit(ExitEventArgs e){windowManagement?.Dispose();Feedback.Stop();NativePdf.ReleaseUnusedResourcesOnExit();base.OnExit(e);}
+    protected override void OnExit(ExitEventArgs e){windowManagement?.Dispose();Feedback.Stop();PdfRasterDocument.Shutdown();base.OnExit(e);}
     private async Task InstallUpdateAsync()
     {
         try

@@ -31,6 +31,7 @@ enum WindowPlacementGlyph {
     private var wheel:WheelView?
     private var preview:NSPanel?
     private var lastPlacement:WindowPlacement?
+    private var qaCaptureAttempted=false
     private var accessibilityTrusted=false
     private var nextAccessibilityCheck:TimeInterval=0
     private let fileWheelIsVisible:()->Bool
@@ -104,6 +105,23 @@ enum WindowPlacementGlyph {
         guard wheelPanel?.isVisible == true,let wheel,let panel=wheelPanel else { return }
         wheel.updateSelection(wheel.convert(panel.convertPoint(fromScreen:point),from:nil))
         updatePreview(currentPlacement(at:point),on:screen(at:point))
+        captureOwnWheelForQA()
+    }
+
+    /// An explicit QA invocation renders only our own view, without recording the screen.
+    private func captureOwnWheelForQA() {
+        guard !qaCaptureAttempted,wheel?.selected != nil,
+              let index=CommandLine.arguments.firstIndex(of:"--capture-window-wheel"),index+1<CommandLine.arguments.count,
+              let view=wheelPanel?.contentView,
+              let bitmap=view.bitmapImageRepForCachingDisplay(in:view.bounds) else { return }
+        qaCaptureAttempted=true
+        view.cacheDisplay(in:view.bounds,to:bitmap)
+        guard let data=bitmap.representation(using:.png,properties:[:]) else { return }
+        let directory=URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true)
+        do {
+            try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+            try data.write(to:directory.appendingPathComponent("mac-window-wheel-view.png"),options:.atomic)
+        } catch { fputs("Nashi window QA view capture failed.\n",stderr) }
     }
 
     private func capture(at point:NSPoint)->Target? {

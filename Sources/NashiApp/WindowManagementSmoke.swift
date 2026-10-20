@@ -59,19 +59,20 @@ import Darwin
         for (index,placement) in WindowPlacement.allCases.enumerated() {
             try await gesture(window:window,placement:placement,index:index,screen:screen,cancel:false)
         }
+        try await gesture(window:window,placement:.rightHalf,index:4,screen:screen,cancel:false,resize:true)
         try await gesture(window:window,placement:.leftHalf,index:3,screen:screen,cancel:true)
     }
-    private func gesture(window:AXUIElement,placement:WindowPlacement,index:Int,screen:NSScreen,cancel:Bool)async throws {
+    private func gesture(window:AXUIElement,placement:WindowPlacement,index:Int,screen:NSScreen,cancel:Bool,resize:Bool=false)async throws {
         guard let fixture,!fixture.isTerminated else { throw Failure(description:"Fixture exited.") }
         let work=screen.visibleFrame
         let initial=CGRect(x:work.minX+70,y:work.midY-210,width:min(620,work.width-140),height:420)
         try require(WindowManagementController.setFrame(initial,of:window),"Fixture could not be prepared.")
         fixture.activate(options:[.activateIgnoringOtherApps]);try await pause(200)
         guard let frame=WindowManagementController.frame(of:window) else { throw Failure(description:"Fixture bounds are unavailable.") }
-        let start=CGPoint(x:frame.midX,y:frame.minY+14)
+        let start=resize ? CGPoint(x:frame.maxX-3,y:frame.maxY-3):CGPoint(x:frame.midX,y:frame.minY+14)
         var hit:AXUIElement?
         let system=AXUIElementCreateSystemWide();AXUIElementSetMessagingTimeout(system,0.2)
-        try require(AXUIElementCopyElementAtPosition(system,Float(start.x),Float(start.y),&hit) == .success,"Fixture title bar cannot be hit-tested.")
+        try require(AXUIElementCopyElementAtPosition(system,Float(start.x),Float(start.y),&hit) == .success,"Fixture drag origin cannot be hit-tested.")
         var hitPID:pid_t=0;if let hit { _=AXUIElementGetPid(hit,&hitPID) }
         try require(hitPID==fixture.processIdentifier,"Fixture is covered by another app; no input was posted.")
         let command=index%2 != 0,key:CGKeyCode=command ? 55:56,flags:CGEventFlags=command ? .maskCommand:.maskShift
@@ -113,7 +114,7 @@ import Darwin
         try require(abs(actual.width-expected.width)<3&&abs(actual.height-expected.height)<3 &&
                     (cancel || abs(actual.minX-axOrigin.x)<3&&abs(actual.minY-axOrigin.y)<3),"\(cancel ? "Escape":placement.rawValue) did not apply the expected live window bounds: \(actual)")
         try require(windowBounds(pid:managerPID,title:"Nashi Window Management")==nil,"Window wheel remained open after mouse-up.")
-        log.append(["placement":cancel ? "escape":placement.rawValue,"modifier":command ? "command":"shift","actual":[actual.minX,actual.minY,actual.width,actual.height],"passed":true])
+        log.append(["placement":cancel ? "escape":placement.rawValue,"modifier":command ? "command":"shift","gesture":resize ? "resizeBorder":"titleBar","actual":[actual.minX,actual.minY,actual.width,actual.height],"passed":true])
         try await pause(120)
     }
     private func mouse(_ type:CGEventType,_ location:CGPoint,flags:CGEventFlags=[]) {

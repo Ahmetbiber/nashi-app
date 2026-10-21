@@ -14,6 +14,7 @@ struct HomeView:View {
     @State private var targeted=false
     @State private var historySearch=""
     @State private var allHistory=false
+    @State private var toolsReady=ExternalToolSetup.status.ready
     private var formats:[String] { FeatureCatalog.formats(for:state.inputs) }
     private var tools:[ToolKind] { FeatureCatalog.tools(for:state.inputs) }
     private var recent:[JobRecord] {
@@ -27,7 +28,7 @@ struct HomeView:View {
                 Text("Nashi").font(.system(size:19,weight:.bold,design:.rounded)).tracking(-0.5)
                 Spacer()
                 if Bundle.main.object(forInfoDictionaryKey:"NashiExternalTools") as? Bool == true {
-                    Button("Set up tools") {NotificationCenter.default.post(name:.showToolSetup,object:nil)}
+                    Button(toolsReady ? "Tools ready":"Finish setup") {NotificationCenter.default.post(name:.showToolSetup,object:nil)}
                         .buttonStyle(NashiButtonStyle(.secondary,compact:true))
                 }
                 Button("Home") {state.libraryVisible=false}.buttonStyle(NashiButtonStyle(state.libraryVisible ? .quiet:.secondary,compact:true))
@@ -36,6 +37,8 @@ struct HomeView:View {
                 Button { state.onSettings?() } label:{Image(systemName:"slider.horizontal.3").font(.system(size:15))}
                     .buttonStyle(NashiButtonStyle(.quiet,compact:true)).help("Settings").accessibilityLabel("Settings")
             }.padding(.horizontal,28).padding(.top,19).padding(.bottom,15)
+                .onReceive(NotificationCenter.default.publisher(for:.toolSetupChanged)) { _ in toolsReady=ExternalToolSetup.status.ready }
+                .onReceive(NotificationCenter.default.publisher(for:NSApplication.didBecomeActiveNotification)) { _ in toolsReady=ExternalToolSetup.status.ready }
             if state.libraryVisible { libraryPage } else { ScrollView {
                 VStack(alignment:.leading,spacing:22) {
                     if let version=updater.availableVersion {

@@ -5,6 +5,7 @@ import ServiceManagement
 import Carbon
 import Combine
 import NashiUpdates
+import NashiCore
 import ApplicationServices
 
 @main
@@ -12,6 +13,10 @@ enum NashiApplication {
     @MainActor static func main() {
         if CommandLine.arguments.count>1,["convert","tool","inspect","catalog","dependencies"].contains(CommandLine.arguments[1]) { exit(NashiCommandLine.run()) }
         let app=NSApplication.shared
+        if let index=CommandLine.arguments.firstIndex(of:"--tool-setup-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=ToolSetupSmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
         if let index=CommandLine.arguments.firstIndex(of:"--localization-smoke"),CommandLine.arguments.count>index+1 {
             let runner=LocalizationSmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
             withExtendedLifetime(runner){app.run()};return
@@ -69,6 +74,7 @@ enum NashiApplication {
     private let progressToast=ProgressToastController()
     var toolSetupWorking=false
     var toolSetupWindow:NSWindow?
+    private var toolSetupOffered=false
     var downloadWindow:NSWindow?
     lazy var downloadModel=WebDownloadModel(state:state)
     private var downloadHotKey:EventHotKeyRef?
@@ -171,9 +177,20 @@ enum NashiApplication {
         if home == nil { home=makeWindow(title:"Nashi",size:NSSize(width:820,height:780),view:HomeView(state:state,updater:updater)) }
         home?.contentMinSize=NSSize(width:700,height:580)
         home?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
+        if !toolSetupOffered, Bundle.main.object(forInfoDictionaryKey:"NashiExternalTools") as? Bool == true, !ExternalToolSetup.status.ready {
+            showToolSetup()
+        }
     }
     @objc func showToolSetup() {
-        if toolSetupWindow == nil {toolSetupWindow=makeWindow(title:"Set up Nashi tools",size:NSSize(width:646,height:620),view:ToolSetupView(onWorkingChange:{[weak self] working in guard let self else{return};self.toolSetupWorking=working;self.updater.setBusy(working || self.state.working)}))}
+        toolSetupOffered=true
+        if toolSetupWindow == nil {
+            let model=ToolSetupModel()
+            model.onWorkingChange={ [weak self] working in guard let self else{return};self.toolSetupWorking=working;self.toolSetupWindow?.standardWindowButton(.closeButton)?.isEnabled = !working;self.updater.setBusy(working || self.state.working) }
+            toolSetupWindow=makeWindow(title:"Set up Nashi tools",size:NSSize(width:646,height:690),view:ToolSetupView(model:model,onDone:{ [weak self] in
+                guard ExternalToolSetup.status.ready else{return}
+                UserDefaults.standard.set(true,forKey:"hasCompletedWelcome");self?.toolSetupWindow?.close();self?.showHome()
+            }))
+        }
         toolSetupWindow?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
     @objc func showDownloadLink() { showWebDownload(WebLinkPayload.clipboardLink(),mode:.video) }
@@ -225,10 +242,16 @@ enum NashiApplication {
         if welcome == nil {
             let panel=ToolPanel(contentRect:NSRect(x:0,y:0,width:760,height:520),styleMask:[.borderless,.closable],backing:.buffered,defer:false)
             panel.title="Welcome to Nashi";panel.isReleasedWhenClosed=false;panel.isOpaque=false;panel.backgroundColor = .clear;panel.hasShadow=true;panel.hidesOnDeactivate=false
-            let view=WelcomeView(onDone:{ [weak self] in UserDefaults.standard.set(true,forKey:"hasCompletedWelcome");self?.welcome?.close();self?.welcome=nil;self?.showHome() },onClose:{ [weak self] in self?.welcome?.close();self?.welcome=nil },onMinimize:{ [weak self] in self?.welcome?.orderOut(nil) })
+            let view=WelcomeView(onDone:{ [weak self] in self?.finishWelcome() },onClose:{ [weak self] in self?.finishWelcome() },onMinimize:{ [weak self] in self?.welcome?.orderOut(nil) })
             panel.contentView=NSHostingView(rootView:view.nashiLanguage());panel.center();welcome=panel
         }
         welcome?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
+    }
+    private func finishWelcome() {
+        welcome?.close();welcome=nil
+        if ExternalToolSetup.status.ready { UserDefaults.standard.set(true,forKey:"hasCompletedWelcome") }
+        showHome()
+        if !ExternalToolSetup.status.ready { showToolSetup() }
     }
     @objc func toggleEnabled(_ sender:NSMenuItem) { let value = !UserDefaults.standard.bool(forKey:"enabled");UserDefaults.standard.set(value,forKey:"enabled");sender.state=value ? .on : .off }
     @objc func checkForUpdates() {

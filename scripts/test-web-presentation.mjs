@@ -10,6 +10,7 @@ import {spawnSync} from 'node:child_process';
 import {SIZE,RADIUS,INNER,angle,petal,labelCenters,containsRect} from '../docs/assets/wheel-geometry.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const catalog=JSON.parse(readFileSync(join(root,'docs/assets/demo/catalog.json')));
+assert.deepEqual(catalog.presentation.feedback,{voices:3,volume:.65,minimumInterval:.05});
 assert.equal(SIZE,320);assert.equal(angle(3,0),180);
 assert.equal(Object.keys(catalog.presentation.wheelTitles).length,27);
 assert.equal(Object.keys(catalog.presentation.editorTitles).length,27);

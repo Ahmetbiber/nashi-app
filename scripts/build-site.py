@@ -25,8 +25,10 @@ hints=simple_switch(editor.split('var toolHint:String')[1].split('var primaryTit
 primary=simple_switch(editor.split('var primaryTitle:String')[1].split('var canApply:Bool')[0])
 palette={key:{'light':light,'dark':dark} for key,light,dark in re.findall(r'\("(\w+)","(#[A-Fa-f0-9]+)","(#[A-Fa-f0-9]+)"\)',(R/'windows/Nashi.Windows/Theme.cs').read_text())}
 translations=json.loads((R/'Sources/NashiCore/Resources/Turkish.json').read_text())
+feedback_source=(R/'Sources/NashiApp/WheelFeedback.swift').read_text()
+feedback={'voices':int(re.search(r'for _ in 0\.\.<(\d+)',feedback_source)[1]),'volume':float(re.search(r'player.volume = ([\d.]+)',feedback_source)[1]),'minimumInterval':float(re.search(r'minimumInterval: TimeInterval = ([\d.]+)',feedback_source)[1])}
 ui_strings=set(wheel_titles.values())|set(editor_titles.values())|set(hints.values())|set(primary.values())|{'Fine-tune it. Save a fresh copy.','Convert','Tools','Actions','Float','Copy','Move','Copy Path','Terminal','Original stays safe','PREVIEW','MAKE IT YOURS','Save a fresh copy','Icons','List','Clear','Close','Appearance','Light','Dark'}
-demo_catalog['presentation']={'wheelTitles':wheel_titles,'editorTitles':editor_titles,'hints':hints,'primaryTitles':primary,'palette':palette,'translations':{text:translations[text] for text in sorted(ui_strings) if text in translations}}
+demo_catalog['presentation']={'wheelTitles':wheel_titles,'editorTitles':editor_titles,'hints':hints,'primaryTitles':primary,'palette':palette,'feedback':feedback,'translations':{text:translations[text] for text in sorted(ui_strings) if text in translations}}
 (R/'docs/assets/demo/catalog.json').write_text(json.dumps(demo_catalog,ensure_ascii=False,separators=(',',':')))
 play_revision=hashlib.sha256(b''.join((R/p).read_bytes() for p in ['docs/assets/playground.js','docs/assets/playground.css','docs/assets/wheel-geometry.mjs','docs/assets/demo/catalog.json','docs/assets/demo/wheel-selection.wav'])).hexdigest()[:12]
 media_revision=hashlib.sha256((R/'docs/assets/showcase/nashi-demo.mp4').read_bytes()).hexdigest()[:12]

@@ -31,6 +31,7 @@ public sealed partial class MainWindow:Window
     private readonly StackPanel workArea=new();
     private bool busy,checking,toolSetupOffered;private WindowsUpdate? update;private Border? updateBanner;
     private ToolSetupWindow? toolSetupWindow;
+    private readonly bool monitorToolSetup;
     internal bool UpdateBannerVisible=>updateBanner?.Visibility==Visibility.Visible;
     internal IReadOnlyList<string> SelectedFiles=>files;
     internal bool LibraryVisible=>libraryPage.Visibility==Visibility.Visible;
@@ -38,6 +39,7 @@ public sealed partial class MainWindow:Window
     internal TextBox LinkField=>link;
     public MainWindow(string[]? initial=null,LibraryStore? library=null,bool checkForUpdates=true,bool offerToolSetup=true)
     {
+        monitorToolSetup=checkForUpdates;
         this.library=library??new LibraryStore();preferences=new(this.library.DirectoryPath);ApplyPreferences();Theme.Apply(this.library.Appearance);Theme.Attach(this);
         Title="Nashi";Width=820;Height=780;MinWidth=700;MinHeight=580;WindowStartupLocation=WindowStartupLocation.CenterScreen;AllowDrop=true;
         Icon=BitmapFrame.Create(new Uri("pack://application:,,,/Assets/NashiIcon.png"));

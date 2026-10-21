@@ -17,7 +17,7 @@ public sealed partial class MainWindow
         Closing+=(_,e)=>{if(!e.Cancel&&tray is not null&&preferences.Value.KeepInTray&&!quitting){e.Cancel=true;Hide();}};
         Closed+=(_,_)=>{launchTimer?.Stop();tray?.Dispose();};if(Environment.GetCommandLineArgs().Contains("--background"))Hide();
     }
-    private void ShowMain(){Show();WindowState=WindowState.Normal;Activate();}
+    private void ShowMain(){Show();WindowState=WindowState.Normal;Activate();if(monitorToolSetup)Dispatcher.BeginInvoke(OfferFirstRunTools);}
     private System.Windows.Controls.ContextMenu TrayMenu()
     {
         var menu=new System.Windows.Controls.ContextMenu();

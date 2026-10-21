@@ -806,5 +806,16 @@
   "Next, download the missing tools for media and Office files. Tools already on your computer do not need another download.": "Şimdi medya ve Office dosyaları için eksik araçları indir. Bilgisayarında bulunan araçları yeniden indirmen gerekmez.",
   "Set up Nashi tools": "Nashi araçlarını kur",
   "LibreOffice 26.8.1 enables Office document conversions. Approximately 360 MB to download. MPL 2.0 and its included third-party licenses.": "LibreOffice 26.8.1, Office belgelerini dönüştürmeyi sağlar. İndirme yaklaşık 360 MB. MPL 2.0 ve içerdiği üçüncü taraf lisansları geçerlidir.",
-  "Upstream versions, licenses and source links": "Araç sürümleri, lisanslar ve kaynak bağlantıları"
+  "Upstream versions, licenses and source links": "Araç sürümleri, lisanslar ve kaynak bağlantıları",
+  "Float options": "Float seçenekleri",
+  "Files in Float": "Float’taki dosyalar",
+  "1 item": "1 öğe",
+  "{0} items": "{0} öğe",
+  "Space · Preview": "Boşluk · Önizleme",
+  "Drag the stack to carry all files. Drag the paperclip to move Float.": "Tüm dosyaları taşımak için yığını, Float’ın yerini değiştirmek için atacı sürükleyin.",
+  "Close Float without deleting files": "Dosyaları silmeden Float’ı kapat",
+  "Drop files here": "Dosyaları buraya bırakın",
+  "Collapse Float": "Float’ı daralt",
+  "Expand Float": "Float’ı genişlet",
+  "Float action unavailable": "Float işlemi kullanılamıyor"
 }

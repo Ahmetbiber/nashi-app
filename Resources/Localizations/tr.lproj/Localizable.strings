@@ -4,6 +4,7 @@
 "%@ files" = "%@ dosya";
 "%@ files, ready to go." = "%@ dosya hazır.";
 "%@ is enabled" = "%@ izni açık";
+"%@ items" = "%@ öğe";
 "%@ selected" = "%@ seçili";
 "%@ selected · Drag to carry files" = "%@ seçili · Dosyaları taşımak için sürükle";
 "%@ · Nashi" = "%@ · Nashi";
@@ -11,10 +12,13 @@
 "%lld files" = "%lld dosya";
 "%lld files, ready to go." = "%lld dosya hazır.";
 "%lld is enabled" = "%lld izni açık";
+"%lld items" = "%lld öğe";
 "%lld selected" = "%lld seçili";
 "%lld selected · Drag to carry files" = "%lld seçili · Dosyaları taşımak için sürükle";
 "%lld · Nashi" = "%lld · Nashi";
 "%lld · Original stays safe" = "%lld · Orijinal dosyan güvende";
+"1 ITEM" = "1 ÖĞE";
+"1 item" = "1 öğe";
 "1/3 LEFT · MIDDLE · RIGHT   /   1/2 LEFT · RIGHT   /   2/3 LEFT · RIGHT" = "1/3 SOL · ORTA · SAĞ   /   1/2 SOL · SAĞ   /   2/3 SOL · SAĞ";
 "1/3 left · middle · right   /   1/2 left · right   /   2/3 left · right" = "1/3 sol · orta · sağ   /   1/2 sol · sağ   /   2/3 sol · sağ";
 "1280 PX LONGEST EDGE" = "UZUN KENAR 1280 PX";
@@ -241,7 +245,9 @@
 "CLEAR SELECTION" = "SEÇİMİ TEMİZLE";
 "CLIPBOARD IS BUSY. TRY AGAIN." = "PANO MEŞGUL. TEKRAR DENE.";
 "CLIPBOARD IS BUSY. TRY PASTE AGAIN." = "PANO MEŞGUL. YENİDEN YAPIŞTIRMAYI DENE.";
+"CLOSE FLOAT WITHOUT DELETING FILES" = "DOSYALARI SİLMEDEN FLOAT’I KAPAT";
 "CLOSE WINDOW" = "PENCEREYİ KAPAT";
+"COLLAPSE FLOAT" = "FLOAT’I DARALT";
 "COLOR" = "RENK";
 "COLUMN" = "SÜTUN";
 "COLUMNS" = "SÜTUN SAYISI";
@@ -325,7 +331,9 @@
 "Clip %lld" = "Klip %lld";
 "Clipboard is busy. Try Paste again." = "Pano meşgul. Yeniden yapıştırmayı dene.";
 "Clipboard is busy. Try again." = "Pano meşgul. Tekrar dene.";
+"Close Float without deleting files" = "Dosyaları silmeden Float’ı kapat";
 "Close Window" = "Pencereyi Kapat";
+"Collapse Float" = "Float’ı daralt";
 "Color" = "Renk";
 "Column" = "Sütun";
 "Columns" = "Sütun sayısı";
@@ -412,9 +420,11 @@
 "DRAG INSIDE TO MOVE. DRAG NEAR A CORNER TO RESIZE. DRAG OUTSIDE TO START A NEW SELECTION." = "TAŞIMAK İÇİN ALANIN İÇİNİ, BOYUTLANDIRMAK İÇİN KÖŞEYİ SÜRÜKLE. YENİ SEÇİM İÇİN ALANIN DIŞINDA SÜRÜKLE.";
 "DRAG ON THE PREVIEW TO ADD AN AREA. EACH AREA IS SAVED INTO THE NEW COPY." = "ALAN EKLEMEK İÇİN ÖNİZLEMEDE SÜRÜKLE. HER ALAN YENİ KOPYAYA İŞLENİR.";
 "DRAG SHORTCUTS" = "SÜRÜKLEME KISAYOLLARI";
+"DRAG THE STACK TO CARRY ALL FILES. DRAG THE PAPERCLIP TO MOVE FLOAT." = "TÜM DOSYALARI TAŞIMAK İÇİN YIĞINI, FLOAT’IN YERİNİ DEĞİŞTİRMEK İÇİN ATACI SÜRÜKLEYİN.";
 "DRAG TO DRAW WITH THE SELECTED TOOL. USE SELECT / MOVE TO EDIT AN EXISTING ANNOTATION." = "SEÇİLİ ARAÇLA ÇİZMEK İÇİN SÜRÜKLE. BİR İŞARETİ DÜZENLEMEK İÇİN SEÇ / TAŞI'YI KULLAN.";
 "DRAG TO DRAW. ONE ACTIVE TOOL PER STROKE." = "ÇİZMEK İÇİN SÜRÜKLE. HER ÇİZİMDE TEK ARAÇ KULLANILIR.";
 "DRAWING TOOL" = "ÇİZİM ARACI";
+"DROP FILES HERE" = "DOSYALARI BURAYA BIRAKIN";
 "DROP FILES HERE · SPACE FOR QUICK LOOK" = "DOSYALARI BURAYA BIRAK · HIZLI BAKIŞ İÇİN SPACE";
 "DROP FILES OR FOLDERS HERE" = "DOSYALARI VEYA KLASÖRLERİ BURAYA BIRAK";
 "DROP IT LIKE IT’S… A FILE." = "DOSYANI BURAYA BIRAK.";
@@ -460,9 +470,11 @@
 "Drag inside to move. Drag near a corner to resize. Drag outside to start a new selection." = "Taşımak için alanın içini, boyutlandırmak için köşeyi sürükle. Yeni seçim için alanın dışında sürükle.";
 "Drag on the preview to add an area. Each area is saved into the new copy." = "Alan eklemek için önizlemede sürükle. Her alan yeni kopyaya işlenir.";
 "Drag shortcuts" = "Sürükleme kısayolları";
+"Drag the stack to carry all files. Drag the paperclip to move Float." = "Tüm dosyaları taşımak için yığını, Float’ın yerini değiştirmek için atacı sürükleyin.";
 "Drag to draw with the selected tool. Use Select / Move to edit an existing annotation." = "Seçili araçla çizmek için sürükle. Bir işareti düzenlemek için Seç / Taşı'yı kullan.";
 "Drag to draw. One active tool per stroke." = "Çizmek için sürükle. Her çizimde tek araç kullanılır.";
 "Drawing tool" = "Çizim aracı";
+"Drop files here" = "Dosyaları buraya bırakın";
 "Drop files here · Space for Quick Look" = "Dosyaları buraya bırak · Hızlı Bakış için Space";
 "Drop files or folders here" = "Dosyaları veya klasörleri buraya bırak";
 "Drop it like it’s… a file." = "Dosyanı buraya bırak.";
@@ -483,6 +495,7 @@
 "EPUB layout" = "EPUB düzeni";
 "ESC TO CLOSE" = "KAPATMAK İÇİN ESC";
 "EVERYTHING HAS A NEXT FORM." = "HER DOSYANIN YENİ BİR HÂLİ VAR.";
+"EXPAND FLOAT" = "FLOAT’I GENİŞLET";
 "EXPORT CLIPS" = "KLİPLERİ KAYDET";
 "EXPORT ONE VIDEO" = "TEK VİDEO OLARAK KAYDET";
 "EXPOSURE" = "POZLAMA";
@@ -500,6 +513,7 @@
 "End" = "Bitiş";
 "Esc to close" = "Kapatmak için Esc";
 "Everything has a next form." = "Her dosyanın yeni bir hâli var.";
+"Expand Float" = "Float’ı genişlet";
 "Export One Video" = "Tek Video Olarak Kaydet";
 "Export clips" = "Klipleri kaydet";
 "Export one video" = "Tek video olarak kaydet";
@@ -520,6 +534,7 @@
 "FILE TOOLS WHEEL" = "DOSYA ARAÇLARI ÇARKI";
 "FILES" = "DOSYALAR";
 "FILES ARE PROCESSED LOCALLY ON YOUR MAC." = "DOSYALAR MAC'İNDE İŞLENİR.";
+"FILES IN FLOAT" = "FLOAT’TAKİ DOSYALAR";
 "FILES MISSING" = "DOSYALAR BULUNAMIYOR";
 "FILES MOVED." = "DOSYALAR TAŞINDI.";
 "FILES STAY ON YOUR COMPUTER." = "DOSYALARIN BİLGİSAYARINDA KALIR.";
@@ -548,8 +563,10 @@
 "FLIP HORIZONTALLY" = "YATAY ÇEVİR";
 "FLIP VERTICALLY" = "DİKEY ÇEVİR";
 "FLOAT" = "YÜZEN PENCERE";
+"FLOAT ACTION UNAVAILABLE" = "FLOAT İŞLEMİ KULLANILAMIYOR";
 "FLOAT BEHAVIOR" = "YÜZEN PENCERE DAVRANIŞI";
 "FLOAT BEHAVIOUR" = "YÜZEN PENCERE DAVRANIŞI";
+"FLOAT OPTIONS" = "FLOAT SEÇENEKLERİ";
 "FLOAT · 1 FILE" = "YÜZEN PENCERE · 1 DOSYA";
 "FOLDERS" = "KLASÖRLER";
 "FONT" = "YAZI TİPİ";
@@ -577,6 +594,7 @@
 "File tools wheel" = "Dosya araçları çarkı";
 "Files" = "Dosyalar";
 "Files are processed locally on your Mac." = "Dosyalar Mac'inde işlenir.";
+"Files in Float" = "Float’taki dosyalar";
 "Files missing" = "Dosyalar bulunamıyor";
 "Files moved." = "Dosyalar taşındı.";
 "Files stay on your computer." = "Dosyaların bilgisayarında kalır.";
@@ -605,7 +623,9 @@
 "Flip vertically" = "Dikey çevir";
 "Float" = "Yüzen Pencere";
 "Float Behaviour" = "Yüzen pencere davranışı";
+"Float action unavailable" = "Float işlemi kullanılamıyor";
 "Float behavior" = "Yüzen pencere davranışı";
+"Float options" = "Float seçenekleri";
 "Float · %@ files" = "Yüzen Pencere · %@ dosya";
 "Float · %lld files" = "Yüzen Pencere · %lld dosya";
 "Float · 1 file" = "Yüzen Pencere · 1 dosya";
@@ -1241,6 +1261,7 @@
 "SOURCE & THIRD-PARTY NOTICES" = "KAYNAK KODU VE ÜÇÜNCÜ TARAF BİLDİRİMLERİ";
 "SPACE PLAY/PAUSE · ←/→ 1S · SHIFT+←/→ 1 FRAME (VIDEO), 0.1S (AUDIO) · I/O SET RANGE · ENTER SAVE" = "SPACE OYNAT/DURAKLAT · ←/→ 1 SN · SHİFT+←/→ 1 KARE (VİDEO), 0,1 SN (SES) · I/O ARALIĞI AYARLA · ENTER KAYDET";
 "SPACE PLAY/PAUSE · ←/→ 1S · ⇧←/→ 1 FRAME · I/O SET RANGE · ⇧SPACE PLAY RANGE" = "SPACE OYNAT/DURAKLAT · ←/→ 1 SN · ⇧←/→ 1 KARE · I/O ARALIĞI AYARLA · ⇧SPACE ARALIĞI OYNAT";
+"SPACE · PREVIEW" = "BOŞLUK · ÖNİZLEME";
 "SPACING" = "BOŞLUK";
 "SPECTRUM" = "SPEKTRUM";
 "SPEED" = "HIZ";
@@ -1352,6 +1373,7 @@
 "Source & third-party notices" = "Kaynak kodu ve üçüncü taraf bildirimleri";
 "Space play/pause · ←/→ 1s · Shift+←/→ 1 frame (video), 0.1s (audio) · I/O set range · Enter save" = "Space oynat/duraklat · ←/→ 1 sn · Shift+←/→ 1 kare (video), 0,1 sn (ses) · I/O aralığı ayarla · Enter kaydet";
 "Space play/pause · ←/→ 1s · ⇧←/→ 1 frame · I/O set range · ⇧Space play range" = "Space oynat/duraklat · ←/→ 1 sn · ⇧←/→ 1 kare · I/O aralığı ayarla · ⇧Space aralığı oynat";
+"Space · Preview" = "Boşluk · Önizleme";
 "Spacing" = "Boşluk";
 "Spectrum" = "Spektrum";
 "Speed" = "Hız";

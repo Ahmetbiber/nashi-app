@@ -13,6 +13,10 @@ enum NashiApplication {
     @MainActor static func main() {
         if CommandLine.arguments.count>1,["convert","tool","inspect","catalog","dependencies"].contains(CommandLine.arguments[1]) { exit(NashiCommandLine.run()) }
         let app=NSApplication.shared
+        if let index=CommandLine.arguments.firstIndex(of:"--float-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=FloatShelfSmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
         if let index=CommandLine.arguments.firstIndex(of:"--tool-setup-smoke"),CommandLine.arguments.count>index+1 {
             let runner=ToolSetupSmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
             withExtendedLifetime(runner){app.run()};return

@@ -4,6 +4,7 @@
 "%@ files" = "%@ files";
 "%@ files, ready to go." = "%@ files, ready to go.";
 "%@ is enabled" = "%@ is enabled";
+"%@ items" = "%@ items";
 "%@ selected" = "%@ selected";
 "%@ selected · Drag to carry files" = "%@ selected · Drag to carry files";
 "%@ · Nashi" = "%@ · Nashi";
@@ -11,10 +12,13 @@
 "%lld files" = "%lld files";
 "%lld files, ready to go." = "%lld files, ready to go.";
 "%lld is enabled" = "%lld is enabled";
+"%lld items" = "%lld items";
 "%lld selected" = "%lld selected";
 "%lld selected · Drag to carry files" = "%lld selected · Drag to carry files";
 "%lld · Nashi" = "%lld · Nashi";
 "%lld · Original stays safe" = "%lld · Original stays safe";
+"1 ITEM" = "1 ITEM";
+"1 item" = "1 item";
 "1/3 LEFT · MIDDLE · RIGHT   /   1/2 LEFT · RIGHT   /   2/3 LEFT · RIGHT" = "1/3 LEFT · MIDDLE · RIGHT   /   1/2 LEFT · RIGHT   /   2/3 LEFT · RIGHT";
 "1/3 left · middle · right   /   1/2 left · right   /   2/3 left · right" = "1/3 left · middle · right   /   1/2 left · right   /   2/3 left · right";
 "1280 PX LONGEST EDGE" = "1280 PX LONGEST EDGE";
@@ -241,7 +245,9 @@
 "CLEAR SELECTION" = "CLEAR SELECTION";
 "CLIPBOARD IS BUSY. TRY AGAIN." = "CLIPBOARD IS BUSY. TRY AGAIN.";
 "CLIPBOARD IS BUSY. TRY PASTE AGAIN." = "CLIPBOARD IS BUSY. TRY PASTE AGAIN.";
+"CLOSE FLOAT WITHOUT DELETING FILES" = "CLOSE FLOAT WITHOUT DELETING FILES";
 "CLOSE WINDOW" = "CLOSE WINDOW";
+"COLLAPSE FLOAT" = "COLLAPSE FLOAT";
 "COLOR" = "COLOR";
 "COLUMN" = "COLUMN";
 "COLUMNS" = "COLUMNS";
@@ -325,7 +331,9 @@
 "Clip %lld" = "Clip %lld";
 "Clipboard is busy. Try Paste again." = "Clipboard is busy. Try Paste again.";
 "Clipboard is busy. Try again." = "Clipboard is busy. Try again.";
+"Close Float without deleting files" = "Close Float without deleting files";
 "Close Window" = "Close Window";
+"Collapse Float" = "Collapse Float";
 "Color" = "Color";
 "Column" = "Column";
 "Columns" = "Columns";
@@ -412,9 +420,11 @@
 "DRAG INSIDE TO MOVE. DRAG NEAR A CORNER TO RESIZE. DRAG OUTSIDE TO START A NEW SELECTION." = "DRAG INSIDE TO MOVE. DRAG NEAR A CORNER TO RESIZE. DRAG OUTSIDE TO START A NEW SELECTION.";
 "DRAG ON THE PREVIEW TO ADD AN AREA. EACH AREA IS SAVED INTO THE NEW COPY." = "DRAG ON THE PREVIEW TO ADD AN AREA. EACH AREA IS SAVED INTO THE NEW COPY.";
 "DRAG SHORTCUTS" = "DRAG SHORTCUTS";
+"DRAG THE STACK TO CARRY ALL FILES. DRAG THE PAPERCLIP TO MOVE FLOAT." = "DRAG THE STACK TO CARRY ALL FILES. DRAG THE PAPERCLIP TO MOVE FLOAT.";
 "DRAG TO DRAW WITH THE SELECTED TOOL. USE SELECT / MOVE TO EDIT AN EXISTING ANNOTATION." = "DRAG TO DRAW WITH THE SELECTED TOOL. USE SELECT / MOVE TO EDIT AN EXISTING ANNOTATION.";
 "DRAG TO DRAW. ONE ACTIVE TOOL PER STROKE." = "DRAG TO DRAW. ONE ACTIVE TOOL PER STROKE.";
 "DRAWING TOOL" = "DRAWING TOOL";
+"DROP FILES HERE" = "DROP FILES HERE";
 "DROP FILES HERE · SPACE FOR QUICK LOOK" = "DROP FILES HERE · SPACE FOR QUICK LOOK";
 "DROP FILES OR FOLDERS HERE" = "DROP FILES OR FOLDERS HERE";
 "DROP IT LIKE IT’S… A FILE." = "DROP IT LIKE IT’S… A FILE.";
@@ -460,9 +470,11 @@
 "Drag inside to move. Drag near a corner to resize. Drag outside to start a new selection." = "Drag inside to move. Drag near a corner to resize. Drag outside to start a new selection.";
 "Drag on the preview to add an area. Each area is saved into the new copy." = "Drag on the preview to add an area. Each area is saved into the new copy.";
 "Drag shortcuts" = "Drag shortcuts";
+"Drag the stack to carry all files. Drag the paperclip to move Float." = "Drag the stack to carry all files. Drag the paperclip to move Float.";
 "Drag to draw with the selected tool. Use Select / Move to edit an existing annotation." = "Drag to draw with the selected tool. Use Select / Move to edit an existing annotation.";
 "Drag to draw. One active tool per stroke." = "Drag to draw. One active tool per stroke.";
 "Drawing tool" = "Drawing tool";
+"Drop files here" = "Drop files here";
 "Drop files here · Space for Quick Look" = "Drop files here · Space for Quick Look";
 "Drop files or folders here" = "Drop files or folders here";
 "Drop it like it’s… a file." = "Drop it like it’s… a file.";
@@ -483,6 +495,7 @@
 "EPUB layout" = "EPUB layout";
 "ESC TO CLOSE" = "ESC TO CLOSE";
 "EVERYTHING HAS A NEXT FORM." = "EVERYTHING HAS A NEXT FORM.";
+"EXPAND FLOAT" = "EXPAND FLOAT";
 "EXPORT CLIPS" = "EXPORT CLIPS";
 "EXPORT ONE VIDEO" = "EXPORT ONE VIDEO";
 "EXPOSURE" = "EXPOSURE";
@@ -500,6 +513,7 @@
 "End" = "End";
 "Esc to close" = "Esc to close";
 "Everything has a next form." = "Everything has a next form.";
+"Expand Float" = "Expand Float";
 "Export One Video" = "Export One Video";
 "Export clips" = "Export clips";
 "Export one video" = "Export one video";
@@ -520,6 +534,7 @@
 "FILE TOOLS WHEEL" = "FILE TOOLS WHEEL";
 "FILES" = "FILES";
 "FILES ARE PROCESSED LOCALLY ON YOUR MAC." = "FILES ARE PROCESSED LOCALLY ON YOUR MAC.";
+"FILES IN FLOAT" = "FILES IN FLOAT";
 "FILES MISSING" = "FILES MISSING";
 "FILES MOVED." = "FILES MOVED.";
 "FILES STAY ON YOUR COMPUTER." = "FILES STAY ON YOUR COMPUTER.";
@@ -548,8 +563,10 @@
 "FLIP HORIZONTALLY" = "FLIP HORIZONTALLY";
 "FLIP VERTICALLY" = "FLIP VERTICALLY";
 "FLOAT" = "FLOAT";
+"FLOAT ACTION UNAVAILABLE" = "FLOAT ACTION UNAVAILABLE";
 "FLOAT BEHAVIOR" = "FLOAT BEHAVIOR";
 "FLOAT BEHAVIOUR" = "FLOAT BEHAVIOUR";
+"FLOAT OPTIONS" = "FLOAT OPTIONS";
 "FLOAT · 1 FILE" = "FLOAT · 1 FILE";
 "FOLDERS" = "FOLDERS";
 "FONT" = "FONT";
@@ -577,6 +594,7 @@
 "File tools wheel" = "File tools wheel";
 "Files" = "Files";
 "Files are processed locally on your Mac." = "Files are processed locally on your Mac.";
+"Files in Float" = "Files in Float";
 "Files missing" = "Files missing";
 "Files moved." = "Files moved.";
 "Files stay on your computer." = "Files stay on your computer.";
@@ -605,7 +623,9 @@
 "Flip vertically" = "Flip vertically";
 "Float" = "Float";
 "Float Behaviour" = "Float Behaviour";
+"Float action unavailable" = "Float action unavailable";
 "Float behavior" = "Float behavior";
+"Float options" = "Float options";
 "Float · %@ files" = "Float · %@ files";
 "Float · %lld files" = "Float · %lld files";
 "Float · 1 file" = "Float · 1 file";
@@ -1241,6 +1261,7 @@
 "SOURCE & THIRD-PARTY NOTICES" = "SOURCE & THIRD-PARTY NOTICES";
 "SPACE PLAY/PAUSE · ←/→ 1S · SHIFT+←/→ 1 FRAME (VIDEO), 0.1S (AUDIO) · I/O SET RANGE · ENTER SAVE" = "SPACE PLAY/PAUSE · ←/→ 1S · SHIFT+←/→ 1 FRAME (VIDEO), 0.1S (AUDIO) · I/O SET RANGE · ENTER SAVE";
 "SPACE PLAY/PAUSE · ←/→ 1S · ⇧←/→ 1 FRAME · I/O SET RANGE · ⇧SPACE PLAY RANGE" = "SPACE PLAY/PAUSE · ←/→ 1S · ⇧←/→ 1 FRAME · I/O SET RANGE · ⇧SPACE PLAY RANGE";
+"SPACE · PREVIEW" = "SPACE · PREVIEW";
 "SPACING" = "SPACING";
 "SPECTRUM" = "SPECTRUM";
 "SPEED" = "SPEED";
@@ -1352,6 +1373,7 @@
 "Source & third-party notices" = "Source & third-party notices";
 "Space play/pause · ←/→ 1s · Shift+←/→ 1 frame (video), 0.1s (audio) · I/O set range · Enter save" = "Space play/pause · ←/→ 1s · Shift+←/→ 1 frame (video), 0.1s (audio) · I/O set range · Enter save";
 "Space play/pause · ←/→ 1s · ⇧←/→ 1 frame · I/O set range · ⇧Space play range" = "Space play/pause · ←/→ 1s · ⇧←/→ 1 frame · I/O set range · ⇧Space play range";
+"Space · Preview" = "Space · Preview";
 "Spacing" = "Spacing";
 "Spectrum" = "Spectrum";
 "Speed" = "Speed";

@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 enum FloatShelfEdge:String,CaseIterable { case top,right,bottom,left }
 enum FloatShelfViewMode:Int { case icons,list }
 
-@MainActor final class FloatShelfController:NSWindowController,NSWindowDelegate,NSCollectionViewDataSource,NSCollectionViewDelegate,NSCollectionViewDelegateFlowLayout,@preconcurrency QLPreviewPanelDataSource,@preconcurrency QLPreviewPanelDelegate,NSMenuItemValidation,NSMenuDelegate {
+@MainActor final class FloatShelfController:NSWindowController,NSWindowDelegate,NSCollectionViewDataSource,NSCollectionViewDelegate,@preconcurrency QLPreviewPanelDataSource,@preconcurrency QLPreviewPanelDelegate,NSMenuItemValidation,NSMenuDelegate {
     var onClose:(()->Void)?
     private(set) var isExpanded=false
     private(set) var viewMode:FloatShelfViewMode = .icons
@@ -19,7 +19,7 @@ enum FloatShelfViewMode:Int { case icons,list }
     private let header=ShelfMoveHeader()
     private let collection=ShelfCollectionView()
     private let scroll=NSScrollView()
-    private let flow=NSCollectionViewFlowLayout()
+    private let flow=ShelfColumnLayout()
     private let statusLabel=NSTextField(labelWithString:"")
     private let collapseButton=NSButton()
     private let pinButton=NSButton()
@@ -43,6 +43,7 @@ enum FloatShelfViewMode:Int { case icons,list }
     init(urls:[URL]) {
         let panel=ShelfPanel(contentRect:NSRect(origin:.zero,size:NSSize(width:112,height:136)),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
         super.init(window:panel)
+        panel.setAccessibilityRole(.window);panel.setAccessibilitySubrole(.standardWindow)
         panel.title="Float";panel.level = .floating;panel.isFloatingPanel=true;panel.hidesOnDeactivate=false;panel.becomesKeyOnlyIfNeeded=false
         panel.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary];panel.isReleasedWhenClosed=false;panel.isOpaque=false;panel.backgroundColor = .clear;panel.hasShadow=false;panel.minSize=NSSize(width:112,height:136)
         panel.delegate=self;panel.contentView=surface
@@ -170,6 +171,7 @@ enum FloatShelfViewMode:Int { case icons,list }
         result.bezelStyle = .inline;result.isBordered=false;result.toolTip=help;result.widthAnchor.constraint(equalToConstant:20).isActive=true;return result
     }
     private func reload(preserving ids:Set<UUID>=[]) {
+        flow.itemHeight=viewMode == .list ? 48:108
         collection.reloadData();collection.selectionIndexPaths=Set(items.enumerated().filter{ids.contains($0.element.id)}.map{IndexPath(item:$0.offset,section:0)})
         flow.invalidateLayout();updateLabels();updatePreviewIfVisible()
     }
@@ -247,9 +249,6 @@ enum FloatShelfViewMode:Int { case icons,list }
     func collectionView(_ collectionView:NSCollectionView,itemForRepresentedObjectAt indexPath:IndexPath)->NSCollectionViewItem {
         let item=collectionView.makeItem(withIdentifier:NSUserInterfaceItemIdentifier("FloatFile"),for:indexPath) as! ShelfCollectionItem
         item.configure(url:items[indexPath.item].url,mode:viewMode);return item
-    }
-    func collectionView(_ collectionView:NSCollectionView,layout collectionViewLayout:NSCollectionViewLayout,sizeForItemAt indexPath:IndexPath)->NSSize {
-        NSSize(width:max(100,scroll.contentSize.width-20),height:viewMode == .list ? 48:108)
     }
     func collectionView(_ collectionView:NSCollectionView,didSelectItemsAt indexPaths:Set<IndexPath>) { updateLabels();updatePreviewIfVisible() }
     func collectionView(_ collectionView:NSCollectionView,didDeselectItemsAt indexPaths:Set<IndexPath>) { updateLabels();updatePreviewIfVisible() }
@@ -417,6 +416,29 @@ private final class ShelfPanel:NSPanel {
     override func draggingUpdated(_ sender:NSDraggingInfo)->NSDragOperation { draggingEntered(sender) }
     override func prepareForDragOperation(_ sender:NSDraggingInfo)->Bool { !Self.fileURLs(sender.draggingPasteboard).isEmpty }
     override func performDragOperation(_ sender:NSDraggingInfo)->Bool { let urls=Self.fileURLs(sender.draggingPasteboard);guard !urls.isEmpty else { return false };onFilesDropped?(urls);return true }
+}
+/// A vertical shelf never wraps into a second column. Unlike a flow layout,
+/// it can resize through compact intermediate widths without stale item metrics.
+@MainActor private final class ShelfColumnLayout:NSCollectionViewLayout {
+    var itemHeight:CGFloat=108
+    var minimumInteritemSpacing:CGFloat=0
+    var minimumLineSpacing:CGFloat=4
+    var sectionInset=NSEdgeInsets(top:8,left:10,bottom:10,right:10)
+    private var attributes:[NSCollectionViewLayoutAttributes]=[]
+    private var contentSize=NSSize.zero
+    override func prepare() {
+        super.prepare();guard let collectionView else { return }
+        let width=max(1,collectionView.bounds.width),count=collectionView.numberOfItems(inSection:0)
+        attributes=(0..<count).map { index in
+            let value=NSCollectionViewLayoutAttributes(forItemWith:IndexPath(item:index,section:0))
+            value.frame=NSRect(x:sectionInset.left,y:sectionInset.top+CGFloat(index)*(itemHeight+minimumLineSpacing),width:max(1,width-sectionInset.left-sectionInset.right),height:itemHeight);return value
+        }
+        contentSize=NSSize(width:width,height:max(collectionView.bounds.height,sectionInset.top+CGFloat(count)*(itemHeight+minimumLineSpacing)+sectionInset.bottom))
+    }
+    override var collectionViewContentSize:NSSize { contentSize }
+    override func layoutAttributesForElements(in rect:NSRect)->[NSCollectionViewLayoutAttributes] { attributes.filter{$0.frame.intersects(rect)} }
+    override func layoutAttributesForItem(at indexPath:IndexPath)->NSCollectionViewLayoutAttributes? { attributes.indices.contains(indexPath.item) ? attributes[indexPath.item]:nil }
+    override func shouldInvalidateLayout(forBoundsChange newBounds:NSRect)->Bool { newBounds.size != collectionView?.bounds.size }
 }
 @MainActor private final class ShelfCollectionView:NSCollectionView {
     var onDoubleClick:(()->Void)?

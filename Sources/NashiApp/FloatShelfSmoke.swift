@@ -29,9 +29,9 @@ import AppKit
             guard let self,let window else { return };try? NSStringFromRect(window.frame).write(to:self.output.appendingPathComponent("float-window-frame.txt"),atomically:true,encoding:.utf8)
         }
         let extra=output.appendingPathComponent("Extra drop.txt");try? "Additional Float fixture".write(to:extra,atomically:true,encoding:.utf8)
-        let view=FloatDragFixture(frame:NSRect(x:0,y:0,width:310,height:260),file:extra,output:output)
-        let drop=NSWindow(contentRect:view.frame,styleMask:[.titled,.closable],backing:.buffered,defer:false);drop.title="Nashi Float Drag Test";drop.contentView=view;drop.isReleasedWhenClosed=false
-        drop.setFrameOrigin(NSPoint(x:window.frame.maxX+60,y:window.frame.minY-100));drop.orderFront(nil);dragWindow=drop
+        let view=FloatDragFixture(frame:NSRect(x:0,y:0,width:310,height:260),file:extra,output:output,onShow:{ [weak shelf] in shelf?.showWindow(nil) })
+        let drop=NSWindow(contentRect:view.frame,styleMask:[.titled,.closable],backing:.buffered,defer:false);drop.title="Nashi Float Drag Test";drop.contentView=view;drop.isReleasedWhenClosed=false;drop.level = .floating;drop.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary]
+        drop.setFrameOrigin(NSPoint(x:window.frame.maxX+60,y:window.frame.minY-100));drop.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);dragWindow=drop
         let metadata:[String:Any]=["shelfWindowID":window.windowNumber,"dropWindowID":drop.windowNumber,"shelfFrame":NSStringFromRect(window.frame),"dropFrame":NSStringFromRect(drop.frame)]
         if let data=try? JSONSerialization.data(withJSONObject:metadata,options:[.prettyPrinted,.sortedKeys]) {try? data.write(to:output.appendingPathComponent("fixture-windows.json"))}
     }
@@ -95,10 +95,13 @@ import AppKit
 @MainActor private final class FloatDragFixture:NSView,NSDraggingSource {
     private let file:URL,output:URL
     private let label=NSTextField(wrappingLabelWithString:"Drag the document above into Float.\n\nDrop Float files here to check their drag payload.")
-    init(frame:NSRect,file:URL,output:URL) {
-        self.file=file;self.output=output;super.init(frame:frame);registerForDraggedTypes([.fileURL]);wantsLayer=true;layer?.backgroundColor=NSColor.windowBackgroundColor.cgColor
-        label.frame=NSRect(x:24,y:16,width:262,height:120);label.alignment = .center;addSubview(label)
+    private let onShow:()->Void
+    init(frame:NSRect,file:URL,output:URL,onShow:@escaping ()->Void) {
+        self.file=file;self.output=output;self.onShow=onShow;super.init(frame:frame);registerForDraggedTypes([.fileURL]);wantsLayer=true;layer?.backgroundColor=NSColor.windowBackgroundColor.cgColor
+        label.frame=NSRect(x:24,y:56,width:262,height:80);label.alignment = .center;addSubview(label)
+        let show=NSButton(title:"Show Float",target:self,action:#selector(showFloat));show.frame=NSRect(x:80,y:12,width:150,height:28);show.bezelStyle = .rounded;addSubview(show)
     }
+    @objc private func showFloat() { onShow() }
     required init?(coder:NSCoder) { fatalError() }
     override func draw(_ dirtyRect:NSRect) { NSWorkspace.shared.icon(forFile:file.path).draw(in:NSRect(x:120,y:166,width:64,height:64)) }
     override func mouseDown(with event:NSEvent) {

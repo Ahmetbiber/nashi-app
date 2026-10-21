@@ -100,7 +100,7 @@ public sealed partial class MainWindow:Window
     internal bool WindowManagementEnabled=>library.WindowManagementEnabled;
     private static Border Card(UIElement content){var card=new Border{CornerRadius=new(24),Padding=new(22),Margin=new(0,0,0,6),Child=content,BorderThickness=new(1)};card.SetResourceReference(Border.BackgroundProperty,"Surface");card.SetResourceReference(Border.BorderBrushProperty,"Line");return card;}
     public static Button Button(string title,Action action){var button=L10n.Content(new Button{Content=title});button.Click+=(_,_)=>action();return button;}
-    private static Button Primary(string title,Action action){var button=Button(title,action);button.Background=Theme.Primary;button.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));return button;}
+    internal static Button Primary(string title,Action action){var button=Button(title,action);button.Background=Theme.Primary;button.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));return button;}
     public static void OpenUrl(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
     public static void Reveal(string path){var info=new ProcessStartInfo("explorer.exe"){UseShellExecute=false};info.ArgumentList.Add("/select,"+Path.GetFullPath(path));Process.Start(info);}
     private void Choose(){if(busy)return;var picker=new OpenFileDialog{Multiselect=true,Title="Choose files for Nashi"};if(picker.ShowDialog(this)==true){Add(picker.FileNames);ShowLibrary(false);}}

@@ -32,7 +32,7 @@ public sealed class ToolSetupWindow : Window
         var footer = new StackPanel { Margin = new(24) }; DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
         footer.Children.Add(status); footer.Children.Add(progress);
         var actions = new DockPanel { Margin = new(0, 14, 0, 0) }; footer.Children.Add(actions);
-        next = MainWindow.Button("Download missing tools", async () => { if (Status.Ready) Close(); else await StartSetupAsync(); }); next.IsDefault = true;
+        next = MainWindow.Primary("Download missing tools", async () => { if (Status.Ready) Close(); else await StartSetupAsync(); }); next.IsDefault = true;
         AutomationProperties.SetAutomationId(next, "SetupContinue"); DockPanel.SetDock(next, Dock.Right); actions.Children.Add(next);
         cancel = MainWindow.Button("Cancel setup", () => cancellation?.Cancel()); AutomationProperties.SetAutomationId(cancel, "SetupCancel"); actions.Children.Add(cancel);
         var content = new StackPanel { Margin = new(28) }; root.Children.Add(new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
@@ -44,7 +44,7 @@ public sealed class ToolSetupWindow : Window
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { if (Working) cancellation?.Cancel(); else Close(); e.Handled = true; } };
         Refresh();
     }
-    private static TextBlock Label(string text, double size = 13) => L10n.Label(new TextBlock { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap, Margin = new(0, 6, 0, 8) });
+    private static TextBlock Label(string text, double size = 13) => L10n.Label(new TextBlock { Text = text, FontSize = size, FontWeight = size >= 18 ? FontWeights.SemiBold : FontWeights.Normal, TextWrapping = TextWrapping.Wrap, Margin = new(0, 6, 0, 8) });
     private void Refresh()
     {
         var ready = Status; groups.Children.Clear();

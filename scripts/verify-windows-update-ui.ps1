@@ -104,7 +104,39 @@ try {
     } else { throw ('The update confirmation had no visible OK action. Buttons: '+($observed | ConvertTo-Json -Compress)) }
     if (!$app.WaitForExit(120000)) { throw 'The real update did not close the original app within two minutes.' }
     if ($app.ExitCode -ne 0) { throw 'The original app exited with an update error.' }
-    @{ availableUpdateObserved=$true; updateButtonInvoked=$true; confirmationInvoked=$true; confirmationMethod=$confirmationMethod; originalProcessId=$app.Id; expectedVersion=$ExpectedVersion } | ConvertTo-Json | Set-Content -Encoding utf8 $ProofPath
+    # An upgrade may legitimately offer the new first-run tools dialog. Close
+    # only this exact app's setup window before the caller tests normal quit.
+    # Never download tools, change preferences or kill the restarted process.
+    $setupObserved = $false
+    $setupClosed = $false
+    $readySince = $null
+    $deadline = [DateTime]::UtcNow.AddSeconds(90)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $reopened = Get-Process -Name Nashi -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $app.Id -and $_.Path -eq $AppPath -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+        if ($null -ne $reopened) {
+            $installed = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path ([IO.Path]::GetDirectoryName($AppPath)) 'Nashi.dll')).FileVersion
+            if (([version]$installed).ToString(3) -eq ([version]$ExpectedVersion).ToString(3)) {
+                $root = [System.Windows.Automation.AutomationElement]::FromHandle($reopened.MainWindowHandle)
+                $owner = Property-Equals ([System.Windows.Automation.AutomationElement]::ProcessIdProperty) $reopened.Id
+                $setup = Find-Element ([System.Windows.Automation.AutomationElement]::RootElement) ([System.Windows.Automation.TreeScope]::Children) @(
+                    $owner, (Property-Equals ([System.Windows.Automation.AutomationElement]::NameProperty) 'Set up Nashi tools')
+                )
+                if ($null -eq $setup) { $setup = Find-Element $root ([System.Windows.Automation.TreeScope]::Descendants) @($owner,(Property-Equals ([System.Windows.Automation.AutomationElement]::NameProperty) 'Set up Nashi tools')) }
+                if ($null -ne $setup) {
+                    $setupObserved = $true
+                    $setup.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
+                    $setupClosed = $true
+                    $readySince = $null
+                } elseif ($root.Current.IsEnabled) {
+                    if ($null -eq $readySince) { $readySince = [DateTime]::UtcNow }
+                    if (([DateTime]::UtcNow - $readySince).TotalSeconds -ge 1) { break }
+                } else { $readySince = $null }
+            }
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    if ($null -eq $readySince -or ([DateTime]::UtcNow - $readySince).TotalSeconds -lt 1) { throw 'The updated app did not return to an interactive main window.' }
+    @{ availableUpdateObserved=$true; updateButtonInvoked=$true; confirmationInvoked=$true; confirmationMethod=$confirmationMethod; originalProcessId=$app.Id; expectedVersion=$ExpectedVersion; postUpdateSetupObserved=$setupObserved; postUpdateSetupClosed=$setupClosed } | ConvertTo-Json | Set-Content -Encoding utf8 $ProofPath
 } catch {
     @{ error=$_.Exception.Message } | ConvertTo-Json | Set-Content -Encoding utf8 $ProofPath
     Write-Error $_

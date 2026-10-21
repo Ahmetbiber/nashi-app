@@ -56,6 +56,7 @@ internal static class SmokeTests
         var library=new LibraryStore(Path.Combine(root,"UserData"));library.SetAppearance("dark");
         var window=new MainWindow([source],library,checkForUpdates:false);window.Show();window.UpdateLayout();DesktopInput.Pump();
         LocalizationChecks.Run(root,window,source,Check);
+        ToolSetupChecks.Run(root,window,Check);
         Button FindButton(string name)=>Descendants(window).OfType<Button>().First(b=>b.Content as string==name);
         var clipboardText="Nashi clipboard · Türkçe ıİşğü 🍐\r\nSecond line";
         Clipboard.SetText(clipboardText);FindButton("Home").Focus();DesktopInput.Key(window,Key.V,control:true);

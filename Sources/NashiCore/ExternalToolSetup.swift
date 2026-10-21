@@ -16,11 +16,18 @@ public enum ExternalToolSetup {
         default:return nil
         }
         let url=root.appendingPathComponent(relative)
-        return FileManager.default.isExecutableFile(atPath:url.path) ? url:nil
+        return usable(url) ? url:nil
     }
-    public static var mediaReady:Bool { ["ffmpeg","ffprobe","yt-dlp","deno"].allSatisfy{executable($0) != nil} }
-    public static var officeReady:Bool { executable("soffice") != nil || FileManager.default.isExecutableFile(atPath:"/Applications/LibreOffice.app/Contents/MacOS/soffice") }
+    private static func usable(_ url:URL)->Bool {
+        guard let values=try? url.resolvingSymlinksInPath().resourceValues(forKeys:[.isRegularFileKey,.fileSizeKey]) else{return false}
+        return FileManager.default.isExecutableFile(atPath:url.path) && values.isRegularFile == true && (values.fileSize ?? 0)>0
+    }
+    public static var status:ToolSetupStatus { ToolSetupStatus { try? Dependencies.executable($0) } }
+    public static var mediaReady:Bool { status.mediaReady }
+    public static var officeReady:Bool { status.officeReady }
     public static func installMedia(token:CancellationToken,progress:@escaping @Sendable (Double?,String)->Void) async throws {
+        try token.check();try Task.checkCancellation()
+        if mediaReady { progress(1,"Media tools are ready.");return }
         let fm=FileManager.default;try fm.createDirectory(at:root,withIntermediateDirectories:true)
         let stage=root.appendingPathComponent(".media-\(UUID().uuidString)",isDirectory:true)
         try fm.createDirectory(at:stage,withIntermediateDirectories:false)
@@ -53,10 +60,12 @@ public enum ExternalToolSetup {
         }
         try token.check();try Task.checkCancellation()
         let target=root.appendingPathComponent("media-v1",isDirectory:true)
-        guard !fm.fileExists(atPath:target.path) else { throw NashiError.failed("Media tools already exist. Nashi kept the existing installation.") }
-        try fm.moveItem(at:stage,to:target);progress(1,"Media tools are ready.")
+        try ToolInstallation.publish(stage,to:target) { directory in ["ffmpeg","ffprobe","yt-dlp","deno"].allSatisfy { usable(directory.appendingPathComponent($0)) } }
+        progress(1,"Media tools are ready.")
     }
     public static func installOffice(token:CancellationToken,progress:@escaping @Sendable (Double?,String)->Void) async throws {
+        try token.check();try Task.checkCancellation()
+        if officeReady { progress(1,"Office tools are ready.");return }
         let fm=FileManager.default;try fm.createDirectory(at:root,withIntermediateDirectories:true)
         let stage=root.appendingPathComponent(".office-\(UUID().uuidString)",isDirectory:true)
         try fm.createDirectory(at:stage,withIntermediateDirectories:false);defer { try? fm.removeItem(at:stage) }
@@ -71,8 +80,8 @@ public enum ExternalToolSetup {
         try ProcessRunner.run(URL(fileURLWithPath:"/usr/bin/ditto"),[mount.appendingPathComponent("LibreOffice.app").path,content.appendingPathComponent("LibreOffice.app").path],token:token)
         try token.check();try Task.checkCancellation()
         let target=root.appendingPathComponent("office-26.8.1",isDirectory:true)
-        guard !fm.fileExists(atPath:target.path) else { throw NashiError.failed("Office tools already exist. Nashi kept the existing installation.") }
-        try fm.moveItem(at:content,to:target);progress(1,"Office tools are ready.")
+        try ToolInstallation.publish(content,to:target) { usable($0.appendingPathComponent("LibreOffice.app/Contents/MacOS/soffice")) }
+        progress(1,"Office tools are ready.")
     }
     private static func verify(_ file:URL,digest:String) throws {
         let input=try FileHandle(forReadingFrom:file);defer{try? input.close()};var hasher=SHA256()

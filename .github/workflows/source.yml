@@ -39,5 +39,5 @@ jobs:
         run: python3 scripts/audit-public-tree.py
       - name: Build native macOS app
         run: swift build --product Nashi
-      - name: Update trust, web photo and window placement regressions
-        run: swift test --filter 'NashiUpdatesTests|WebMediaDragPayloadTests|InstagramPhotosTests|YouTubeThumbnailTests|WindowPlacementTests|AppLocalizationTests'
+      - name: Update trust, web photo and window placement and setup regressions
+        run: swift test --filter 'NashiUpdatesTests|WebMediaDragPayloadTests|InstagramPhotosTests|YouTubeThumbnailTests|WindowPlacementTests|AppLocalizationTests|ToolSetupTests'

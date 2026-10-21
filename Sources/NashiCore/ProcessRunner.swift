@@ -90,7 +90,8 @@ public enum Dependencies {
             // particular, ExifTool and exiftool collide on the default macOS
             // filesystem; select the actual script inside that directory.
             let resolved=URL(fileURLWithPath:path).resolvingSymlinksInPath()
-            return fm.isExecutableFile(atPath:resolved.path) && (try? resolved.resourceValues(forKeys:[.isRegularFileKey]).isRegularFile) == true
+            let values=try? resolved.resourceValues(forKeys:[.isRegularFileKey,.fileSizeKey])
+            return fm.isExecutableFile(atPath:resolved.path) && values?.isRegularFile == true && (values?.fileSize ?? 0)>0
         }) else { throw NashiError.missingDependency(name) }
         return URL(fileURLWithPath: found)
     }

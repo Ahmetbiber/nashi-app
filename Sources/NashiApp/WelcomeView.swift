@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import ServiceManagement
+import NashiCore
 
 struct WelcomeView:View {
     let onDone:()->Void
@@ -14,7 +15,8 @@ struct WelcomeView:View {
     @State private var launchUnavailable=false
     @State private var launchError:String?
     private let names=["Hello","Convert","Fine-tune","Move & share","Folders","Ready"]
-    private var titles:[String] { ["Nice files.\nNo fuss.","A new form.\nIn a tap.","Little tweaks.\nBig difference.","Keep things\nmoving.","Right where\nyou want it.","You’re all set.\nMake something good."] }
+    private var toolsReady:Bool { ExternalToolSetup.status.ready }
+    private var titles:[String] { ["Nice files.\nNo fuss.","A new form.\nIn a tap.","Little tweaks.\nBig difference.","Keep things\nmoving.","Right where\nyou want it.",toolsReady ? "You’re all set.\nMake something good.":"One last step.\nSet up your tools."] }
     var body:some View {
         VStack(spacing:0) {
             HStack(spacing:12) {
@@ -40,7 +42,7 @@ struct WelcomeView:View {
                 Text("\(page+1) / 6").font(.system(size:10,design:.rounded)).monospacedDigit().foregroundStyle(.secondary)
                 Spacer()
                 if page>0 { Button("Back") { page-=1 }.buttonStyle(NashiButtonStyle(.quiet)) }
-                Button(action:page==5 ? onDone:next) { Label(page==5 ? "Let’s go":"Continue",systemImage:"arrow.right") }.buttonStyle(NashiButtonStyle(.primary)).keyboardShortcut(.defaultAction)
+                Button(action:page==5 ? onDone:next) { Label(page==5 ? (toolsReady ? "Let’s go":"Set up tools"):"Continue",systemImage:"arrow.right") }.buttonStyle(NashiButtonStyle(.primary)).keyboardShortcut(.defaultAction)
             }.padding(.horizontal,32).padding(.bottom,26)
         }.frame(width:760,height:520).background(NashiPalette.canvas).clipShape(RoundedRectangle(cornerRadius:28,style:.continuous))
             .overlay(RoundedRectangle(cornerRadius:28).strokeBorder(NashiPalette.border))
@@ -63,7 +65,7 @@ struct WelcomeView:View {
             Text("Optional. You can change this in Settings.").font(.system(size:11)).foregroundStyle(.secondary)
             if let folderError { Text(folderError).font(.caption).foregroundStyle(.orange).lineLimit(2) }
         default:
-            Text("Your tools are ready. Let’s put that next file to good use.").font(.system(size:13)).foregroundStyle(.secondary)
+            Text(toolsReady ? "Your tools are ready. Let’s put that next file to good use.":"Next, download the missing tools for media and Office files. Tools already on your computer do not need another download.").font(.system(size:13)).foregroundStyle(.secondary)
             Toggle("Ready when you log in",isOn:Binding(get:{launchAtLogin},set:updateLaunch)).toggleStyle(.switch).font(.system(size:12)).disabled(launchUnavailable)
             if launchNeedsApproval { Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }.buttonStyle(NashiButtonStyle(.secondary,compact:true)) }
             if launchUnavailable { Text("Launch at login is unavailable for this copy.").font(.caption).foregroundStyle(.secondary) }

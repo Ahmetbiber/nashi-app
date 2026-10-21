@@ -13,7 +13,16 @@ public sealed partial class MainWindow
     private readonly Dictionary<Guid,Border> libraryCards=[];
     private void ShowToolSetupMenu()
     {
-        var menu=new ContextMenu();foreach(var (title,run) in new[]{("Media tools",(Func<Task>)SetupAsync),("Office tools",(Func<Task>)SetupOfficeAsync)}){var item=new MenuItem{Header=title};item.Click+=async(_,_)=>await run();menu.Items.Add(item);}menu.PlacementTarget=this;menu.IsOpen=true;
+        if(busy)return;
+        toolSetupOffered=true;
+        if(toolSetupWindow is not null){toolSetupWindow.Activate();return;}
+        toolSetupWindow=new ToolSetupWindow(this,tools,officeRuntime,SetBusy);
+        try{toolSetupWindow.ShowDialog();}finally{toolSetupWindow=null;}
+    }
+    private void OfferFirstRunTools()
+    {
+        if(toolSetupOffered || busy || tools.Ready && officeRuntime.Executable is not null)return;
+        toolSetupOffered=true;ShowToolSetupMenu();
     }
     private void BuildFileChips()
     {

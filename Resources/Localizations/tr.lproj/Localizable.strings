@@ -32,6 +32,7 @@
 "32-bit float" = "32 bit kayan nokta";
 "32-bit integer" = "32 bit tam sayı";
 "A FEW SMALL PREFERENCES. A SMOOTHER EVERYDAY." = "BİRKAÇ KÜÇÜK TERCİH. DAHA AKICI BİR GÜN.";
+"A FEW TOOLS. MORE POSSIBILITIES." = "BİRKAÇ ARAÇ. DAHA FAZLA OLANAK.";
 "A FRESH FILE IS ON ITS WAY." = "YENİ DOSYAN HAZIRLANIYOR.";
 "A FRESH FILE IS ON ITS WAY…" = "YENİ DOSYAN HAZIRLANIYOR…";
 "A FRESH NASHI IS READY." = "YENİ NASHİ HAZIR.";
@@ -46,6 +47,7 @@
 "A NEW FORM.\nIN A TAP." = "TEK DOKUNUŞ.\nYENİ BİR BİÇİM.";
 "A PLACE FOR FRESH FILES." = "YENİ DOSYALAR İÇİN BİR YER.";
 "A few small preferences. A smoother everyday." = "Birkaç küçük tercih. Daha akıcı bir gün.";
+"A few tools. More possibilities." = "Birkaç araç. Daha fazla olanak.";
 "A fresh Nashi is ready." = "Yeni Nashi hazır.";
 "A fresh file is on its way." = "Yeni dosyan hazırlanıyor.";
 "A fresh file is on its way…" = "Yeni dosyan hazırlanıyor…";
@@ -80,6 +82,7 @@
 "ALLOW FOLDER…" = "KLASÖRE İZİN VER…";
 "ALLOW HOME FOLDER ACCESS…" = "ANA KLASÖRE ERİŞİM İZNİ VER…";
 "ALLOW NASHI IN MACOS LOGIN ITEMS." = "MACOS GİRİŞ ÖĞELERİ BÖLÜMÜNDEN NASHİ'YE İZİN VER.";
+"ALREADY AVAILABLE ON YOUR COMPUTER" = "BİLGİSAYARINDA ZATEN HAZIR";
 "ANNOTATE" = "İŞARETLE";
 "ANNOTATE IMAGE" = "GÖRSELİ İŞARETLE";
 "ANNOTATE PHOTO" = "FOTOĞRAFI İŞARETLE";
@@ -132,6 +135,7 @@
 "Allow Folder…" = "Klasöre İzin Ver…";
 "Allow Home Folder Access…" = "Ana Klasöre Erişim İzni Ver…";
 "Allow Nashi in macOS Login Items." = "macOS Giriş Öğeleri bölümünden Nashi'ye izin ver.";
+"Already available on your computer" = "Bilgisayarında zaten hazır";
 "Annotate" = "İşaretle";
 "Annotate Image" = "Görseli İşaretle";
 "Annotate Photo" = "Fotoğrafı İşaretle";
@@ -250,6 +254,7 @@
 "COMPRESSION PRESET" = "SIKIŞTIRMA ÖN AYARI";
 "COMPRESSION SETTINGS" = "SIKIŞTIRMA AYARLARI";
 "COMPRESSION STRENGTH" = "SIKIŞTIRMA GÜCÜ";
+"CONTINUE TO NASHI" = "NASHİ’YE DEVAM ET";
 "CONTRAST" = "KONTRAST";
 "CONVERSION SETTINGS" = "DÖNÜŞTÜRME AYARLARI";
 "CONVERSION WHEEL" = "DÖNÜŞTÜRME ÇARKI";
@@ -333,6 +338,7 @@
 "Compression Settings" = "Sıkıştırma Ayarları";
 "Compression preset" = "Sıkıştırma ön ayarı";
 "Compression strength" = "Sıkıştırma gücü";
+"Continue to Nashi" = "Nashi’ye devam et";
 "Contrast" = "Kontrast";
 "Conversion Settings" = "Dönüştürme Ayarları";
 "Conversion wheel" = "Dönüştürme çarkı";
@@ -390,7 +396,11 @@
 "DOWNLOAD COPIED LINK" = "KOPYALANAN BAĞLANTIYI İNDİR";
 "DOWNLOAD FROM THE WEB" = "WEB'DEN İNDİR";
 "DOWNLOAD LINK…" = "BAĞLANTIDAN İNDİR…";
+"DOWNLOAD MEDIA TOOLS" = "MEDYA ARAÇLARINI İNDİR";
+"DOWNLOAD MISSING TOOLS" = "EKSİK ARAÇLARI İNDİR";
+"DOWNLOAD OFFICE TOOLS" = "OFFİCE ARAÇLARINI İNDİR";
 "DOWNLOAD PHOTOS" = "FOTOĞRAFLARI İNDİR";
+"DOWNLOAD THE MISSING TOOLS TO ENABLE ALL CONVERSIONS, PREVIEWS AND WEB DOWNLOADS. TOOLS ALREADY FOUND ON YOUR COMPUTER ARE KEPT." = "TÜM DÖNÜŞTÜRMELERİ, ÖNİZLEMELERİ VE WEB İNDİRMELERİNİ AÇMAK İÇİN EKSİK ARAÇLARI İNDİR. BİLGİSAYARINDA BULUNAN ARAÇLAR KORUNUR.";
 "DOWNLOAD THUMBNAIL" = "KÜÇÜK RESMİ İNDİR";
 "DOWNLOAD VIDEO" = "VİDEOYU İNDİR";
 "DOWNLOAD ↗" = "İNDİR ↗";
@@ -434,7 +444,11 @@
 "Download cancelled. No partial files were kept." = "İndirme iptal edildi. Yarım kalan dosyalar silindi.";
 "Download copied link" = "Kopyalanan bağlantıyı indir";
 "Download from the web" = "Web'den indir";
+"Download media tools" = "Medya araçlarını indir";
+"Download missing tools" = "Eksik araçları indir";
+"Download office tools" = "Office araçlarını indir";
 "Download photos" = "Fotoğrafları indir";
+"Download the missing tools to enable all conversions, previews and web downloads. Tools already found on your computer are kept." = "Tüm dönüştürmeleri, önizlemeleri ve web indirmelerini açmak için eksik araçları indir. Bilgisayarında bulunan araçlar korunur.";
 "Download thumbnail" = "Küçük resmi indir";
 "Download video" = "Videoyu indir";
 "Download ↗" = "İndir ↗";
@@ -495,8 +509,8 @@
 "FASTER" = "DAHA HIZLI";
 "FEATURED" = "ÖNE ÇIKAN";
 "FEATURES & SHORTCUTS" = "ÖZELLİKLER VE KISAYOLLAR";
-"FFMPEG, FFPROBE, YT-DLP AND DENO ENABLE MEDIA CONVERSION, PREVIEWS AND WEB DOWNLOADS. APPROXIMATELY 180 MB. FFMPEG AND YT-DLP USE GPL LICENSES; DENO USES MIT." = "FFMPEG, FFPROBE, YT-DLP VE DENO; MEDYA DÖNÜŞTÜRME, ÖNİZLEME VE WEB'DEN İNDİRME SAĞLAR. YAKLAŞIK 180 MB. FFMPEG VE YT-DLP GPL, DENO İSE MIT LİSANSLIDIR.";
-"FFmpeg, ffprobe, yt-dlp and Deno enable media conversion, previews and web downloads. Approximately 180 MB. FFmpeg and yt-dlp use GPL licenses; Deno uses MIT." = "FFmpeg, ffprobe, yt-dlp ve Deno; medya dönüştürme, önizleme ve web'den indirme sağlar. Yaklaşık 180 MB. FFmpeg ve yt-dlp GPL, Deno ise MIT lisanslıdır.";
+"FFMPEG, FFPROBE, YT-DLP AND DENO ENABLE MEDIA CONVERSION, PREVIEWS AND WEB DOWNLOADS. APPROXIMATELY 180 MB. FFMPEG AND YT-DLP USE GPL LICENSES; DENO USES MIT." = "FFMPEG, FFPROBE, YT-DLP VE DENO; MEDYA DÖNÜŞTÜRME, ÖNİZLEME VE WEB İNDİRMELERİNİ SAĞLAR. YAKLAŞIK 180 MB. FFMPEG VE YT-DLP GPL, DENO MIT LİSANSLIDIR.";
+"FFmpeg, ffprobe, yt-dlp and Deno enable media conversion, previews and web downloads. Approximately 180 MB. FFmpeg and yt-dlp use GPL licenses; Deno uses MIT." = "FFmpeg, ffprobe, yt-dlp ve Deno; medya dönüştürme, önizleme ve web indirmelerini sağlar. Yaklaşık 180 MB. FFmpeg ve yt-dlp GPL, Deno MIT lisanslıdır.";
 "FIELD" = "ALAN";
 "FILE ACTIONS" = "DOSYA İŞLEMLERİ";
 "FILE ACTIONS WHEEL" = "DOSYA İŞLEMLERİ ÇARKI";
@@ -523,7 +537,9 @@
 "FINE-TUNE IT. SAVE A FRESH COPY." = "İNCE AYAR YAP. YENİ BİR KOPYA KAYDET.";
 "FINISH OR CANCEL THE CURRENT OPERATION BEFORE QUITTING." = "ÇIKMADAN ÖNCE MEVCUT İŞLEMİ BİTİR VEYA İPTAL ET.";
 "FINISH OR CANCEL THE CURRENT OPERATION FIRST." = "ÖNCE MEVCUT İŞLEMİ BİTİR VEYA İPTAL ET.";
+"FINISH SETUP" = "KURULUMU TAMAMLA";
 "FINISH THE CURRENT OPERATION OR CHOOSE CANCEL BEFORE CLOSING NASHI." = "NASHİ'Yİ KAPATMADAN ÖNCE İŞLEMİN BİTMESİNİ BEKLE VEYA İPTAL'İ SEÇ.";
+"FIRST-TIME SETUP" = "İLK KURULUM";
 "FIT" = "SIĞDIR";
 "FIT WHOLE IMAGE" = "GÖRSELİN TAMAMINI SIĞDIR";
 "FIXED PAGES" = "SABİT SAYFALAR";
@@ -578,6 +594,7 @@
 "Fine-tune it. Save a fresh copy." = "İnce ayar yap. Yeni bir kopya kaydet.";
 "Finish or cancel the current operation before quitting." = "Çıkmadan önce mevcut işlemi bitir veya iptal et.";
 "Finish or cancel the current operation first." = "Önce mevcut işlemi bitir veya iptal et.";
+"Finish setup" = "Kurulumu tamamla";
 "Finish the current operation or choose Cancel before closing Nashi." = "Nashi'yi kapatmadan önce işlemin bitmesini bekle veya İptal'i seç.";
 "Fit" = "Sığdır";
 "Fit whole image" = "Görselin tamamını sığdır";
@@ -710,7 +727,8 @@
 "LET’S MAKE SOMETHING OF IT." = "HADİ YENİ BİR ŞEY YAPALIM.";
 "LET’S TRY THAT AGAIN." = "BİR DAHA DENEYELİM.";
 "LIBRARY" = "KİTAPLIK";
-"LIBREOFFICE 26.8.1 ENABLES OFFICE DOCUMENT CONVERSIONS. A 285 MB DOWNLOAD; ABOUT 1 GB INSTALLED. MPL 2.0 AND ITS INCLUDED THIRD-PARTY LICENSES." = "LİBREOFFİCE 26.8.1, OFFİCE BELGE DÖNÜŞÜMLERİNİ SAĞLAR. İNDİRME 285 MB, KURULUM YAKLAŞIK 1 GB. MPL 2.0 VE İÇERDİĞİ ÜÇÜNCÜ TARAF LİSANSLARI GEÇERLİDİR.";
+"LIBREOFFICE 26.8.1 ENABLES OFFICE DOCUMENT CONVERSIONS. A 285 MB DOWNLOAD; ABOUT 1 GB INSTALLED. MPL 2.0 AND ITS INCLUDED THIRD-PARTY LICENSES." = "LİBREOFFİCE 26.8.1, OFFİCE BELGELERİNİ DÖNÜŞTÜRMEYİ SAĞLAR. İNDİRME 285 MB; KURULUM YAKLAŞIK 1 GB. MPL 2.0 VE İÇERDİĞİ ÜÇÜNCÜ TARAF LİSANSLARI GEÇERLİDİR.";
+"LIBREOFFICE 26.8.1 ENABLES OFFICE DOCUMENT CONVERSIONS. APPROXIMATELY 360 MB TO DOWNLOAD. MPL 2.0 AND ITS INCLUDED THIRD-PARTY LICENSES." = "LİBREOFFİCE 26.8.1, OFFİCE BELGELERİNİ DÖNÜŞTÜRMEYİ SAĞLAR. İNDİRME YAKLAŞIK 360 MB. MPL 2.0 VE İÇERDİĞİ ÜÇÜNCÜ TARAF LİSANSLARI GEÇERLİDİR.";
 "LIGHT" = "AÇIK";
 "LIGHTING" = "IŞIK";
 "LINE" = "ÇİZGİ";
@@ -736,7 +754,8 @@
 "Let’s make something of it." = "Hadi yeni bir şey yapalım.";
 "Let’s try that again." = "Bir daha deneyelim.";
 "Library" = "Kitaplık";
-"LibreOffice 26.8.1 enables Office document conversions. A 285 MB download; about 1 GB installed. MPL 2.0 and its included third-party licenses." = "LibreOffice 26.8.1, Office belge dönüşümlerini sağlar. İndirme 285 MB, kurulum yaklaşık 1 GB. MPL 2.0 ve içerdiği üçüncü taraf lisansları geçerlidir.";
+"LibreOffice 26.8.1 enables Office document conversions. A 285 MB download; about 1 GB installed. MPL 2.0 and its included third-party licenses." = "LibreOffice 26.8.1, Office belgelerini dönüştürmeyi sağlar. İndirme 285 MB; kurulum yaklaşık 1 GB. MPL 2.0 ve içerdiği üçüncü taraf lisansları geçerlidir.";
+"LibreOffice 26.8.1 enables Office document conversions. Approximately 360 MB to download. MPL 2.0 and its included third-party licenses." = "LibreOffice 26.8.1, Office belgelerini dönüştürmeyi sağlar. İndirme yaklaşık 360 MB. MPL 2.0 ve içerdiği üçüncü taraf lisansları geçerlidir.";
 "Light" = "Açık";
 "Lighting" = "Işık";
 "Line" = "Çizgi";
@@ -828,6 +847,7 @@
 "NEXT" = "İLERİ";
 "NEXT FRAME" = "SONRAKİ KARE";
 "NEXT PAGE" = "SONRAKİ SAYFA";
+"NEXT, DOWNLOAD THE MISSING TOOLS FOR MEDIA AND OFFICE FILES. TOOLS ALREADY ON YOUR COMPUTER DO NOT NEED ANOTHER DOWNLOAD." = "ŞİMDİ MEDYA VE OFFİCE DOSYALARI İÇİN EKSİK ARAÇLARI İNDİR. BİLGİSAYARINDA BULUNAN ARAÇLARI YENİDEN İNDİRMEN GEREKMEZ.";
 "NICE FILES.\nNO FUSS." = "DOSYALAR HAZIR.\nZAHMET YOK.";
 "NICELY DONE." = "HAZIR, ELİNE SAĞLIK!";
 "NICELY DONE. 1 FILE IS READY." = "HAZIR! 1 DOSYAN HAZIR.";
@@ -849,6 +869,7 @@
 "Next" = "İleri";
 "Next frame" = "Sonraki kare";
 "Next page" = "Sonraki sayfa";
+"Next, download the missing tools for media and Office files. Tools already on your computer do not need another download." = "Şimdi medya ve Office dosyaları için eksik araçları indir. Bilgisayarında bulunan araçları yeniden indirmen gerekmez.";
 "Nice files.\nNo fuss." = "Dosyalar hazır.\nZahmet yok.";
 "Nicely done." = "Hazır, eline sağlık!";
 "Nicely done. %@ files are ready." = "Hazır! %@ dosyan hazır.";
@@ -869,6 +890,9 @@
 "OFFICE TOOLS" = "OFİS ARAÇLARI";
 "ON YOUR MAC" = "MAC'İNDE";
 "ON YOUR PC" = "BİLGİSAYARINDA";
+"ONE DOWNLOAD PER TOOL GROUP. NO ACCOUNT OR GITHUB TOKEN." = "HER ARAÇ GRUBU İÇİN BİR KEZ İNDİR. HESAP VEYA GİTHUB TOKENI GEREKMEZ.";
+"ONE LAST STEP.\nSET UP YOUR TOOLS." = "SON BİR ADIM.\nARAÇLARINI KUR.";
+"ONE TOOL GROUP IS READY. DOWNLOAD THE REMAINING TOOLS TO FINISH SETUP." = "BİR ARAÇ GRUBU HAZIR. KURULUMU TAMAMLAMAK İÇİN KALAN ARAÇLARI İNDİR.";
 "OPEN" = "AÇ";
 "OPEN IN TERMINAL" = "TERMİNAL'DE AÇ";
 "OPEN LINK" = "BAĞLANTIYI AÇ";
@@ -890,6 +914,9 @@
 "Office tools" = "Ofis araçları";
 "On your Mac" = "Mac'inde";
 "On your PC" = "Bilgisayarında";
+"One download per tool group. No account or GitHub token." = "Her araç grubu için bir kez indir. Hesap veya GitHub tokenı gerekmez.";
+"One last step.\nSet up your tools." = "Son bir adım.\nAraçlarını kur.";
+"One tool group is ready. Download the remaining tools to finish setup." = "Bir araç grubu hazır. Kurulumu tamamlamak için kalan araçları indir.";
 "Open" = "Aç";
 "Open Login Items" = "Giriş Öğelerini Aç";
 "Open Nashi" = "Nashi'yi Aç";
@@ -1179,6 +1206,7 @@
 "SET UP MEDIA TOOLS" = "MEDYA ARAÇLARINI KUR";
 "SET UP MEDIA TOOLS FOR THIS CODEC, OR USE OPEN TO PREVIEW IN ITS DEFAULT APP." = "BU CODEC İÇİN MEDYA ARAÇLARINI KUR VEYA AÇ İLE VARSAYILAN UYGULAMADA ÖNİZLE.";
 "SET UP MEDIA TOOLS TO PREVIEW THE PROCESSED RESULT." = "İŞLENMİŞ SONUCU ÖNİZLEMEK İÇİN MEDYA ARAÇLARINI KUR.";
+"SET UP NASHI TOOLS" = "NASHİ ARAÇLARINI KUR";
 "SET UP OFFICE TOOLS" = "OFİS ARAÇLARINI KUR";
 "SET UP TOOLS" = "ARAÇLARI KUR";
 "SETTINGS" = "AYARLAR";
@@ -1285,6 +1313,7 @@
 "Selected folder" = "Seçili klasöre";
 "Serif" = "Serif";
 "Set" = "Ayarla";
+"Set up Nashi tools" = "Nashi araçlarını kur";
 "Set up media tools" = "Medya araçlarını kur";
 "Set up media tools for this codec, or use Open to preview in its default app." = "Bu codec için medya araçlarını kur veya Aç ile varsayılan uygulamada önizle.";
 "Set up media tools to preview the processed result." = "İşlenmiş sonucu önizlemek için medya araçlarını kur.";
@@ -1355,6 +1384,7 @@
 "TEXT OR CALLOUT" = "METİN VEYA AÇIKLAMA";
 "TEXT SIZE" = "METİN BOYUTU";
 "TEXTURE" = "DOKU";
+"THE DOWNLOADED TOOLS ARE INCOMPLETE. PLEASE TRY SETUP AGAIN." = "İNDİRİLEN ARAÇLAR EKSİK. KURULUMU TEKRAR DENE.";
 "THE SAME CONVERSION AND TOOL CATALOG AS MACOS." = "MACOS İLE AYNI DÖNÜŞTÜRME VE ARAÇ SEÇENEKLERİ.";
 "THESE FILES HAVE MOVED OR WERE DELETED." = "BU DOSYALAR TAŞINMIŞ VEYA SİLİNMİŞ.";
 "THIS CROP APPLIES TO EVERY SELECTED IMAGE AND MUST FIT INSIDE EACH ONE." = "BU KIRPMA, SEÇİLEN TÜM GÖRSELLERE UYGULANIR VE HER GÖRSELİN SINIRLARINA SIĞMALIDIR.";
@@ -1370,6 +1400,7 @@
 "TOOL" = "ARAÇ";
 "TOOLS" = "ARAÇLAR";
 "TOOLS & SHORTCUTS" = "ARAÇLAR VE KISAYOLLAR";
+"TOOLS READY" = "ARAÇLAR HAZIR";
 "TOOLS · WHILE DRAGGING" = "ARAÇLAR · SÜRÜKLERKEN";
 "TOP" = "ÜST";
 "TRANSPARENT" = "ŞEFFAF";
@@ -1395,6 +1426,7 @@
 "Text or callout" = "Metin veya açıklama";
 "Text size" = "Metin boyutu";
 "Texture" = "Doku";
+"The downloaded tools are incomplete. Please try setup again." = "İndirilen araçlar eksik. Kurulumu tekrar dene.";
 "The same conversion and tool catalog as macOS." = "macOS ile aynı dönüştürme ve araç seçenekleri.";
 "These files have moved or were deleted." = "Bu dosyalar taşınmış veya silinmiş.";
 "This Windows codec cannot play directly. Set up media tools to create a local preview." = "Bu Windows codec'i doğrudan oynatılamıyor. Yerel önizleme oluşturmak için medya araçlarını kur.";
@@ -1410,6 +1442,7 @@
 "Tool" = "Araç";
 "Tools" = "Araçlar";
 "Tools & shortcuts" = "Araçlar ve kısayollar";
+"Tools ready" = "Araçlar hazır";
 "Tools · while dragging" = "Araçlar · sürüklerken";
 "Top" = "Üst";
 "Transparent" = "Şeffaf";
@@ -1437,6 +1470,7 @@
 "UPDATES ARE SIGNED AND VERIFIED BEFORE INSTALLATION. CHANGING REPOSITORIES KEEPS THE SAME TRUSTED SIGNING KEY. YOUR SETTINGS AND FILES STAY WITH YOU." = "GÜNCELLEMELER İMZALANIR VE KURULMADAN ÖNCE DOĞRULANIR. DEPO DEĞİŞSE DE GÜVENİLİR İMZA ANAHTARI AYNI KALIR. AYARLARIN VE DOSYALARIN KORUNUR.";
 "UPDATES ARE VERIFIED BEFORE INSTALLATION. YOUR SETTINGS AND RECENT HISTORY STAY WITH YOU." = "GÜNCELLEMELER KURULMADAN ÖNCE DOĞRULANIR. AYARLARIN VE SON İŞLEM GEÇMİŞİN KORUNUR.";
 "UPDATE…" = "GÜNCELLE…";
+"UPSTREAM VERSIONS, LICENSES AND SOURCE LINKS" = "ARAÇ SÜRÜMLERİ, LİSANSLAR VE KAYNAK BAĞLANTILARI";
 "USE IN NASHI" = "NASHİ'DE KULLAN";
 "USE ONCE IF MACOS NEEDS PERMISSION FOR YOUR SAVED UPDATE CONNECTION." = "MACOS KAYITLI GÜNCELLEME BAĞLANTISI İÇİN İZİN İSTERSE BİR KEZ KULLAN.";
 "USE OPEN TO PREVIEW THIS DOCUMENT IN ITS DEFAULT APP." = "BU BELGEYİ VARSAYILAN UYGULAMASINDA ÖNİZLEMEK İÇİN AÇ'I KULLAN.";
@@ -1461,6 +1495,7 @@
 "Update…" = "Güncelle…";
 "Upgraded from Tangerine? macOS may still show the previous name. Choose this Nashi app when adding it to %@." = "Tangerine'den mi geçtin? macOS eski adı gösterebilir. %@ iznine eklerken bu Nashi uygulamasını seç.";
 "Upgraded from Tangerine? macOS may still show the previous name. Choose this Nashi app when adding it to %lld." = "Tangerine'den mi geçtin? macOS eski adı gösterebilir. %lld iznine eklerken bu Nashi uygulamasını seç.";
+"Upstream versions, licenses and source links" = "Araç sürümleri, lisanslar ve kaynak bağlantıları";
 "Use Open to preview this document in its default app." = "Bu belgeyi varsayılan uygulamasında önizlemek için Aç'ı kullan.";
 "Use in Nashi" = "Nashi'de kullan";
 "Use once if macOS needs permission for your saved update connection." = "macOS kayıtlı güncelleme bağlantısı için izin isterse bir kez kullan.";

@@ -12,11 +12,13 @@ public sealed class Toolchain(string directory)
     {
         if(name is not ("ffmpeg" or "ffprobe" or "yt-dlp" or "deno"))throw new ArgumentException("Unknown tool.");
         var path=Path.Combine(DirectoryPath,name+".exe");
-        if(!File.Exists(path))throw new FileNotFoundException("Choose Set up media tools first.");return path;
+        if(!ToolInstallation.UsableFile(path))throw new FileNotFoundException("Choose Set up media tools first.");return path;
     }
-    public bool Ready=>new[]{"ffmpeg","ffprobe","yt-dlp","deno"}.All(n=>File.Exists(Path.Combine(DirectoryPath,n+".exe")));
+    private static bool Complete(string directory)=>new[]{"ffmpeg","ffprobe","yt-dlp","deno"}.All(n=>ToolInstallation.UsableFile(Path.Combine(directory,n+".exe")));
+    public bool Ready=>Complete(DirectoryPath);
     public async Task InstallAsync(IProgress<OperationProgress>? progress=null,CancellationToken token=default)
     {
+        token.ThrowIfCancellationRequested();if(Ready){progress?.Report(new(1,"Media tools ready"));return;}
         var parent=Path.GetDirectoryName(DirectoryPath)!;Directory.CreateDirectory(parent);
         var stage=Path.Combine(parent,"tools-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
         try
@@ -47,8 +49,7 @@ public sealed class Toolchain(string directory)
                 if(File.Exists(archive))File.Delete(archive);
             }
             token.ThrowIfCancellationRequested();
-            if(Directory.Exists(DirectoryPath))throw new IOException("Tool directory already exists. Keep the existing installation or remove it through Explorer before setting up again.");
-            Directory.Move(stage,DirectoryPath);progress?.Report(new(1,"Media tools ready"));
+            ToolInstallation.Publish(stage,DirectoryPath,Complete);progress?.Report(new(1,"Media tools ready"));
         }
         finally{if(Directory.Exists(stage))Directory.Delete(stage,true);}
     }

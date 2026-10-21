@@ -22,7 +22,7 @@ Sample file content is illustrative. The visitor can import their own supported 
 
 Video encoding, other desktop-only conversions, system actions, archive extraction, QR detection and web downloading are **labeled interactive previews**. They never create misleading media downloads or claim to access a local shell, Finder, AirDrop or remote social-media content. Copy Path copies a path from the demo desktop when clipboard access is available; otherwise it displays that path.
 
-Space plays/pauses preview media; arrow keys seek one second, Shift+arrow seeks one video frame or 0.1 second for audio, I/O sets In/Out and Shift+Space plays the selection. Trim handles have independent pointer capture. Native form controls retain their normal keyboard behavior.
+Space plays/pauses preview media; arrow keys seek one second, Shift+arrow seeks one video frame or 0.1 second for audio, I/O sets In/Out and Shift+Space plays the selection. The transport follows the native full-width scrubber, frame-step buttons and millisecond clock. Trim handles have independent pointer capture. Native form controls retain their normal keyboard behavior.
 
 ## Development and checks
 

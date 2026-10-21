@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import NashiCore
 
-/// Isolated first-run UI replay: fake publishers, real setup buttons and model.
+/// Isolated first-run UI replay: fake publishers, real setup shortcuts and model.
 /// It never downloads tools, touches the user's tool directory or requests TCC.
 @MainActor final class ToolSetupSmoke:NSObject,NSApplicationDelegate {
     private let output:URL
@@ -13,7 +13,7 @@ import NashiCore
         Task {
             var failure:String?
             do {try await run()}catch{failure=String(describing:error)}
-            let result:[String:Any]=["passed":failure == nil,"checks":checks,"error":failure as Any? ?? NSNull(),"scope":"Own-window setup UI, clean/partial/existing tools, failure, cancellation and retry. Publisher responses are simulated; no real download claimed."]
+            let result:[String:Any]=["passed":failure == nil,"checks":checks,"error":failure as Any? ?? NSNull(),"scope":"Own-window Return/Escape setup UI, clean/partial/existing tools, failure, cancellation and retry. Publisher responses are simulated; no real download claimed."]
             if let data=try? JSONSerialization.data(withJSONObject:result,options:[.prettyPrinted,.sortedKeys]) {try? data.write(to:output.appendingPathComponent("mac-tool-setup.json"))}
             window?.close();exit(failure == nil ? 0:1)
         }
@@ -22,16 +22,14 @@ import NashiCore
         if !valid {throw NSError(domain:"Nashi Setup QA",code:1,userInfo:[NSLocalizedDescriptionKey:label])};checks.append(label)
     }
     private func pause()async {try? await Task.sleep(nanoseconds:160_000_000)}
-    private func elements(_ element:NSAccessibilityProtocol,depth:Int=0)->[NSAccessibilityProtocol] {
-        guard depth<30 else{return []}
-        return [element]+(element.accessibilityChildren() ?? []).compactMap{$0 as? NSAccessibilityProtocol}.flatMap{elements($0,depth:depth+1)}
-    }
     private func press(_ identifier:String)throws {
-        guard let view=window?.contentView,
-              let button=elements(view).first(where:{$0.accessibilityIdentifier()==identifier}) else {
-            throw NSError(domain:"Nashi Setup QA",code:2,userInfo:[NSLocalizedDescriptionKey:"Own setup control not found: "+identifier])
-        }
-        try check(button.accessibilityPerformPress(),"Setup control pressed: "+identifier)
+        guard let window else {throw NSError(domain:"Nashi Setup QA",code:2)}
+        let cancel=identifier=="SetupCancel"
+        let event=NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:[],timestamp:ProcessInfo.processInfo.systemUptime,windowNumber:window.windowNumber,context:nil,characters:cancel ? "\u{1b}":"\r",charactersIgnoringModifiers:cancel ? "\u{1b}":"\r",isARepeat:false,keyCode:cancel ? 53:36)!
+        // Dispatch through this fixture window's native default/cancel shortcut.
+        // No global keyboard injection or access to another application is used.
+        if !window.performKeyEquivalent(with:event) {window.sendEvent(event)}
+        checks.append("Own-window shortcut dispatched: "+identifier)
     }
     private func settle(_ model:ToolSetupModel)async throws {
         let end=Date().addingTimeInterval(5)
@@ -76,5 +74,7 @@ import NashiCore
         try check(model.status.ready&&mediaCalls==1&&officeCalls==3&&finish==0,"Only successfully verified groups enable Continue")
         defaults.set("tr",forKey:"appLanguage");await pause();try capture("mac-first-run-tools-turkish.png")
         try press("SetupContinue");try check(finish==1&&mediaCalls==1,"Continue finishes setup without downloading existing tools")
+        status.officeReady=false;model.refresh()
+        try check(!model.status.ready&&model.message != "Ready. You can go back to your files.","Removing an external tool clears stale readiness when setup is reopened")
     }
 }

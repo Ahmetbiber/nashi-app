@@ -26,13 +26,13 @@ import NashiCore
                           let outside=bitmap.colorAt(x:4,y:4)?.usingColorSpace(.deviceRGB) else{throw UIAuditError("Redaction canvas pixels could not be read")}
                     let actual=[center.redComponent,center.greenComponent,center.blueComponent]
                     let wanted=active ? expected:[1.0,1.0,1.0]
-                    guard zip(actual,wanted).allSatisfy({pair in abs(Double(pair.0)-pair.1)<0.02}),center.alphaComponent>0.99,
-                          outside.redComponent>0.99,outside.greenComponent>0.99,outside.blueComponent>0.99 else{
-                        throw UIAuditError("Redaction canvas must use opaque selected RGB, keep inactive regions clear and preserve outside pixels")
-                    }
                     let label="\(scheme == .light ? "light":"dark")-\(active ? "active":"inactive")-\(name)"
                     guard let png=bitmap.representation(using:.png,properties:[:])else{throw UIAuditError("Redaction canvas PNG could not be encoded")}
                     try png.write(to:output.appendingPathComponent(label+".png"))
+                    guard zip(actual,wanted).allSatisfy({pair in abs(Double(pair.0)-pair.1)<0.02}),center.alphaComponent>0.99,
+                          outside.redComponent>0.99,outside.greenComponent>0.99,outside.blueComponent>0.99 else{
+                        throw UIAuditError("Redaction canvas \(label): center=\(actual), alpha=\(center.alphaComponent), outside=\([outside.redComponent,outside.greenComponent,outside.blueComponent]), expected=\(wanted)")
+                    }
                     checks.append("Opaque redaction canvas: "+label)
                 }
             }

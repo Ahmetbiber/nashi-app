@@ -32,8 +32,12 @@ internal static class WindowManagementSmoke
             foreach(var placement in Enum.GetValues<WindowPlacement>())
             {
                 var expected=placement.Frame(area);
-                check(WindowManagement.RequestFrame(handle,expected),"Native layout request was refused: "+placement);
-                DesktopInput.Pump(100);var actual=WindowManagement.Bounds(handle);
+                // Exercise the production retry path: DWM's invisible borders may
+                // still be settling when a newly created HWND first appears.
+                var arrange=manager.ArrangeAsync(handle,placement,area);var until=DateTime.UtcNow.AddSeconds(5);
+                while(!arrange.IsCompleted&&DateTime.UtcNow<until)DesktopInput.Pump(30);
+                check(arrange.IsCompletedSuccessfully,"Native layout did not complete: "+placement);
+                arrange.GetAwaiter().GetResult();var actual=WindowManagement.Bounds(handle);
                 check(Math.Abs(actual.X-expected.X)<3&&Math.Abs(actual.Y-expected.Y)<3&&Math.Abs(actual.Width-expected.Width)<3&&Math.Abs(actual.Height-expected.Height)<3,$"Native window bounds mismatch: {placement}; expected={expected}; actual={actual}");
             }
             var index=0;

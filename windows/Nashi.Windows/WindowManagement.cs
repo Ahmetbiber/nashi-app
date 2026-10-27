@@ -66,7 +66,7 @@ internal sealed class WindowManagement:IDisposable
             }
         }
     }
-    private async Task ArrangeAsync(nint captured,WindowPlacement placement,WindowFrame work)
+    internal async Task ArrangeAsync(nint captured,WindowPlacement placement,WindowFrame work)
     {
         pendingPlacement?.Cancel();var cancellation=new CancellationTokenSource();pendingPlacement=cancellation;PlacementPending=true;
         try

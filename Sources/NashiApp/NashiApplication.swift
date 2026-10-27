@@ -13,6 +13,24 @@ enum NashiApplication {
     @MainActor static func main() {
         if CommandLine.arguments.count>1,["convert","tool","inspect","catalog","dependencies"].contains(CommandLine.arguments[1]) { exit(NashiCommandLine.run()) }
         let app=NSApplication.shared
+        if CommandLine.arguments.contains("--ui-audit") {
+            do {
+                let runner=UIAudit(options:try UIAuditOptions(arguments:CommandLine.arguments))
+                app.delegate=runner;app.setActivationPolicy(.accessory)
+                withExtendedLifetime(runner){app.run()}
+            }catch {fputs(error.localizedDescription+"\n",stderr);exit(64)}
+            return
+        }
+        if let index=CommandLine.arguments.firstIndex(of:"--range-accessibility-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=MediaRangeAccessibilitySmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true))
+            app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
+        if let index=CommandLine.arguments.firstIndex(of:"--file-artwork-smoke"),CommandLine.arguments.count>index+1 {
+            let runner=FileArtworkSmokeRunner(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true))
+            app.delegate=runner;app.setActivationPolicy(.accessory)
+            withExtendedLifetime(runner){app.run()};return
+        }
         if let index=CommandLine.arguments.firstIndex(of:"--float-smoke"),CommandLine.arguments.count>index+1 {
             let runner=FloatShelfSmoke(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));app.delegate=runner;app.setActivationPolicy(.accessory)
             withExtendedLifetime(runner){app.run()};return
@@ -48,6 +66,19 @@ enum NashiApplication {
         app.delegate=delegate
         app.setActivationPolicy(.accessory)
         withExtendedLifetime(delegate) { app.run() }
+    }
+}
+
+@MainActor private final class FileArtworkSmokeRunner:NSObject,NSApplicationDelegate {
+    let output:URL
+    init(output:URL){self.output=output}
+    func applicationDidFinishLaunching(_ notification:Notification) {
+        Task {
+            do {
+                let report=try await FileArtworkSmoke.run(output:output)
+                print("FILE_ARTWORK PASS \(report["passed"] ?? 0)");exit(0)
+            }catch{fputs(error.localizedDescription+"\n",stderr);exit(1)}
+        }
     }
 }
 

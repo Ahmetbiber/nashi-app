@@ -103,7 +103,7 @@ struct ToolEditor:View {
                         NashiPill(title:inputs.count>1 ? "\(inputs.count) files":input?.pathExtension.uppercased() ?? "FILE",symbol:"doc")
                     }.allowsHitTesting(false)
                 }
-            }.padding(.horizontal,20).padding(.vertical,17).frame(height:82)
+            }.padding(.horizontal,20).padding(.vertical,17).frame(height:82).uiAuditProbe("editor.header")
             Divider()
             HStack(spacing:0) {
                 if sideBySide {
@@ -114,7 +114,7 @@ struct ToolEditor:View {
                             if video || audio { mediaPreview.disabled(isLoading || !readyToApply) }
                             HStack(spacing:6) { Image(systemName:"doc");Text(input?.lastPathComponent ?? "").lineLimit(1) }.font(.system(size:11)).foregroundStyle(.secondary)
                         }.padding(24)
-                    }.frame(minWidth:450,maxWidth:.infinity,maxHeight:.infinity).background(NashiPalette.inset.opacity(0.55))
+                    }.frame(minWidth:450,maxWidth:.infinity,maxHeight:.infinity).background(NashiPalette.inset.opacity(0.55)).uiAuditProbe("editor.preview")
                     Divider()
                 }
                 ScrollView {
@@ -124,8 +124,8 @@ struct ToolEditor:View {
                         controls.disabled(isLoading || !readyToApply)
                         if let previewError { HStack { LText(previewError).font(.callout).foregroundStyle(.orange);Spacer();Button { self.previewError=nil } label:{Image(systemName:"xmark")}.accessibilityLabel("Dismiss preview error") } }
                     }.padding(24).frame(maxWidth:sideBySide ? .infinity:720,alignment:.leading)
-                }.frame(width:sideBySide ? 380:nil).frame(maxWidth:sideBySide ? nil:.infinity,maxHeight:.infinity)
-            }
+                }.frame(width:sideBySide ? 380:nil).frame(maxWidth:sideBySide ? nil:.infinity,maxHeight:.infinity).uiAuditProbe("editor.options")
+            }.uiAuditProbe("editor.body")
             if state.activeTool==tool,state.activeInputs==inputs,(state.working || state.error != nil || (tool == .compress && !state.outputs.isEmpty)) {
                 VStack(alignment:.leading,spacing:6) {
                     JobProgressView(state:state)
@@ -136,12 +136,13 @@ struct ToolEditor:View {
             }
             Divider()
             HStack(spacing:12) {
-                Button { reset() } label:{Label("Reset",systemImage:"arrow.counterclockwise")}.buttonStyle(NashiButtonStyle(.quiet))
+                Button { reset() } label:{Label("Reset",systemImage:"arrow.counterclockwise")}.buttonStyle(NashiButtonStyle(.quiet)).uiAuditProbe("editor.reset").accessibilityIdentifier("editor.reset")
                 Spacer()
                 Label("Original stays safe",systemImage:"lock").font(.system(size:10)).foregroundStyle(.secondary)
-                Button { apply() } label:{Label { LText(primaryTitle) } icon:{ Image(systemName:"arrow.up.right") }}.buttonStyle(NashiButtonStyle(.primary)).disabled(!canApply).help(isCropTool ? "Save a cropped copy (Return or ⌘S)":"Save a fresh copy (⌘S)")
-            }.padding(.horizontal,20).padding(.vertical,15)
+                Button { apply() } label:{Label { LText(primaryTitle) } icon:{ Image(systemName:"arrow.up.right") }.uiAuditProbe("editor.primary.label")}.buttonStyle(NashiButtonStyle(.primary)).uiAuditProbe("editor.primary").accessibilityIdentifier("editor.primary").disabled(!canApply).help(isCropTool ? "Save a cropped copy (Return or ⌘S)":"Save a fresh copy (⌘S)")
+            }.padding(.horizontal,20).padding(.vertical,15).uiAuditProbe("editor.footer")
         }.frame(minWidth:sideBySide ? 900:480,minHeight:420).background(NashiPalette.canvas).tint(.nashi).buttonStyle(NashiButtonStyle(.secondary,compact:true)).textFieldStyle(.roundedBorder)
+            .uiAuditStatus(isLoading ? "loading":readyToApply ? "ready":"failed: "+(previewError ?? "Input did not become ready"))
             .nashiAnimation(value:state.working).task(id:loadRevision) { await load() }
             .task(id:previewKey) { await renderPreview() }
             .task(id:visualizationKey) { await renderVisualization() }

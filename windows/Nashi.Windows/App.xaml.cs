@@ -15,6 +15,30 @@ public partial class App:Application
         }
         DispatcherUnhandledException+=(_,error)=>{var folder=Environment.GetEnvironmentVariable("NASHI_SMOKE_DIRECTORY");if(folder is not null){Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"dispatcher-error.txt"),error.Exception.ToString());error.Handled=true;Shutdown(1);}};
         base.OnStartup(e);
+        if(e.Args.Contains("--ui-audit"))
+        {
+            IsSmokeTest=true;ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            try
+            {
+                var index=Array.IndexOf(e.Args,"--ui-audit");
+                if(index+1>=e.Args.Length||e.Args[index+1].StartsWith("--"))throw new ArgumentException("Use --ui-audit OUTPUT [--scenes scene,...] [--appearance light|dark|both] [--language en|tr|both]");
+                string[]? scenes=null,appearances=null,languages=null;
+                for(var next=index+2;next<e.Args.Length;next+=2)
+                {
+                    if(next+1>=e.Args.Length)throw new ArgumentException("Missing value for "+e.Args[next]);
+                    var value=e.Args[next+1];
+                    switch(e.Args[next])
+                    {
+                        case "--scenes":scenes=value.Split(',');break;
+                        case "--appearance":appearances=value=="both"?null:[value];break;
+                        case "--language":languages=value=="both"?null:[value];break;
+                        default:throw new ArgumentException("Unknown audit argument: "+e.Args[next]);
+                    }
+                }
+                Shutdown(UIAudit.Run(e.Args[index+1],scenes,appearances,languages));
+            }catch(Exception error){Console.Error.WriteLine(error.Message);Shutdown(64);}
+            return;
+        }
         if(e.Args.Contains("--window-management-fixture"))
         {
             var key=Array.IndexOf(e.Args,"--minimum-window-width");var minimum=key>=0&&key+1<e.Args.Length&&int.TryParse(e.Args[key+1],out var parsed)?Math.Clamp(parsed,160,1200):160;

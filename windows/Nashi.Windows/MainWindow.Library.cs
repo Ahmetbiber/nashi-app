@@ -28,15 +28,10 @@ public sealed partial class MainWindow
     {
         list.ItemsSource=files;list.SelectionMode=SelectionMode.Extended;var wrap=new FrameworkElementFactory(typeof(WrapPanel));list.ItemsPanel=new ItemsPanelTemplate(wrap);
         var border=new FrameworkElementFactory(typeof(Border));border.SetValue(Border.CornerRadiusProperty,new CornerRadius(9));border.SetResourceReference(Border.BackgroundProperty,"Inset");border.SetValue(Border.PaddingProperty,new Thickness(7,3,3,3));var row=new FrameworkElementFactory(typeof(StackPanel));row.SetValue(StackPanel.OrientationProperty,Orientation.Horizontal);border.AppendChild(row);
-        var icon=new FrameworkElementFactory(typeof(Image));icon.SetValue(FrameworkElement.WidthProperty,17d);icon.SetValue(FrameworkElement.HeightProperty,17d);icon.SetValue(FrameworkElement.MarginProperty,new Thickness(0,0,6,0));icon.SetBinding(Image.SourceProperty,new System.Windows.Data.Binding{Converter=new FileIconConverter()});row.AppendChild(icon);
+        var icon=new FrameworkElementFactory(typeof(Image));icon.SetValue(FrameworkElement.WidthProperty,17d);icon.SetValue(FrameworkElement.HeightProperty,17d);icon.SetValue(FrameworkElement.MarginProperty,new Thickness(0,0,6,0));icon.SetBinding(FileArtwork.PathProperty,new System.Windows.Data.Binding());row.AppendChild(icon);
         var name=new FrameworkElementFactory(typeof(TextBlock));name.SetBinding(TextBlock.TextProperty,new System.Windows.Data.Binding{Converter=new FileNameConverter()});name.SetValue(TextBlock.FontSizeProperty,10d);name.SetValue(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis);name.SetValue(FrameworkElement.MaxWidthProperty,160d);name.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);row.AppendChild(name);
         var remove=new FrameworkElementFactory(typeof(Button));remove.SetValue(ContentControl.ContentProperty,"×");remove.SetValue(Control.PaddingProperty,new Thickness(4,0,4,0));remove.SetValue(Control.BorderThicknessProperty,new Thickness(0));remove.SetValue(FrameworkElement.ToolTipProperty,"Remove from selection");remove.SetBinding(FrameworkElement.TagProperty,new System.Windows.Data.Binding());remove.AddHandler(System.Windows.Controls.Button.ClickEvent,new RoutedEventHandler((sender,e)=>{if(sender is Button{Tag:string path}){files.Remove(path);Refresh();e.Handled=true;}}));row.AppendChild(remove);
         list.ItemTemplate=new DataTemplate{VisualTree=border};list.ItemContainerStyle=new Style(typeof(ListBoxItem),(Style)Application.Current.FindResource(typeof(ListBoxItem)));list.ItemContainerStyle.Setters.Add(new Setter(Control.PaddingProperty,new Thickness(0)));list.ItemContainerStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty,new Thickness(0,3,6,0)));
-    }
-    private sealed class FileIconConverter:System.Windows.Data.IValueConverter
-    {
-        public object? Convert(object value,Type type,object parameter,System.Globalization.CultureInfo culture)=>FileArtwork.Icon((string)value);
-        public object ConvertBack(object value,Type type,object parameter,System.Globalization.CultureInfo culture)=>throw new NotSupportedException();
     }
     private void ConfigureLibraryRow(Border card,LibraryEntry entry)
     {

@@ -57,7 +57,7 @@ struct UIAuditError:LocalizedError { let message:String;init(_ message:String){s
             }else{fputs("UI audit output was not prepared; no manifest was written.\n",stderr)}
             finished=true
             print("UI_AUDIT "+(successful ? "PASS":"FAIL")+" "+options.output.path)
-            if !options.hold || !successful {NSApp.terminate(nil)}
+            if !options.hold || window==nil {NSApp.terminate(nil)}
         }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool {finished}
@@ -187,16 +187,26 @@ struct UIAuditError:LocalizedError { let message:String;init(_ message:String){s
     }
     private func nativeViews(_ view:NSView)->[NSView] {[view]+view.subviews.flatMap{nativeViews($0)}}
     private func renderedSelections(_ view:NSView)->[String:String] {
-        let elements=ownAccessibilityElements(view)
+        let elements=ownAccessibilityElements(view),views=nativeViews(view)
         var values:[String:String]=[:]
         if let language=elements.first(where:{$0.accessibilityIdentifier()=="AppLanguage"}) {
             if let value=language.accessibilityValue() as? String {values["languagePicker"]=value}
             else if let title=language.accessibilityTitle(){values["languagePicker"]=title}
         }
+        if let control=views.compactMap({$0 as? NSPopUpButton}).first(where:{["English","Türkçe"].contains($0.titleOfSelectedItem ?? "")}),let selected=control.titleOfSelectedItem {
+            values["languagePicker"]=selected
+        }
+        if values["languagePicker"]==nil {
+            let diagnostic=elements.filter{$0.accessibilityIdentifier()=="AppLanguage" || $0.accessibilityRole() == .popUpButton}.prefix(12).map { element in
+                "id=\(element.accessibilityIdentifier() ?? "nil") role=\(element.accessibilityRole()?.rawValue ?? "nil") title=\(element.accessibilityTitle() ?? "nil") label=\(element.accessibilityLabel() ?? "nil") value=\(String(describing:element.accessibilityValue()))"
+            }
+            let native=views.compactMap{$0 as? NSPopUpButton}.map{"native=\(type(of:$0)) title=\($0.titleOfSelectedItem ?? "nil")"}
+            values["languagePickerDiagnostics"]=(diagnostic+native).joined(separator:"; ")
+        }
         // AppKit-backed and SwiftUI accessibility-backed segmented pickers are
         // both queried in-process. No AXUIElement/TCC or input injection is used.
         let expected=[L10n.text("System"),L10n.text("Light"),L10n.text("Dark")]
-        if let control=nativeViews(view).compactMap({$0 as? NSSegmentedControl}).first(where:{candidate in
+        if let control=views.compactMap({$0 as? NSSegmentedControl}).first(where:{candidate in
             candidate.segmentCount==3 && (0..<3).map{candidate.label(forSegment:$0) ?? ""}==expected
         }),control.selectedSegment>=0 {values["appearancePicker"]=["system","light","dark"][control.selectedSegment]}
         if values["appearancePicker"]==nil {
@@ -228,6 +238,7 @@ struct UIAuditError:LocalizedError { let message:String;init(_ message:String){s
             try await Task.sleep(nanoseconds:40_000_000)
             view.layoutSubtreeIfNeeded()
         }while Date()<deadline
+        if let diagnostic=values["languagePickerDiagnostics"] {issues.append("language picker diagnostics: "+(diagnostic.isEmpty ? "No native popup or matching accessibility node found":diagnostic))}
         throw UIAuditError("Requested \(appearance)/\(language) preferences did not reach the rendered scene: "+issues.joined(separator:", "))
     }
     private func save(scene:String,appearance:String,language:String,view:NSView,recorder:UIAuditLayout?,issues:[String])throws {

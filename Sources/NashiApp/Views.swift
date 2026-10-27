@@ -30,9 +30,9 @@ struct SettingsView:View {
     @AppStorage("windowManagementEnabled") private var windowManagementEnabled=true
     @State private var windowAccessibility=AXIsProcessTrusted()
     @Environment(\.accessibilityReduceMotion) private var systemReducedMotion
-    init(updater:AppUpdater,showingUpdates:Bool=false) {
+    init(updater:AppUpdater,showingUpdates:Bool=false,initialSection:SettingsSection = .general) {
         self.updater=updater
-        _section=State(initialValue:showingUpdates ? .updates:.general)
+        _section=State(initialValue:showingUpdates ? .updates:initialSection)
     }
     private var terminalApplications:[(String,String)] {
         var apps=[("com.apple.Terminal","Terminal")]
@@ -177,7 +177,7 @@ struct SettingsView:View {
     }
 }
 
-private enum SettingsSection:String,CaseIterable,Identifiable {
+enum SettingsSection:String,CaseIterable,Identifiable {
     case general="General",formats="Formats",compatibility="Compatibility",folders="Folders",updates="Updates",about="About"
     var id:String { rawValue }
     var symbol:String { switch self { case .general:return "gearshape";case .formats:return "doc.on.doc";case .compatibility:return "square.grid.3x3";case .folders:return "folder";case .updates:return "arrow.triangle.2.circlepath";case .about:return "info.circle" } }

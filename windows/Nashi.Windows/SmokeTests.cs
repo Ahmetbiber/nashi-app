@@ -57,6 +57,8 @@ internal static class SmokeTests
         var window=new MainWindow([source],library,checkForUpdates:false);window.Show();window.UpdateLayout();DesktopInput.Pump();
         LocalizationChecks.Run(root,window,source,Check);
         ToolSetupChecks.Run(root,window,Check);
+        FileArtworkSmoke.Run(root,Check);
+        RangeAccessibilityChecks.Run(root,window,Check);
         Button FindButton(string name)=>Descendants(window).OfType<Button>().First(b=>b.Content as string==name);
         var clipboardText="Nashi clipboard · Türkçe ıİşğü 🍐\r\nSecond line";
         Clipboard.SetText(clipboardText);FindButton("Home").Focus();DesktopInput.Key(window,Key.V,control:true);
@@ -123,6 +125,7 @@ internal static class SmokeTests
         var restarted=new MainWindow(library:new LibraryStore(library.DirectoryPath),checkForUpdates:false);restarted.Show();DesktopInput.Pump();
         Check(new LibraryStore(library.DirectoryPath).Entries.Count==4&&File.Exists(importedText)&&File.Exists(importedImage),"Restart lost Library or clipboard files");Capture(restarted,"windows-home-empty.png");restarted.Close();
         WindowManagementSmoke.Run(root,Check);
+        Check(UIAudit.Run(Path.Combine(root,"ui-audit"))==0,"Isolated light/dark EN/TR UI audit failed; see ui-audit/manifest.json");
         Check(PdfRasterDocument.OpenDocuments==0,"Closed PDF previews retained native documents or pinned source buffers");
         File.WriteAllText(Path.Combine(root,"smoke.json"),JsonSerializer.Serialize(new{passed=checks,scope="Native Windows SendInput keyboard routing, real OS clipboard text/image/files, Library restart/search/missing files, theme renders, image/PDF/ZIP operations.",extendedParity=Environment.GetEnvironmentVariable("GITHUB_ACTIONS")=="true"}));
         void Capture(Window view,string name){view.UpdateLayout();var capture=new RenderTargetBitmap((int)view.ActualWidth,(int)view.ActualHeight,96,96,PixelFormats.Pbgra32);capture.Render(view);ImageEngine.Save(capture,Path.Combine(root,name),"png");}

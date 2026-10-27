@@ -28,7 +28,7 @@ struct MediaTimeRangeLane:View {
                 }
                 if let pending { Rectangle().fill(Color.nashi.opacity(0.3)).frame(width:max(1,(pending.end-pending.start)*scale)).offset(x:pending.start*scale) }
                 Rectangle().fill(.white).frame(width:2).offset(x:min(geometry.size.width-2,max(0,current*scale))).allowsHitTesting(false)
-            }.allowsHitTesting(false)
+            }.allowsHitTesting(false).accessibilityHidden(true)
                 .overlay {
                     MediaRangeInteraction(duration:duration,ranges:ranges,label:label,onSeek:onSeek,onChange:onChange,onPending:{pending=$0},onAdd:onAdd)
                 }.clipped().cornerRadius(6)

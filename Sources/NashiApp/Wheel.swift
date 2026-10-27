@@ -173,6 +173,14 @@ final class WheelView:NSView {
                                            maximumWidth:inner*2-16*geometry.scale,scale:geometry.scale)
         WheelLabelLayout.draw(layout)
     }
+    /// Uses the same rendered label geometry; never substitutes a test-only layout.
+    func labelAuditIssues(_ index:Int,title:String)->[String] {
+        guard let layout=labelLayouts[index] else { return ["Wheel label did not render: "+title] }
+        var issues:[String]=[]
+        if !WheelLabelLayout.fits(layout,inside:petal(index),padding:3.5*geometry.scale) {issues.append("Wheel label is clipped: "+title)}
+        for line in layout.lines where abs(line.ink.midX-layout.textRect.midX)>0.5*geometry.scale {issues.append("Wheel line is not centered: "+line.text)}
+        return issues
+    }
     func updateSelection(_ point:NSPoint) { selected=items.indices.first{petal($0).contains(point)} }
     func updateAccessibility() {
         setAccessibilityLabel(inputs.first?.isFileURL == false ? "Nashi web media wheel":"Nashi \(mode.rawValue) wheel")

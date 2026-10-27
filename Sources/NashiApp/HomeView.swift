@@ -132,7 +132,7 @@ struct HomeView:View {
                 HStack(spacing:8) {
                     ForEach(Array(state.inputs.prefix(3)),id:\.self) { url in
                         HStack(spacing:6) {
-                            Image(nsImage:NSWorkspace.shared.icon(forFile:url.path)).resizable().frame(width:17,height:17)
+                            AsyncFileArtwork(url:url).frame(width:17,height:17)
                             Text(url.lastPathComponent).font(.system(size:10,weight:.medium)).lineLimit(1)
                             Button { state.inputs.removeAll{$0==url} } label:{Image(systemName:"xmark").font(.system(size:8,weight:.bold))}
                                 .buttonStyle(.plain).help("Remove \(url.lastPathComponent) from selection").accessibilityLabel("Remove \(url.lastPathComponent)").disabled(state.working)
@@ -242,7 +242,7 @@ private struct RecentFileRow:View {
     private var available:[URL] { urls.filter{FileManager.default.fileExists(atPath:$0.path)} }
     var body:some View {
         HStack(spacing:12) {
-            if let first=urls.first { Image(nsImage:NSWorkspace.shared.icon(forFile:first.path)).resizable().frame(width:29,height:29).padding(5).background(NashiPalette.inset,in:RoundedRectangle(cornerRadius:11)) }
+            if let first=urls.first { AsyncFileArtwork(url:first).frame(width:29,height:29).padding(5).background(NashiPalette.inset,in:RoundedRectangle(cornerRadius:11)) }
             VStack(alignment:.leading,spacing:4) {
                 Text(urls.first?.lastPathComponent ?? job.title).font(.system(size:12,weight:.semibold)).lineLimit(1)
                 HStack(spacing:3) { if available.isEmpty { Text("Moved or removed") } else { LText(job.title);Text("· "+job.date.formatted(.relative(presentation:.named))) } }.font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)

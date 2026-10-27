@@ -52,7 +52,11 @@ public sealed partial class ToolEditor
         }
         if(tool=="annotate")options.Children.Add(MainWindow.Button("Choose annotation image…",()=>{var picker=new OpenFileDialog{Filter="Images|*.png;*.jpg;*.webp;*.heic;*.avif;*.bmp"};if(picker.ShowDialog(this)==true){annotationImage=picker.FileName;drawingTool.SelectedIndex=9;}}));
     }
-    private void RotatePhoto(int degrees){fields["Degrees"].Text=Number(Value("Degrees")+degrees);var width=fields["Width"].Text;fields["Width"].Text=fields["Height"].Text;fields["Height"].Text=width;QueuePhotoPreview();}
+    private void RotatePhoto(int degrees)
+    {
+        try{fields["Degrees"].Text=Number(Value("Degrees")+degrees);var width=fields["Width"].Text;fields["Width"].Text=fields["Height"].Text;fields["Height"].Text=width;QueuePhotoPreview();}
+        catch(ArgumentException error){ToolTip=error.Message;}
+    }
     private void PhotoGroup(string title,(string Name,double Minimum,double Maximum)[] controls)
     {
         options.Children.Add(L10n.Label(new TextBlock{Text=title,FontSize=15,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Muted"),Margin=new(4,16,4,4)}));

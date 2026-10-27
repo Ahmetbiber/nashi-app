@@ -55,6 +55,17 @@ internal static class EditorReliabilityChecks
                 check(convert.FieldForTest("Quality (%)").Text=="62"&&!convert.PreserveImageMetadata&&Children(convert).OfType<ComboBox>().Single(c=>c.Items.Contains("pcm24")).SelectedItem as string=="pcm24","Reset did not restore the selected format's saved profile");
             }
             finally{convert.Close();}
+            var pixels=System.Windows.Media.Imaging.BitmapSource.Create(100,60,96,96,PixelFormats.Bgra32,null,new byte[100*60*4],100*4);pixels.Freeze();
+            var image=Path.Combine(root,"Reliability.png");ImageEngine.Save(pixels,image,"png");var photo=new ToolEditor(owner,"editImage","Edit Photo",image,preview:pixels);
+            try
+            {
+                photo.Show();DesktopInput.Pump();photo.FieldForTest("Degrees").Text="invalid";var rotate=Children(photo).OfType<Button>().Single(b=>b.Content as string=="Rotate Right");
+                Exception? failure=null;try{rotate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}catch(Exception error){failure=error;}
+                check(failure is null&&photo.FieldForTest("Width").Text=="100","Invalid photo rotation escaped the editor or partially changed dimensions");
+                photo.FieldForTest("Degrees").Text="0";rotate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(photo.FieldForTest("Degrees").Text=="90"&&photo.FieldForTest("Width").Text=="60","Photo rotation did not recover after correcting invalid input");
+            }
+            finally{photo.Close();}
         }
         finally{editor.Close();owner.Close();}
     }

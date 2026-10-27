@@ -26,7 +26,7 @@ dotnet build windows/Nashi.Windows -c Release
 
 The regular Windows native smoke suite also runs the full audit, artwork checks and range accessibility checks. Its CI artifacts include the results from both native smoke passes.
 
-On Mac, `python3 scripts/test-native-ui.py` runs the matrix, 18 adversarial audit-validator cases, range/artwork checks, invalid-argument checks and the output overwrite guard. The source workflow publishes its `mac-native-ui` artifact. Pass `--app /absolute/path/to/Nashi.app/Contents/MacOS/Nashi` to review a packaged candidate with the same script.
+On Mac, `python3 scripts/test-native-ui.py` runs the matrix, 18 adversarial audit-validator cases, range/artwork checks, invalid-argument checks and the output overwrite guard. It wraps a bare SwiftPM executable in a disposable QA bundle with the actual localization resources and framework; otherwise older macOS versions can silently fall back to English for native controls. This minimal QA bundle does not package or install optional tools. The source workflow publishes its `mac-native-ui` artifact. Pass `--app /absolute/path/to/Nashi.app/Contents/MacOS/Nashi` to review a full packaged candidate with the same script.
 
 Both audit commands accept these optional filters:
 

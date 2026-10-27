@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Windows;
@@ -60,9 +59,16 @@ internal static class FileArtworkSmoke
     {
         if(FileArtwork.GetIsReady(image))return;
         var completion=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var descriptor=DependencyPropertyDescriptor.FromProperty(FileArtwork.IsReadyProperty,typeof(Image));
-        EventHandler changed=(_,_)=>{if(FileArtwork.GetIsReady(image))completion.TrySetResult();};descriptor.AddValueChanged(image,changed);
-        try{if(FileArtwork.GetIsReady(image))completion.TrySetResult();Pump(completion.Task.WaitAsync(TimeSpan.FromSeconds(10)),dispatcher);}finally{descriptor.RemoveValueChanged(image,changed);}
+        var started=Stopwatch.GetTimestamp();
+        var timer=new DispatcherTimer(DispatcherPriority.Background,dispatcher){Interval=TimeSpan.FromMilliseconds(10)};
+        EventHandler tick=(_,_)=>
+        {
+            if(FileArtwork.GetIsReady(image))completion.TrySetResult();
+            else if(Stopwatch.GetElapsedTime(started)>=TimeSpan.FromSeconds(10))completion.TrySetException(new TimeoutException("File artwork did not reach its terminal readiness state within 10 seconds."));
+        };
+        timer.Tick+=tick;
+        try{timer.Start();tick(null,EventArgs.Empty);Pump(completion.Task,dispatcher);}
+        finally{timer.Stop();timer.Tick-=tick;}
     }
     private static void Drain(Dispatcher dispatcher)
     {var frame=new DispatcherFrame();dispatcher.BeginInvoke(DispatcherPriority.Background,new Action(()=>frame.Continue=false));Dispatcher.PushFrame(frame);}

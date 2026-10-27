@@ -3,7 +3,49 @@
 import argparse
 import json
 from pathlib import Path
+import plistlib
+import shutil
 import subprocess
+
+
+def bundle_for_audit(binary, output):
+    """SwiftUI Text reads Bundle.main's lproj resources, even in a CLI replay."""
+    if any(parent.suffix == ".app" for parent in binary.parents):
+        return binary
+    repository = Path(__file__).resolve().parent.parent
+    candidate = output / "application/Nashi UI Audit.app"
+    marker = candidate.parent / ".nashi-ui-audit-app"
+    if candidate.exists():
+        if not marker.is_file():
+            raise AssertionError("Refusing to replace an unrelated audit application")
+        shutil.rmtree(candidate)
+    contents = candidate / "Contents"
+    resources = contents / "Resources"
+    (contents / "MacOS").mkdir(parents=True)
+    resources.mkdir()
+    shutil.copy2(binary, contents / "MacOS/Nashi")
+    with (repository / "Resources/Info.plist").open("rb") as stream:
+        info = plistlib.load(stream)
+    info.update(CFBundleIdentifier="local.nashi.ui-audit", CFBundleDisplayName="Nashi UI Audit",
+                NashiExternalTools=True)
+    # This candidate is only used by the three explicit own-window QA entrypoints.
+    info.pop("CFBundleDocumentTypes", None)
+    with (contents / "Info.plist").open("wb") as stream:
+        plistlib.dump(info, stream)
+    for localization in (repository / "Resources/Localizations").glob("*.lproj"):
+        shutil.copytree(localization, resources / localization.name)
+    core_resources = binary.parent / "Nashi_NashiCore.bundle"
+    if core_resources.is_dir():
+        shutil.copytree(core_resources, resources / core_resources.name)
+    framework = repository / ".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+    shutil.copytree(framework, contents / "Frameworks/Sparkle.framework", symlinks=True)
+    subprocess.run(["python3", str(repository / "scripts/configure-updates.py"),
+                    str(contents / "Info.plist"), str(repository / "Configuration/Updates.public.plist")],
+                   check=True, capture_output=True)
+    subprocess.run(["codesign", "--force", "--sign", "-", "--options", "0", "--timestamp=none", str(candidate)],
+                   check=True, capture_output=True)
+    marker.write_text("Generated Nashi own-window QA bundle; no optional tool installers.\n")
+    return contents / "MacOS/Nashi"
 
 
 def main():
@@ -13,6 +55,7 @@ def main():
     args = parser.parse_args()
     app, output = Path(args.app).resolve(), Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    app = bundle_for_audit(app, output)
 
     def invoke(arguments, expected=0, timeout=120):
         result = subprocess.run([str(app), *map(str, arguments)], capture_output=True,

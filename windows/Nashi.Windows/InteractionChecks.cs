@@ -45,6 +45,15 @@ internal static class InteractionChecks
                 Verify(labels.Length==petals.Length&&labels.Select((label,index)=>{var bounds=label.TransformToAncestor(canvas).TransformBounds(new Rect(0,0,label.ActualWidth,label.ActualHeight));return new[]{bounds.TopLeft,bounds.TopRight,bounds.BottomLeft,bounds.BottomRight}.All(petals[index].Data.FillContains);}).All(fits=>fits),"Adding Convert placed a wheel label outside its tool sector");
                 wheel.Close();
             }
+            Children(window).OfType<Button>().Single(button=>button.Content as string=="Home").Focus();
+            DesktopInput.Key(window,Key.F,control:true);
+            Verify(window.LibraryVisible&&window.SearchField.IsKeyboardFocused,$"Ctrl+F did not focus Library search (Library visible: {window.LibraryVisible}; search visible: {window.SearchField.IsVisible}; focus: {Keyboard.FocusedElement?.GetType().Name})");
+            if(window.LibraryVisible)
+            {
+                window.SearchField.Text="existing";window.SearchField.Select(0,0);DesktopInput.Key(window,Key.F,control:true);
+                Verify(window.SearchField.IsKeyboardFocused&&window.SearchField.SelectionLength==window.SearchField.Text.Length,"Ctrl+F in Library did not select the current search text");
+            }
+            if(window.LibraryVisible)DesktopInput.Click(Children(window).OfType<Button>().Single(button=>button.Content as string=="Home"));
 
             var list=Children(window).OfType<ListBox>().Single(item=>System.Windows.Automation.AutomationProperties.GetAutomationId(item)=="SelectedFiles");
             list.Focus();ControlKey(window,Key.A);Verify(list.SelectedItems.Count==paths.Length,"Ctrl+A did not select all Home files");

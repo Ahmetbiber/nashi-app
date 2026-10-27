@@ -102,6 +102,8 @@ internal static class InteractionChecks
                 wheel.Close();
             }
             L10n.Language="tr";ControlKey(window,Key.Space);
+            var shortcuts=L10n.Text(MainWindow.ShortcutHelp);
+            Verify(shortcuts.Contains("Ctrl+Space / Enter  Araçları ve dönüştürmeleri aç",StringComparison.Ordinal)&&shortcuts.Contains("Delete  Seçili dosyaları Nashi listesinden kaldır",StringComparison.Ordinal),"Turkish shortcut help lost the conversion or selected-file removal guidance");
             var turkishWheel=Application.Current.Windows.OfType<WheelWindow>().FirstOrDefault(candidate=>candidate.Owner==window);
             var turkishConvert=turkishWheel is null?null:Caption(turkishWheel,"Convert");
             Verify(turkishConvert is not null&&Children(turkishConvert).OfType<TextBlock>().Any(text=>text.Text=="DÖNÜŞTÜR"),"Turkish wheel did not show the localized conversion choice");

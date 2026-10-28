@@ -19,6 +19,22 @@ internal static class ParityChecks
         var photoFixture="{\"entries\":[{\"thumbnails\":[{\"url\":\"https://scontent.cdninstagram.com/photo.jpg?stp=c0.0.720.720a_s640x640\",\"width\":640,\"height\":640},{\"url\":\"https://scontent.cdninstagram.com/original.jpg?sig=keep\",\"width\":1440,\"height\":1920}]},{\"duration\":5,\"formats\":[{\"url\":\"https://scontent.cdninstagram.com/video.mp4\"}]}]}";var photos=WebPhotos.Instagram(photoFixture);check(photos.Length==1&&photos[0].Url.EndsWith("original.jpg?sig=keep",StringComparison.Ordinal),"Instagram carousel did not choose full-frame photo or skipped video incorrectly");
         check(LegacyTextCodec.Decode(Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes("Türkçe 🍐")).ToArray())=="Türkçe 🍐","UTF-16 text lost Unicode");
         check(LegacyTextCodec.Decode(new byte[]{0x63,0x61,0x66,0xe9})=="café","Legacy text decoding failed");
+        // Files from Turkish Windows, 7-Zip and Excel: ANSI 1254 text, OEM 857 ZIP names, semicolon CSV.
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);var culture=System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+            var turkish=LegacyTextCodec.Decode(Encoding.GetEncoding(1254).GetBytes("1\n00:00:01,000 --> 00:00:02,000\nŞimdi ığdır, İzmir\n"));
+            check(turkish.Contains("Şimdi ığdır, İzmir")&&SubtitleCodec.Convert(turkish,"vtt").Contains("Şimdi ığdır, İzmir"),"Turkish ANSI text or subtitles were decoded as Western European");
+            var legacyZip=Path.Combine(root,"Legacy names.zip");using(var stream=File.Create(legacyZip))using(var archive=new ZipArchive(stream,ZipArchiveMode.Create,false,Encoding.GetEncoding(857)))foreach(var name in new[]{"Şubat.txt","Ğubat.txt"})using(var writer=new StreamWriter(archive.CreateEntry(name).Open()))writer.Write(name);
+            // macOS Archive Utility writes UTF-8 names without setting the UTF-8 flag.
+            var macZip=Path.Combine(root,"Mac names.zip");using(var stream=File.Create(macZip))using(var archive=new ZipArchive(stream,ZipArchiveMode.Create,false,Encoding.Latin1))using(var writer=new StreamWriter(archive.CreateEntry(Encoding.Latin1.GetString(Encoding.UTF8.GetBytes("Şubat.txt"))).Open()))writer.Write("Şubat");
+            var legacy=ArchiveEngine.Extract(legacyZip,root)[0];var mac=ArchiveEngine.Extract(macZip,root)[0];
+            check(File.Exists(Path.Combine(legacy,"Şubat.txt"))&&File.Exists(Path.Combine(legacy,"Ğubat.txt"))&&File.Exists(Path.Combine(mac,"Şubat.txt")),"ZIP names without the UTF-8 flag lost Turkish letters");
+            var excel=Path.Combine(root,"Excel.csv");File.WriteAllText(excel,"\"Ad;Soyad\";Tutar\nAyşe;1,5\n");var plain=Path.Combine(root,"Plain.csv");File.WriteAllText(plain,"\"a;b\",c,d\n");
+            check(OfficeDocuments.DelimitedLayout(excel,"csv")==(59,1055)&&OfficeDocuments.DelimitedLayout(plain,"csv")==(44,1033),"Semicolon CSV from Turkish Excel was read as comma-separated English");
+        }
+        finally{System.Globalization.CultureInfo.CurrentCulture=culture;}
         var clipping=LegacyTextCodec.Clipping(Encoding.UTF8.GetBytes("<?xml version=\"1.0\"?><plist><dict><key>public.utf8-plain-text</key><data>VMO8cmvDp2U=</data></dict></plist>"));check(Encoding.UTF8.GetString(clipping.Bytes)=="Türkçe","Text clipping plist lost content");
         var binary=LegacyTextCodec.Clipping(System.Convert.FromBase64String("YnBsaXN0MDDRAQJfEBZwdWJsaWMudXRmOC1wbGFpbi10ZXh0aQBUAPwAcgBrAOcAZQAg2DzfUAgLJAAAAAAAAAEBAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAA3"));check(Encoding.UTF8.GetString(binary.Bytes)=="Türkçe 🍐","Binary text clipping lost Unicode");
         var docx=Path.Combine(root,"Styled.docx");using(var archive=ZipFile.Open(docx,ZipArchiveMode.Create))

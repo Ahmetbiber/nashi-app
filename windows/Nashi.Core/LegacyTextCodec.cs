@@ -10,8 +10,11 @@ public static class LegacyTextCodec
     {
         if(data.AsSpan().StartsWith(new byte[]{0xff,0xfe}))return Encoding.Unicode.GetString(data.AsSpan(2));if(data.AsSpan().StartsWith(new byte[]{0xfe,0xff}))return Encoding.BigEndianUnicode.GetString(data.AsSpan(2));
         if(data.Length>=4&&data.Length%2==0){var count=Math.Min(data.Length,128*1024);var odd=0;var even=0;for(var i=0;i<count;i+=2){if(data[i]==0)even++;if(data[i+1]==0)odd++;}if(odd*6>=count&&odd>even*2)return Encoding.Unicode.GetString(data);if(even*6>=count&&even>odd*2)return Encoding.BigEndianUnicode.GetString(data);}
-        try{return new UTF8Encoding(false,true).GetString(data).TrimStart('\uFEFF');}catch(DecoderFallbackException){return Encoding.GetEncoding(1252).GetString(data);}
+        try{return new UTF8Encoding(false,true).GetString(data).TrimStart('\uFEFF');}catch(DecoderFallbackException){return Ansi.GetString(data);}
     }
+    // Text that is not UTF-8 was most likely saved in the ANSI code page of the user's
+    // region: 1254 in Turkish (\u011F \u015F \u0131 \u0130), 1252 in Western Europe and for the invariant culture.
+    private static Encoding Ansi{get{try{return Encoding.GetEncoding(System.Globalization.CultureInfo.CurrentCulture.TextInfo.ANSICodePage);}catch(Exception error)when(error is ArgumentException or NotSupportedException){return Encoding.GetEncoding(1252);}}}
     public static (byte[] Bytes,string Extension) Clipping(byte[] data,byte[]? resourceFork=null)
     {
         if(data.Length>200_000_000)throw new InvalidDataException("The clipping exceeds 200 MB.");

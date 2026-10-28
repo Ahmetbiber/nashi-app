@@ -60,6 +60,7 @@
 "A LITTLE PEAR. A LOT OF POSSIBILITY." = "KÜÇÜK BİR ARMUT. BİR SÜRÜ OLASILIK.";
 "A NEW FORM.\nIN A TAP." = "TEK DOKUNUŞ.\nYENİ BİR BİÇİM.";
 "A PAGE RANGE IS OUTSIDE THE PDF." = "BİR SAYFA ARALIĞI PDF'NİN DIŞINDA.";
+"A PERFECT LANDING SPOT" = "BURAYA BIRAKABİLİRSİN";
 "A PHOTO IS UNAVAILABLE. TRY A FRESH PUBLIC POST LINK." = "BİR FOTOĞRAFA ULAŞILAMIYOR. GÖNDERİNİN GÜNCEL, HERKESE AÇIK BAĞLANTISINI DENE.";
 "A PLACE FOR FRESH FILES." = "YENİ DOSYALAR İÇİN BİR YER.";
 "A SELECTED ITEM IS MISSING." = "SEÇİLEN ÖĞELERDEN BİRİ BULUNAMIYOR.";
@@ -82,6 +83,7 @@
 "A little pear. A lot of possibility." = "Küçük bir armut. Bir sürü olasılık.";
 "A new form.\nIn a tap." = "Tek dokunuş.\nYeni bir biçim.";
 "A page range is outside the PDF." = "Bir sayfa aralığı PDF'nin dışında.";
+"A perfect landing spot" = "Buraya bırakabilirsin";
 "A photo is unavailable. Try a fresh public post link." = "Bir fotoğrafa ulaşılamıyor. Gönderinin güncel, herkese açık bağlantısını dene.";
 "A place for fresh files." = "Yeni dosyalar için bir yer.";
 "A selected item is missing." = "Seçilen öğelerden biri bulunamıyor.";
@@ -760,6 +762,7 @@
 "FFMPEG, FFPROBE, YT-DLP AND DENO ENABLE MEDIA CONVERSION, PREVIEWS AND WEB DOWNLOADS. APPROXIMATELY 180 MB. FFMPEG AND YT-DLP USE GPL LICENSES; DENO USES MIT." = "FFMPEG, FFPROBE, YT-DLP VE DENO; MEDYA DÖNÜŞTÜRME, ÖNİZLEME VE WEB İNDİRMELERİNİ SAĞLAR. YAKLAŞIK 180 MB. FFMPEG VE YT-DLP GPL, DENO MIT LİSANSLIDIR.";
 "FFmpeg, ffprobe, yt-dlp and Deno enable media conversion, previews and web downloads. Approximately 180 MB. FFmpeg and yt-dlp use GPL licenses; Deno uses MIT." = "FFmpeg, ffprobe, yt-dlp ve Deno; medya dönüştürme, önizleme ve web indirmelerini sağlar. Yaklaşık 180 MB. FFmpeg ve yt-dlp GPL, Deno MIT lisanslıdır.";
 "FIELD" = "ALAN";
+"FILE" = "DOSYA";
 "FILE ACTION COULD NOT FINISH" = "DOSYA İŞLEMİ TAMAMLANAMADI";
 "FILE ACTIONS" = "DOSYA İŞLEMLERİ";
 "FILE ACTIONS WHEEL" = "DOSYA İŞLEMLERİ ÇARKI";
@@ -1417,6 +1420,7 @@
 "READY ON YOUR MAC" = "MAC'İNDE HAZIR";
 "READY ON YOUR PC" = "BİLGİSAYARINDA HAZIR";
 "READY TO MAKE A FRESH COPY. NO EXTRA SETTINGS NEEDED." = "YENİ KOPYA OLUŞTURMAYA HAZIR. EK AYAR GEREKMEZ.";
+"READY WHEN YOU ARE" = "SIRA SENDE";
 "READY WHEN YOU LOG IN" = "OTURUM AÇTIĞINDA HAZIR";
 "READY." = "HAZIR.";
 "READY. YOU CAN GO BACK TO YOUR FILES." = "HAZIR. DOSYALARINA DÖNEBİLİRSİN.";
@@ -1960,6 +1964,7 @@
 "UPDATE CANCELLED." = "GÜNCELLEME İPTAL EDİLDİ.";
 "UPDATE CONNECTION…" = "GÜNCELLEME BAĞLANTISI…";
 "UPDATE MANIFEST IS TOO LARGE." = "GÜNCELLEME BİLGİSİ ÇOK BÜYÜK.";
+"UPDATE READY" = "GÜNCELLEME HAZIR";
 "UPDATE SIZE MISMATCH." = "GÜNCELLEME BOYUTU EŞLEŞMİYOR.";
 "UPDATES" = "GÜNCELLEMELER";
 "UPDATES ARE BEING SET UP" = "GÜNCELLEMELER AYARLANIYOR";
@@ -1989,6 +1994,7 @@
 "Update Connection…" = "Güncelleme Bağlantısı…";
 "Update cancelled." = "Güncelleme iptal edildi.";
 "Update manifest is too large." = "Güncelleme bilgisi çok büyük.";
+"Update ready" = "Güncelleme hazır";
 "Update size mismatch." = "Güncelleme boyutu eşleşmiyor.";
 "Update to %@" = "%@ sürümüne güncelle";
 "Update to %@…" = "%@ Sürümüne Güncelle…";

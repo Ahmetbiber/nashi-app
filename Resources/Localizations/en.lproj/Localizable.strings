@@ -60,6 +60,7 @@
 "A LITTLE PEAR. A LOT OF POSSIBILITY." = "A LITTLE PEAR. A LOT OF POSSIBILITY.";
 "A NEW FORM.\nIN A TAP." = "A NEW FORM.\nIN A TAP.";
 "A PAGE RANGE IS OUTSIDE THE PDF." = "A PAGE RANGE IS OUTSIDE THE PDF.";
+"A PERFECT LANDING SPOT" = "A PERFECT LANDING SPOT";
 "A PHOTO IS UNAVAILABLE. TRY A FRESH PUBLIC POST LINK." = "A PHOTO IS UNAVAILABLE. TRY A FRESH PUBLIC POST LINK.";
 "A PLACE FOR FRESH FILES." = "A PLACE FOR FRESH FILES.";
 "A SELECTED ITEM IS MISSING." = "A SELECTED ITEM IS MISSING.";
@@ -82,6 +83,7 @@
 "A little pear. A lot of possibility." = "A little pear. A lot of possibility.";
 "A new form.\nIn a tap." = "A new form.\nIn a tap.";
 "A page range is outside the PDF." = "A page range is outside the PDF.";
+"A perfect landing spot" = "A perfect landing spot";
 "A photo is unavailable. Try a fresh public post link." = "A photo is unavailable. Try a fresh public post link.";
 "A place for fresh files." = "A place for fresh files.";
 "A selected item is missing." = "A selected item is missing.";
@@ -760,6 +762,7 @@
 "FFMPEG, FFPROBE, YT-DLP AND DENO ENABLE MEDIA CONVERSION, PREVIEWS AND WEB DOWNLOADS. APPROXIMATELY 180 MB. FFMPEG AND YT-DLP USE GPL LICENSES; DENO USES MIT." = "FFMPEG, FFPROBE, YT-DLP AND DENO ENABLE MEDIA CONVERSION, PREVIEWS AND WEB DOWNLOADS. APPROXIMATELY 180 MB. FFMPEG AND YT-DLP USE GPL LICENSES; DENO USES MIT.";
 "FFmpeg, ffprobe, yt-dlp and Deno enable media conversion, previews and web downloads. Approximately 180 MB. FFmpeg and yt-dlp use GPL licenses; Deno uses MIT." = "FFmpeg, ffprobe, yt-dlp and Deno enable media conversion, previews and web downloads. Approximately 180 MB. FFmpeg and yt-dlp use GPL licenses; Deno uses MIT.";
 "FIELD" = "FIELD";
+"FILE" = "FILE";
 "FILE ACTION COULD NOT FINISH" = "FILE ACTION COULD NOT FINISH";
 "FILE ACTIONS" = "FILE ACTIONS";
 "FILE ACTIONS WHEEL" = "FILE ACTIONS WHEEL";
@@ -1417,6 +1420,7 @@
 "READY ON YOUR MAC" = "READY ON YOUR MAC";
 "READY ON YOUR PC" = "READY ON YOUR PC";
 "READY TO MAKE A FRESH COPY. NO EXTRA SETTINGS NEEDED." = "READY TO MAKE A FRESH COPY. NO EXTRA SETTINGS NEEDED.";
+"READY WHEN YOU ARE" = "READY WHEN YOU ARE";
 "READY WHEN YOU LOG IN" = "READY WHEN YOU LOG IN";
 "READY." = "READY.";
 "READY. YOU CAN GO BACK TO YOUR FILES." = "READY. YOU CAN GO BACK TO YOUR FILES.";
@@ -1960,6 +1964,7 @@
 "UPDATE CANCELLED." = "UPDATE CANCELLED.";
 "UPDATE CONNECTION…" = "UPDATE CONNECTION…";
 "UPDATE MANIFEST IS TOO LARGE." = "UPDATE MANIFEST IS TOO LARGE.";
+"UPDATE READY" = "UPDATE READY";
 "UPDATE SIZE MISMATCH." = "UPDATE SIZE MISMATCH.";
 "UPDATES" = "UPDATES";
 "UPDATES ARE BEING SET UP" = "UPDATES ARE BEING SET UP";
@@ -1989,6 +1994,7 @@
 "Update Connection…" = "Update Connection…";
 "Update cancelled." = "Update cancelled.";
 "Update manifest is too large." = "Update manifest is too large.";
+"Update ready" = "Update ready";
 "Update size mismatch." = "Update size mismatch.";
 "Update to %@" = "Update to %@";
 "Update to %@…" = "Update to %@…";

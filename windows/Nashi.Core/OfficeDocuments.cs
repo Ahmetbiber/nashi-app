@@ -95,8 +95,9 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
             }
             foreach(var image in page.GetImages())
             {
-                byte[]? data=null;var mime="image/png";if(image.TryGetPng(out var png))data=png;else if(image.RawBytes.Length>=2&&image.RawBytes[0]==0xff&&image.RawBytes[1]==0xd8){data=image.RawBytes.ToArray();mime="image/jpeg";}
-                if(data is null&&mappable){needed=true;data=pageImage?.Invoke(page.Number,new(image.BoundingBox.Left,page.Height-image.BoundingBox.Top,image.BoundingBox.Width,image.BoundingBox.Height));}if(data is null||data.Length>20_000_000)continue;
+                byte[]? data=null;var mime="image/png";if(image.TryGetPng(out var png))data=png;else if(image.RawBytes.Length>=2&&image.RawBytes[0]==0xff&&image.RawBytes[1]==0xd8){data=image.RawBytes.ToArray();mime="image/jpeg";}if(data?.Length>20_000_000)continue;
+                // A render is bounded by the page and DPI, like the whole-page renders below.
+                if(data is null&&mappable){needed=true;data=pageImage?.Invoke(page.Number,new(image.BoundingBox.Left,page.Height-image.BoundingBox.Top,image.BoundingBox.Width,image.BoundingBox.Height));}if(data is null)continue;
                 blocks.Add((page.Height-image.BoundingBox.Top,"<p><img style=\"max-width:100%;width:"+image.BoundingBox.Width.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+"pt;height:auto\" src=\"data:"+mime+";base64,"+Convert.ToBase64String(data)+"\"/></p>"));
             }
             if(blocks.Count==0){needed=true;if(pageImage?.Invoke(page.Number,null) is {} rendered)blocks.Add((0,"<p><img style=\"max-width:100%;width:"+page.Width.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+"pt;height:auto\" src=\"data:image/png;base64,"+Convert.ToBase64String(rendered)+"\"/></p>"));}

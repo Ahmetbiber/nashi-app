@@ -12,10 +12,11 @@ internal static class ParityChecks
         check(FeatureCatalog.Tools(["a.pdf","b.pdf"]).SequenceEqual(new[]{"compress","removeMetadata","splitPDF","mergePDF","readQRCode"}),"Multiple PDF wheel diverged from Mac");
         check(FeatureCatalog.Tools(["a.jpg","b.png"]).Contains("createCollage"),"Mixed image collage missing");
         check(DocumentEngine.PageRange("3-1, 2",3).SequenceEqual(new[]{3,2,1,2}),"PDF descending page ranges or duplicates changed");
-        // Hand-written content streams keep these fixtures independent of font resolution.
+        // Hand-written content streams keep these fixtures independent of font resolution, and a fixed A4
+        // page keeps them independent of the region (PdfSharp picks Letter on US machines).
         string Pdf(string name,string content,Action<PdfSharp.Pdf.PdfDocument>? edit=null,Action<PdfSharp.Pdf.PdfDocument,PdfSharp.Pdf.PdfDictionary>? resource=null)
         {
-            var path=Path.Combine(root,name);using var pdf=new PdfSharp.Pdf.PdfDocument();var page=pdf.AddPage();
+            var path=Path.Combine(root,name);using var pdf=new PdfSharp.Pdf.PdfDocument();var page=pdf.AddPage();page.Size=PdfSharp.PageSize.A4;
             var font=new PdfSharp.Pdf.PdfDictionary(pdf);font.Elements.SetName("/Type","/Font");font.Elements.SetName("/Subtype","/Type1");font.Elements.SetName("/BaseFont","/Helvetica");pdf.Internals.AddObject(font);
             var fonts=new PdfSharp.Pdf.PdfDictionary(pdf);fonts.Elements.SetReference("/F1",font);var resources=new PdfSharp.Pdf.PdfDictionary(pdf);resources.Elements["/Font"]=fonts;page.Elements["/Resources"]=resources;resource?.Invoke(pdf,resources);
             var stream=new PdfSharp.Pdf.PdfDictionary(pdf);stream.CreateStream(Encoding.ASCII.GetBytes(content));pdf.Internals.AddObject(stream);page.Elements.SetReference("/Contents",stream);edit?.Invoke(pdf);pdf.Save(path);return path;

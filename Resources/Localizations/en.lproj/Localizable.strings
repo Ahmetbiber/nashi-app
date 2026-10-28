@@ -1830,6 +1830,8 @@
 "THIS LINK DID NOT RETURN A DOWNLOADABLE IMAGE." = "THIS LINK DID NOT RETURN A DOWNLOADABLE IMAGE.";
 "THIS OUTPUT FORMAT HAS NO ADJUSTABLE CONVERSION DEFAULTS." = "THIS OUTPUT FORMAT HAS NO ADJUSTABLE CONVERSION DEFAULTS.";
 "THIS PDF CONTAINS NO PAGES." = "THIS PDF CONTAINS NO PAGES.";
+"THIS PDF HAS FORM FIELDS OR ATTACHMENTS THAT MERGING, SPLITTING OR REORDERING PAGES CANNOT KEEP. NO COPY WAS EXPORTED." = "THIS PDF HAS FORM FIELDS OR ATTACHMENTS THAT MERGING, SPLITTING OR REORDERING PAGES CANNOT KEEP. NO COPY WAS EXPORTED.";
+"THIS PDF HAS FORM FIELDS OR ATTACHMENTS THAT METADATA CLEANUP CANNOT KEEP. NO COPY WAS EXPORTED." = "THIS PDF HAS FORM FIELDS OR ATTACHMENTS THAT METADATA CLEANUP CANNOT KEEP. NO COPY WAS EXPORTED.";
 "THIS PDF PAGE COULD NOT BE READ." = "THIS PDF PAGE COULD NOT BE READ.";
 "THIS POST CONTAINS VIDEOS. USE ITS REEL LINK TO DOWNLOAD VIDEO." = "THIS POST CONTAINS VIDEOS. USE ITS REEL LINK TO DOWNLOAD VIDEO.";
 "THIS REPOSITORY IS PRIVATE" = "THIS REPOSITORY IS PRIVATE";
@@ -1901,6 +1903,8 @@
 "The update signature is invalid. Your existing app was kept." = "The update signature is invalid. Your existing app was kept.";
 "These files have moved or were deleted." = "These files have moved or were deleted.";
 "This PDF contains no pages." = "This PDF contains no pages.";
+"This PDF has form fields or attachments that merging, splitting or reordering pages cannot keep. No copy was exported." = "This PDF has form fields or attachments that merging, splitting or reordering pages cannot keep. No copy was exported.";
+"This PDF has form fields or attachments that metadata cleanup cannot keep. No copy was exported." = "This PDF has form fields or attachments that metadata cleanup cannot keep. No copy was exported.";
 "This PDF page could not be read." = "This PDF page could not be read.";
 "This RTFD attachment syntax could not be preserved." = "This RTFD attachment syntax could not be preserved.";
 "This Windows codec cannot play directly. Set up media tools to create a local preview." = "This Windows codec cannot play directly. Set up media tools to create a local preview.";

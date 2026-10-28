@@ -1830,6 +1830,8 @@
 "THIS LINK DID NOT RETURN A DOWNLOADABLE IMAGE." = "BU BAĞLANTIDAN İNDİRİLEBİLİR BİR GÖRSEL GELMEDİ.";
 "THIS OUTPUT FORMAT HAS NO ADJUSTABLE CONVERSION DEFAULTS." = "BU ÇIKTI BİÇİMİNİN AYARLANABİLİR DÖNÜŞTÜRME TERCİHİ YOK.";
 "THIS PDF CONTAINS NO PAGES." = "BU PDF'DE SAYFA YOK.";
+"THIS PDF HAS FORM FIELDS OR ATTACHMENTS THAT MERGING, SPLITTING OR REORDERING PAGES CANNOT KEEP. NO COPY WAS EXPORTED." = "BU PDF'DE BİRLEŞTİRME, BÖLME VEYA SAYFALARI YENİDEN SIRALAMA SIRASINDA KORUNAMAYAN FORM ALANLARI YA DA EKLER VAR. KOPYA DIŞA AKTARILMADI.";
+"THIS PDF HAS FORM FIELDS OR ATTACHMENTS THAT METADATA CLEANUP CANNOT KEEP. NO COPY WAS EXPORTED." = "BU PDF'DE META VERİ TEMİZLİĞİ SIRASINDA KORUNAMAYAN FORM ALANLARI YA DA EKLER VAR. KOPYA DIŞA AKTARILMADI.";
 "THIS PDF PAGE COULD NOT BE READ." = "BU PDF SAYFASI OKUNAMADI.";
 "THIS POST CONTAINS VIDEOS. USE ITS REEL LINK TO DOWNLOAD VIDEO." = "BU GÖNDERİDE VİDEO VAR. VİDEOYU İNDİRMEK İÇİN REEL BAĞLANTISINI KULLAN.";
 "THIS REPOSITORY IS PRIVATE" = "BU DEPO GİZLİ";
@@ -1901,6 +1903,8 @@
 "The update signature is invalid. Your existing app was kept." = "Güncelleme imzası geçersiz. Mevcut uygulaman korundu.";
 "These files have moved or were deleted." = "Bu dosyalar taşınmış veya silinmiş.";
 "This PDF contains no pages." = "Bu PDF'de sayfa yok.";
+"This PDF has form fields or attachments that merging, splitting or reordering pages cannot keep. No copy was exported." = "Bu PDF'de birleştirme, bölme veya sayfaları yeniden sıralama sırasında korunamayan form alanları ya da ekler var. Kopya dışa aktarılmadı.";
+"This PDF has form fields or attachments that metadata cleanup cannot keep. No copy was exported." = "Bu PDF'de meta veri temizliği sırasında korunamayan form alanları ya da ekler var. Kopya dışa aktarılmadı.";
 "This PDF page could not be read." = "Bu PDF sayfası okunamadı.";
 "This RTFD attachment syntax could not be preserved." = "Bu RTFD ekinin yapısı korunamadı.";
 "This Windows codec cannot play directly. Set up media tools to create a local preview." = "Bu Windows codec'i doğrudan oynatılamıyor. Yerel önizleme oluşturmak için medya araçlarını kur.";

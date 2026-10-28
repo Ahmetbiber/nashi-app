@@ -41,13 +41,21 @@ public enum AppLocalization {
     private static let uppercase = Dictionary(turkish.filter { !$0.key.contains("{0}") }.map {
         ($0.key.uppercased(with: Locale(identifier:"en_US_POSIX")), uppercased($0.value, language:"tr"))
     }, uniquingKeysWith: { first, _ in first })
+    // A placeholder at the very start or end of a key that touches a word ("{0} files", "Convert to {0}")
+    // stands for one token such as a count, format or version, so it may not capture text with spaces.
+    // Mirrors windows/Nashi.Core/AppLocalization.cs.
+    private static func wordBound(_ key: String, token: String) -> Bool {
+        if key.hasPrefix(token), key.dropFirst(token.count).range(of:#"^ \p{L}"#, options:.regularExpression) != nil { return true }
+        if key.hasSuffix(token), key.dropLast(token.count).range(of:#"\p{L} $"#, options:.regularExpression) != nil { return true }
+        return false
+    }
     private struct Template {
         let expression: NSRegularExpression
         let replacement: String
     }
     private static let templates: [Template] = turkish.filter { $0.key.contains("{0}") }.sorted { $0.key.count > $1.key.count }.compactMap { source, target in
         var pattern = NSRegularExpression.escapedPattern(for: source)
-        for index in 0..<10 { pattern = pattern.replacingOccurrences(of: NSRegularExpression.escapedPattern(for:"{\(index)}"), with:"(.*?)") }
+        for index in 0..<10 { pattern = pattern.replacingOccurrences(of: NSRegularExpression.escapedPattern(for:"{\(index)}"), with: wordBound(source, token:"{\(index)}") ? #"(\S+?)"# : "(.*?)") }
         guard let expression = try? NSRegularExpression(pattern:"^"+pattern+"$",options:[.dotMatchesLineSeparators]) else { return nil }
         return Template(expression:expression,replacement:target)
     }
@@ -55,6 +63,9 @@ public enum AppLocalization {
         guard normalizedLanguage(language) == "tr" else { return source }
         if let value = turkish[source] ?? uppercase[source] { return value }
         guard source.count<16_384 else { return source }
+        // Window titles: translate the title, keep the app suffix ("Convert to JPG · Nashi").
+        let suffix = " · Nashi"
+        if source.count > suffix.count, source.hasSuffix(suffix) { return text(String(source.dropLast(suffix.count)), language: language) + suffix }
         for template in templates {
             guard let match = template.expression.firstMatch(in:source,range:NSRange(source.startIndex...,in:source)) else { continue }
             let marker = try! NSRegularExpression(pattern:#"\{([0-9])\}"#)

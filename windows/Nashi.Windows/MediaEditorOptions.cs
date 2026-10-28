@@ -29,7 +29,7 @@ public sealed partial class ToolEditor
     private (double Start,double End) ReadPlaybackRange(string message="Start must be before End, within the media duration.")
     {
         var a=Value("Start");var b=Value("End",duration);var end=RangeEnd();
-        if(a<0||end-a<MinRange||duration>0&&b>duration+RangeSlack)throw new ArgumentException(message);
+        if(a<0||Math.Round(end-a,6)<MinRange||duration>0&&b>duration+RangeSlack)throw new ArgumentException(message);
         return(a,end);
     }
     private void PlayRange()

@@ -88,6 +88,8 @@ internal static class EditorReliabilityChecks
                 check(failure is null&&rounded.MediaOptions.End<=4.9876,"The untouched trim range was rejected or ran past the media: End="+rounded.FieldForTest("End").Text+" "+failure?.Message);
                 rounded.FieldForTest("Start").Text="4.9875";rounded.FieldForTest("End").Text="4.988";failure=null;try{rounded.AcceptForTest();}catch(ArgumentException error){failure=error;}
                 check(failure is not null,"A range that is too short once End is clamped to the media was accepted");
+                rounded.FieldForTest("Start").Text="1.1";rounded.FieldForTest("End").Text="1.15";failure=null;try{rounded.AcceptForTest();}catch(ArgumentException error){failure=error;}
+                check(failure is null,"A 50 ms range was refused by floating-point rounding: "+failure?.Message);
             }
             finally{rounded.Close();}
             var bleep=new ToolEditor(owner,"redactAudio","Bleep Audio",audio,new MediaInfo(5,new FileInfo(audio).Length,[new MediaStream(0,"audio","pcm_s16le",null,null,false)]));

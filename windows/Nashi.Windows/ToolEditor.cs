@@ -103,7 +103,8 @@ public sealed partial class ToolEditor:Window
     // Fields show milliseconds, so the default End can round up to half a millisecond
     // past ffprobe's duration. MediaEngine allows the same slack; it gets the clamped End.
     private const double RangeSlack=.001;
-    // MediaEngine.TimeRange also refuses ranges shorter than 50 ms.
+    // MediaEngine.TimeRange also refuses ranges shorter than 50 ms. Both round the length, so
+    // 1.1 to 1.15 (0.04999… in binary) still counts as 50 ms.
     private const double MinRange=.05;
     private bool Untouched(string key)=>fields.TryGetValue(key,out var box)&&box.Text==defaults[key];
     private bool SizeUntouched=>Untouched("Width")&&Untouched("Height");

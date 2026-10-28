@@ -194,6 +194,7 @@ public sealed partial class ToolEditor:Window
             ImageOptions=PhotoSettings(new(fields.ContainsKey("Width")?(int)w:null,fields.ContainsKey("Height")?(int)h:null,(int)Value("Degrees",tool=="rotate"?90:0),tool=="crop"?new Int32Rect((int)x,(int)y,(int)w,(int)h):null,(int)Value("Quality (%)",85),true,annotated));
             MediaOptions=MoreMediaSettings(MediaOptions);
             Format=format.SelectedItem as string??"png";
+            if(tool=="splitPDF")_=PagesPerFile; // validate while the editor is still open
             if(tool=="organizePDF")Pages=fields["Page numbers"].Text.Split(',',StringSplitOptions.RemoveEmptyEntries).Select(s=>int.Parse(s.Trim(),CultureInfo.InvariantCulture)).ToArray();
             DocumentOptions=new((int)Value("DPI",144),documentLayout.SelectedItem as string??"editable",epubLayout.SelectedItem as string??"reflowable",archivePassword.Password);if(accept)DialogResult=true;return true;
         }

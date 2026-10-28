@@ -71,8 +71,9 @@ public sealed class GlobalDragController:IDisposable
 internal sealed class GlobalDropWheel:Window
 {
     internal string State=>$"entered={entered}, over={over}, dropped={dropCount}, choices={choices.Count}, selection={selection}, revealed={Revealed}";private int entered,over,dropCount;
-    // The wheel opens almost transparent and only appears once a real OLE drag reaches it.
-    // Plain mouse drags with a modifier (text selection, scrollbars) never show it.
+    // The wheel opens almost transparent and only appears once an OLE drag carrying a file or
+    // link reaches it. Plain mouse drags with a modifier (text selection, scrollbars) and OLE
+    // drags of other data, such as selected text, never show it.
     // Fully transparent layered pixels ignore hit tests, so keep a tiny non-zero opacity.
     private const double HiddenOpacity=.02;
     internal bool Revealed{get;private set;}
@@ -81,8 +82,10 @@ internal sealed class GlobalDropWheel:Window
     public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
     {
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=WheelPresentation.Diameter*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Opacity=HiddenOpacity;
-        DragEnter+=(_,e)=>{entered++;Reveal();Track(e);};
-        DragOver+=(_,e)=>{over++;Track(e);};
+        // Reveal only once the payload offers choices. On entry the pointer sits in the center,
+        // so e.Effects is still None even for a valid file drag.
+        DragEnter+=(_,e)=>{entered++;Track(e);if(choices.Count>0)Reveal();};
+        DragOver+=(_,e)=>{over++;Track(e);if(choices.Count>0)Reveal();};
         Drop+=(_,e)=>{dropCount++;Track(e);var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
     }
     private void Track(DragEventArgs e)

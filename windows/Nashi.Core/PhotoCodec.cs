@@ -52,9 +52,10 @@ public static class PhotoCodec
     public static void EncodePixels(byte[] bgra,int width,int height,string output,string format,int quality=85,string? encoder=null,CancellationToken token=default)
     {
         if(width<1||height<1||bgra.Length<(long)width*height*4)throw new ArgumentException("Choose a nonempty image.");
-        using var image=new MagickImage();image.ReadPixels(bgra,new PixelReadSettings((uint)width,(uint)height,StorageType.Char,PixelMapping.BGRA));image.ColorSpace=ColorSpace.sRGB;
-        if(format=="heic"){EncodePng(image.ToByteArray(MagickFormat.Png),output,format,quality,encoder,token);return;}
-        image.Strip();image.Quality=(uint)Math.Clamp(quality,1,100);image.Write(output,Format(format));
+        MagickImage Read(){var image=new MagickImage();image.ReadPixels(bgra,new PixelReadSettings((uint)width,(uint)height,StorageType.Char,PixelMapping.BGRA));image.ColorSpace=ColorSpace.sRGB;return image;}
+        // HEIC goes through EncodePng's own MagickImage; release this pixel cache before that one is created.
+        if(format=="heic"){byte[] png;using(var source=Read())png=source.ToByteArray(MagickFormat.Png);EncodePng(png,output,format,quality,encoder,token);return;}
+        using var image=Read();image.Strip();image.Quality=(uint)Math.Clamp(quality,1,100);image.Write(output,Format(format));
     }
     public static MagickFormat Format(string format)=>format switch{"jpg"=>MagickFormat.Jpeg,"webp"=>MagickFormat.WebP,"heic"=>MagickFormat.Heic,"avif"=>MagickFormat.Avif,"tiff"=>MagickFormat.Tiff,"bmp"=>MagickFormat.Bmp,"gif"=>MagickFormat.Gif,"png"=>MagickFormat.Png,_=>throw new ArgumentException("Unsupported image format.")};
     public static byte[] Adjust(byte[] png,PhotoAdjustments o)

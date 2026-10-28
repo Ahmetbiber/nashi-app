@@ -72,8 +72,9 @@ public static partial class ImageEngine
                     image=TransformPhoto(image,options);break;
                 case "frameImage":image=Frame(image,options.Frame);ext="png";break;
                 // Like macOS, keep the source format: redacted pixels are replaced before encoding, and a
-                // 48 MP JPEG re-saved as PNG took ~5-10 s and grew from 8 MB to 52 MB.
-                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);break;
+                // 48 MP JPEG re-saved as PNG took ~5-10 s and grew from 8 MB to 52 MB. Writing HEIC needs the
+                // media tools on Windows, so without them a HEIC source keeps the previous PNG output.
+                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);if(ext=="heic"&&options.EncoderPath is null)ext="png";break;
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;
                 default:throw new ArgumentException("Unsupported image tool.");
             }

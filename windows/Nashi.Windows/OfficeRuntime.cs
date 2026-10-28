@@ -14,14 +14,23 @@ public sealed class OfficeRuntime(string root)
     // --convert-to filters, which are native code, so the private runtime runs without the
     // Python loader. A LibreOffice installed under Program Files is never modified.
     internal const string DisabledPythonLoader="pythonloaderlo.dll.disabled-by-nashi";
-    internal static void DisablePythonLoader(string application)
+    internal static bool DisablePythonLoader(string application)
     {
         var loader=Path.Combine(application,"program","pythonloaderlo.dll");
         try{if(File.Exists(loader))File.Move(loader,Path.Combine(application,"program",DisabledPythonLoader),true);}
         catch(Exception error)when(error is IOException or UnauthorizedAccessException){}
+        return !File.Exists(loader);
     }
-    public string? Executable{get{var managed=Path.Combine(root,"office-26.8.1");if(Directory.Exists(managed))DisablePythonLoader(managed);return Candidates.FirstOrDefault(ToolInstallation.UsableFile);}}
-    private string[] Candidates=>new[]{Path.Combine(root,"office-26.8.1","program","soffice.com"),Path.Combine(root,"office-26.8.1","program","soffice.exe"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.com"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.exe")};
+    public string? Executable{get{var managed=Path.Combine(root,"office-26.8.1");var safe=!Directory.Exists(managed)||DisablePythonLoader(managed);return Candidates(safe).FirstOrDefault(ToolInstallation.UsableFile);}}
+    // If the loader cannot be disabled, prefer a LibreOffice under Program Files. The private runtime
+    // is then the last resort, and the 5-minute conversion limit still applies.
+    private string[] Candidates(bool privateRuntimeSafe)
+    {
+        string[] managed=[Path.Combine(root,"office-26.8.1","program","soffice.com"),Path.Combine(root,"office-26.8.1","program","soffice.exe")];
+        var programFiles=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program");
+        string[] installed=[Path.Combine(programFiles,"soffice.com"),Path.Combine(programFiles,"soffice.exe")];
+        return privateRuntimeSafe?[..managed,..installed]:[..installed,..managed];
+    }
     public async Task InstallAsync(IProgress<OperationProgress>? progress,CancellationToken token)
     {
         if(Executable is not null)return;Directory.CreateDirectory(root);var stage=Path.Combine(root,".office-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);

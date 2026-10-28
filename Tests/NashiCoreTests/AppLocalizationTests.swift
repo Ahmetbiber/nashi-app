@@ -43,4 +43,14 @@ final class AppLocalizationTests:XCTestCase {
         }
         for code in ["png","MP4","Ctrl+Shift","⌘S","00:01.250"] { XCTAssertEqual(AppLocalization.text(code,language:"tr"),code) }
     }
+    func testTranslatedCatalogsOnlyUseTurkishSourceStrings() {
+        let reference=Set(AppLocalization.turkish.keys)
+        XCTAssertFalse(reference.isEmpty)
+        for language in AppLocalization.supportedLanguages where language != "en" {
+            let catalog=AppLocalization.catalog(for:language)
+            XCTAssertTrue(Set(catalog.keys).isSubset(of:reference),"\(language) has keys that Turkish.json lacks")
+            XCTAssertFalse(catalog.values.contains{$0.isEmpty},language)
+        }
+        XCTAssertTrue(AppLocalization.catalog(for:"en").isEmpty)
+    }
 }

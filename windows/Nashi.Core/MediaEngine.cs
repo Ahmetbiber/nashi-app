@@ -246,9 +246,15 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
             if(numbers.All(x=>double.IsFinite(x.Item2)))filter+=string.Concat(numbers.Select(x=>":"+x.Item1+"="+Number(x.Item2)))+":linear=true";
         }
         var output=Output(directory,input,ext," Normalized");
-        // loudnorm resamples to 192 kHz internally; keep the source rate like the macOS engine does.
-        var sampleRate=info.Audio is {SampleRate:>0} audio?audio.SampleRate:48000;
-        await RenderAsync(["-i",input,"-map","0:a:0","-af",filter,"-ar",sampleRate.ToString(CultureInfo.InvariantCulture),..AudioEncoding(ext,options)],output,info.Duration,p=>progress(p with{Fraction=.45+p.Fraction*.55}),token);return output;
+        await RenderAsync(["-i",input,"-map","0:a:0","-af",filter,..NormalizedRate(ext,info),..AudioEncoding(ext,options)],output,info.Duration,p=>progress(p with{Fraction=.45+p.Fraction*.55}),token);return output;
+    }
+    // loudnorm resamples to 192 kHz internally. Lossless and Vorbis outputs keep the source rate (as on macOS);
+    // MP3/AAC/WMA encoders top out at 48 kHz, and Opus is always 48 kHz, so FFmpeg picks the rate for Opus.
+    private static string[] NormalizedRate(string ext,MediaInfo info)
+    {
+        var source=info.Audio is {SampleRate:>0} audio?audio.SampleRate:48000;
+        int? rate=ext switch{"wav" or "aiff" or "flac" or "ogg"=>source,"mp3" or "m4a" or "aac" or "wma"=>Math.Min(source,48000),_=>null};
+        return rate is {} value?["-ar",value.ToString(CultureInfo.InvariantCulture)]:[];
     }
 
     private async Task<string> CompressAsync(string input,MediaInfo info,string directory,MediaOptions options,Action<OperationProgress> progress,CancellationToken token)

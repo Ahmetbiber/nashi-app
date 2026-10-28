@@ -17,6 +17,8 @@ public sealed class ExportTransaction : IDisposable
         Directory.CreateDirectory(StagingDirectory);
         if ((File.GetAttributes(StagingDirectory) & FileAttributes.ReparsePoint) != 0)
             throw new IOException("Staging cannot be a symbolic link.");
+        // A leading dot hides it on macOS; Windows needs the attribute.
+        File.SetAttributes(StagingDirectory, File.GetAttributes(StagingDirectory) | FileAttributes.Hidden);
     }
 
     public IReadOnlyList<string> Publish(IEnumerable<string> outputs, CancellationToken token)
@@ -47,13 +49,36 @@ public sealed class ExportTransaction : IDisposable
         return published.ToArray();
     }
 
+    /// Cleanup never replaces the batch's real outcome. A tool killed on cancel can hold a
+    /// file for a moment (yt-dlp's ffmpeg child, for example), which used to turn "Cancelled"
+    /// into "file is being used by another process" and leave the staging folder behind.
+    /// Whatever is still locked is retried in the background, so callers on the UI thread
+    /// never wait for it.
     public void Dispose()
     {
-        if (!committed) foreach (var item in published)
+        var leftovers = (committed ? [] : published).Append(StagingDirectory).Where(path => !TryDelete(path)).ToArray();
+        if (leftovers.Length == 0) return;
+        _ = Task.Run(async () =>
         {
-            if (Directory.Exists(item)) Directory.Delete(item, recursive: true);
-            else if (File.Exists(item)) File.Delete(item);
+            for (var attempt = 0; attempt < 40 && leftovers.Length > 0; attempt++)
+            {
+                await Task.Delay(250);
+                leftovers = leftovers.Where(path => !TryDelete(path)).ToArray();
+            }
+        });
+    }
+
+    private static bool TryDelete(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+            else if (File.Exists(path)) File.Delete(path);
+            return true;
         }
-        if (Directory.Exists(StagingDirectory)) Directory.Delete(StagingDirectory, recursive: true);
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 }

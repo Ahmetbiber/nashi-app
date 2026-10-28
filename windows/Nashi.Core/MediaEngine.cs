@@ -208,9 +208,10 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
                 RequireAudio(info);if(options.AudioRedactions.Length==0)throw new ArgumentException("Add a bleep or silence range.");
                 var ranges=options.AudioRedactions.Select(r=>TimeRange(r.Start,r.End,info.Duration)).ToList();
                 var expression=string.Join('+',ranges.Select(r=>$"between(t,{Number(r.Start)},{Number(r.End)})"));
-                // aeval's channel-independent expression is expanded to the input layout.
+                // One channel-independent expression; c=same keeps the input layout,
+                // otherwise aeval derives a mono layout from the single expression.
                 var replacement=options.RedactionMode=="mute"?"0":"0.18*sin(2*PI*1000*t)";
-                args.AddRange(["-map","0:a:0","-af",$"aeval=exprs='if({expression},{replacement},val(ch))'",..AudioEncoding(ext,options)]);break;
+                args.AddRange(["-map","0:a:0","-af",$"aeval=exprs='if({expression},{replacement},val(ch))':c=same",..AudioEncoding(ext,options)]);break;
             case "redactVideo":
                 RequireVideo(info);if(options.Regions.Length==0)throw new ArgumentException("Draw a region to redact.");
                 var graph=new List<string>();var previous="0:v:0";

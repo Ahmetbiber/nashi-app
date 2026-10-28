@@ -54,6 +54,15 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
     }
     /// Replaces HTML named entities (&amp;nbsp; &amp;mdash;) with character references so XHTML
     /// parses without its DTD. The five XML entities and unknown names stay as written.
+    // XmlReader picks the encoding from the XML declaration; reading the text first has to as
+    // well (EPUB 2 chapters may declare ISO-8859-1 or windows-1252). A byte order mark wins.
+    public static string XmlText(byte[] data)
+    {
+        Encoding encoding=new UTF8Encoding(false);
+        var declared=Regex.Match(Encoding.Latin1.GetString(data,0,Math.Min(data.Length,512)),"^<\\?xml[^>]*?\\sencoding\\s*=\\s*[\"']([A-Za-z][A-Za-z0-9._-]*)[\"']");
+        if(declared.Success)try{Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);if(Encoding.GetEncoding(declared.Groups[1].Value) is not (UnicodeEncoding or UTF32Encoding) and var named)encoding=named;}catch(ArgumentException){}
+        using var reader=new StreamReader(new MemoryStream(data),encoding,true);return reader.ReadToEnd();
+    }
     public static string NumericEntities(string xml)=>Regex.Replace(xml,"&([A-Za-z][A-Za-z0-9]{1,31});",m=>m.Groups[1].Value is "amp" or "lt" or "gt" or "quot" or "apos"||WebUtility.HtmlDecode(m.Value) is var decoded&&decoded==m.Value?m.Value:string.Concat(decoded.EnumerateRunes().Select(r=>"&#"+r.Value+";")));
     /// A region of a PDF page in points, measured from the page's top-left corner.
     public readonly record struct PdfArea(double Left,double Top,double Width,double Height);

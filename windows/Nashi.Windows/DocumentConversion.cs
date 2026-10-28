@@ -96,7 +96,7 @@ public sealed class DocumentConversion(OfficeRuntime runtime,Toolchain tools)
     {
         var settings=new System.Xml.XmlReaderSettings{DtdProcessing=System.Xml.DtdProcessing.Ignore,XmlResolver=null,MaxCharactersInDocument=20_000_000};
         if(new FileInfo(path).Length>80_000_000){using var large=System.Xml.XmlReader.Create(path,settings);return XDocument.Load(large);}
-        using var reader=System.Xml.XmlReader.Create(new StringReader(OfficeDocuments.NumericEntities(File.ReadAllText(path))),settings);return XDocument.Load(reader);
+        using var reader=System.Xml.XmlReader.Create(new StringReader(OfficeDocuments.NumericEntities(OfficeDocuments.XmlText(File.ReadAllBytes(path)))),settings);return XDocument.Load(reader);
     }
     private static async Task<string> MaterializeClipping(string input,string work,CancellationToken token)
     {

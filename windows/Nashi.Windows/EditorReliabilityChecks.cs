@@ -86,8 +86,19 @@ internal static class EditorReliabilityChecks
             {
                 rounded.Show();DesktopInput.Pump();Exception? failure=null;try{rounded.AcceptForTest();}catch(Exception error){failure=error;}
                 check(failure is null&&rounded.MediaOptions.End<=4.9876,"The untouched trim range was rejected or ran past the media: End="+rounded.FieldForTest("End").Text+" "+failure?.Message);
+                rounded.FieldForTest("Start").Text="4.9875";rounded.FieldForTest("End").Text="4.988";failure=null;try{rounded.AcceptForTest();}catch(ArgumentException error){failure=error;}
+                check(failure is not null,"A range that is too short once End is clamped to the media was accepted");
             }
             finally{rounded.Close();}
+            var bleep=new ToolEditor(owner,"redactAudio","Bleep Audio",audio,new MediaInfo(5,new FileInfo(audio).Length,[new MediaStream(0,"audio","pcm_s16le",null,null,false)]));
+            try
+            {
+                bleep.Show();DesktopInput.Pump();bleep.FieldForTest("Start").Text="1";bleep.FieldForTest("End").Text="2";
+                Children(bleep).OfType<Button>().Single(b=>b.Content as string=="Add selected range").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                bleep.FieldForTest("Start").Text="3";bleep.FieldForTest("End").Text="1";Exception? failure=null;try{bleep.AcceptForTest();}catch(Exception error){failure=error;}
+                check(failure is null&&bleep.MediaOptions.AudioRedactions is [{Start:1,End:2}],"Bleep Audio checked the playback selection instead of the added ranges: "+failure?.Message);
+            }
+            finally{bleep.Close();}
             var tall=System.Windows.Media.Imaging.BitmapSource.Create(60,100,96,96,PixelFormats.Bgra32,null,new byte[60*100*4],60*4);var portrait=Path.Combine(root,"Reliability portrait.png");ImageEngine.Save(tall,portrait,"png");
             var batch=new ToolEditor(owner,"compress","Compress",image,preview:pixels,inputs:[image,portrait]);
             try

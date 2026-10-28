@@ -103,6 +103,8 @@ public sealed partial class ToolEditor:Window
     // Fields show milliseconds, so the default End can round up to half a millisecond
     // past ffprobe's duration. MediaEngine allows the same slack; it gets the clamped End.
     private const double RangeSlack=.001;
+    // MediaEngine.TimeRange also refuses ranges shorter than 50 ms.
+    private const double MinRange=.05;
     private bool Untouched(string key)=>fields.TryGetValue(key,out var box)&&box.Text==defaults[key];
     private bool SizeUntouched=>Untouched("Width")&&Untouched("Height");
     private double RangeEnd(){var end=Value("End",duration);return duration>0?Math.Min(end,duration):end;}
@@ -209,7 +211,7 @@ public sealed partial class ToolEditor:Window
         try
         {
             if(tool=="compress"&&(Value("Target size (KB; 0 = auto)")<0||Value("Reduction (%; 0 = auto)")<0||Value("Reduction (%; 0 = auto)")>=100))throw new ArgumentException("Choose a positive size or a reduction below 100%. Zero uses automatic compression.");
-            if(tool is "trimVideo" or "trimAudio" or "redactAudio")ReadPlaybackRange();
+            if(tool is "trimVideo" or "trimAudio"||tool=="redactAudio"&&bleepRanges.Count==0)ReadPlaybackRange();
             var x=Value("X");var y=Value("Y");var w=Value("Width");var h=Value("Height");
             if(tool is "crop" or "cropVideo" or "redactVideo"&& (w<1||h<1)||tool=="redactVideo"&&bitmap is not null&&videoRegions.Count==0)throw new ArgumentException("Drag an area first.");
             MediaOptions=new(){Start=Value("Start"),End=fields.ContainsKey("End")?RangeEnd():null,Quality=Value("Quality (%)",80)/100,Speed=Value("Speed",1),Width=fields.ContainsKey("Width")?(int)w:null,Height=fields.ContainsKey("Height")?(int)h:null,Channels=(int)Value("Channels",2),LeftVolume=Value("Left volume",1),RightVolume=Value("Right volume",1),EqualClips=(int)Value("Number of clips",2),TargetLoudness=Value("Target LUFS",-16),TruePeak=Value("True peak dB",-1.5),Regions=tool is "cropVideo" or "redactVideo"?[new(x,y,w,h,Value("Start"),fields.ContainsKey("End")?RangeEnd():null)]:[],AudioRedactions=tool=="redactAudio"?[new(Value("Start"),RangeEnd())]:[],SnapshotTimes=tool=="videoSnapshots"?fields["Times (seconds)"].Text.Split(';',StringSplitOptions.RemoveEmptyEntries).Select(s=>NumericInput.ParseFinite(s)).ToArray():[0]};

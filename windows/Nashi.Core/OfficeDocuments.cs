@@ -11,6 +11,8 @@ public sealed record DocumentOptions(int Dpi=144,string Layout="editable",string
 public sealed partial class OfficeDocuments(string office,string deno,string assets)
 {
     private static string Escape(string value)=>WebUtility.HtmlEncode(value);
+    private static readonly TimeSpan ConversionTimeout=TimeSpan.FromMinutes(5);
+    public const string TimeoutMessage="Office did not finish converting this document within 5 minutes. Try again, or cancel and choose another format.";
     public async Task<string> OfficeAsync(string input,string format,string outputDirectory,CancellationToken token)
     {
         Directory.CreateDirectory(outputDirectory);// LibreOffice creates deeply nested profile/cache paths. Keep its job short
@@ -27,7 +29,11 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
             if(ext is "csv" or "tsv")args.Add("--infilter=Text - txt - csv (StarCalc):"+(ext=="tsv"?9:44)+",34,76,1,,1033,true,true");else if(ext=="txt")args.Add("--infilter=Text (encoded):UTF8,LF");else if(ext=="md")args.Add("--infilter=Markdown");
             if(ext=="html"&&format is "xlsx" or "ods" or "csv" or "tsv")args.Add("--infilter=HTML (StarCalc)");
             if(ext=="pdf"&&format=="pptx")args.Add("--infilter=impress_pdf_import");
-            args.AddRange(["--convert-to",filter,"--outdir",rendered,Path.GetFullPath(input)]);var result=await ProcessRunner.RunAsync(office,args,token);
+            args.AddRange(["--convert-to",filter,"--outdir",rendered,Path.GetFullPath(input)]);
+            // A stuck soffice otherwise keeps Nashi busy until the user cancels; stop it after a generous limit.
+            using var limit=CancellationTokenSource.CreateLinkedTokenSource(token);limit.CancelAfter(ConversionTimeout);ProcessResult result;
+            try{result=await ProcessRunner.RunAsync(office,args,limit.Token);}
+            catch(OperationCanceledException)when(!token.IsCancellationRequested){throw new TimeoutException(TimeoutMessage);}
             var output=Path.Combine(rendered,Path.GetFileNameWithoutExtension(input)+"."+(format=="tsv"?"csv":format));if(!File.Exists(output)||new FileInfo(output).Length==0)throw new IOException("Office could not convert this document to "+format.ToUpperInvariant()+". "+(result.Error+" "+result.Output).Trim());var destination=SafePaths.Unique(outputDirectory,Path.GetFileNameWithoutExtension(original)+"."+(format=="tsv"?"csv":format));File.Move(output,destination);return destination;
         }
         finally{if(Directory.Exists(job))Directory.Delete(job,true);}

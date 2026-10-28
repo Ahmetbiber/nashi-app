@@ -1285,6 +1285,7 @@
 "Number of clips" = "Klip sayısı";
 "OFFICE CABINET IS MISSING A FILE." = "OFFICE PAKETİNDE BİR DOSYA EKSİK.";
 "OFFICE CHECKSUM MISMATCH. NOTHING WAS INSTALLED." = "OFFICE SAĞLAMA TOPLAMI EŞLEŞMİYOR. HİÇBİR ŞEY KURULMADI.";
+"OFFICE DID NOT FINISH CONVERTING THIS DOCUMENT WITHIN 5 MINUTES. TRY AGAIN, OR CANCEL AND CHOOSE ANOTHER FORMAT." = "OFFICE BU BELGEYİ 5 DAKİKA İÇİNDE DÖNÜŞTÜREMEDİ. YENİDEN DENE YA DA İPTAL EDİP BAŞKA BİR BİÇİM SEÇ.";
 "OFFICE SETUP COULD NOT FINISH" = "OFİS KURULUMU TAMAMLANAMADI";
 "OFFICE TOOLS" = "OFİS ARAÇLARI";
 "OFFICE TOOLS ARE READY." = "OFİS ARAÇLARI HAZIR.";
@@ -1321,6 +1322,7 @@
 "Office could not convert this document to %@. %lld" = "Office bu belgeyi %@ biçimine dönüştüremedi. %lld";
 "Office could not convert this document to %lld. %@" = "Office bu belgeyi %lld biçimine dönüştüremedi. %@";
 "Office could not convert this document to %lld. %lld" = "Office bu belgeyi %lld biçimine dönüştüremedi. %lld";
+"Office did not finish converting this document within 5 minutes. Try again, or cancel and choose another format." = "Office bu belgeyi 5 dakika içinde dönüştüremedi. Yeniden dene ya da iptal edip başka bir biçim seç.";
 "Office package contains conflicting files: %@" = "Office paketi çakışan dosyalar içeriyor: %@";
 "Office package contains conflicting files: %lld" = "Office paketi çakışan dosyalar içeriyor: %lld";
 "Office package could not be extracted (Windows Installer data code %@)." = "Office paketi açılamadı (Windows Installer veri kodu %@).";

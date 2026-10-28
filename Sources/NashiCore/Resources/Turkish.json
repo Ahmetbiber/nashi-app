@@ -866,6 +866,7 @@
   "Enter a valid number for {0}.": "{0} için geçerli bir sayı gir.",
   "Files were copied safely, but some originals could not be removed. New copies are in {0}. Check the originals before retrying.": "Dosyalar güvenle kopyalandı ama bazı orijinaller kaldırılamadı. Yeni kopyalar şurada: {0}. Tekrar denemeden önce orijinalleri kontrol et.",
   "Office could not convert this document to {0}. {1}": "Office bu belgeyi {0} biçimine dönüştüremedi. {1}",
+  "Office did not finish converting this document within 5 minutes. Try again, or cancel and choose another format.": "Office bu belgeyi 5 dakika içinde dönüştüremedi. Yeniden dene ya da iptal edip başka bir biçim seç.",
   "The document is missing {0}": "Belgede şu öğe eksik: {0}",
   "This conversion is not available for {0}.": "{0} için bu dönüştürme kullanılamıyor.",
   "Office package contains conflicting files: {0}": "Office paketi çakışan dosyalar içeriyor: {0}",

@@ -18,6 +18,11 @@ for key,value in list(values.items()):
     source=source.replace('{'+str(index)+'}',fmt)
     target=target.replace('{'+str(index)+'}',fmt)
    values[source]=target
+# Literal copy handed to LText or NashiPill must have a Turkish entry, or it silently stays English.
+call=re.compile(r'(?:LText\(|NashiPill\(title:)((?:[^()\n]|\([^()\n]*\))*?)(?:\)|,(?:symbol|color):)')
+missing=sorted({(source.relative_to(root).as_posix(),literal) for source in (root/'Sources/NashiApp').rglob('*.swift') for match in call.finditer(source.read_text(encoding='utf-8'))
+ for literal in re.findall(r'"((?:[^"\\]|\\.)*)"',match.group(1)) if '\\(' not in literal and re.search('[A-Za-z]',literal) and literal not in values})
+if missing:raise SystemExit('Missing Turkish copy:\n'+'\n'.join(f'  {path}: {literal}' for path,literal in missing))
 for language in ['en','tr']:
  directory=root/'Resources/Localizations'/f'{language}.lproj'
  if not check:directory.mkdir(parents=True,exist_ok=True)

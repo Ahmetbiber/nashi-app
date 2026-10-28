@@ -1,5 +1,4 @@
 using System.Formats.Tar;
-using System.Globalization;
 using System.IO.Compression;
 using SharpCompress.Archives;
 using SharpCompress.Common;
@@ -17,11 +16,7 @@ public static class ArchiveEngine
     {
         if(type==EncodingType.UTF8)return Encoding.UTF8.GetString(bytes,index,count);
         try{return StrictUtf8.GetString(bytes,index,count);}
-        catch(DecoderFallbackException)
-        {
-            Encoding oem;try{oem=Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);}catch(Exception error)when(error is ArgumentException or NotSupportedException){oem=Encoding.GetEncoding(437);}
-            return oem.GetString(bytes,index,count);
-        }
+        catch(DecoderFallbackException){return LegacyTextCodec.Oem.GetString(bytes,index,count);}
     }
     public static IReadOnlyList<string> Extract(string input,string destination,string? password=null,IProgress<OperationProgress>? progress=null,CancellationToken token=default)
     {

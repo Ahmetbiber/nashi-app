@@ -18,12 +18,13 @@ internal static class ParityChecks
         var info=WebDownload.ParseInfo("{\"title\":\"Nashi fixture\",\"duration\":3,\"formats\":[{\"height\":720},{\"height\":1080},{\"height\":2160,\"has_drm\":true}]}","fixture");check(info.Heights.SequenceEqual(new[]{720,1080})&&info.Duration==3,"Web inspection included DRM format or lost quality choices");try{WebDownload.ParseInfo("{\"is_live\":true}","fixture");throw new Exception("Live stream accepted");}catch(InvalidDataException){check(true,"Web live stream validation");}
         var photoFixture="{\"entries\":[{\"thumbnails\":[{\"url\":\"https://scontent.cdninstagram.com/photo.jpg?stp=c0.0.720.720a_s640x640\",\"width\":640,\"height\":640},{\"url\":\"https://scontent.cdninstagram.com/original.jpg?sig=keep\",\"width\":1440,\"height\":1920}]},{\"duration\":5,\"formats\":[{\"url\":\"https://scontent.cdninstagram.com/video.mp4\"}]}]}";var photos=WebPhotos.Instagram(photoFixture);check(photos.Length==1&&photos[0].Url.EndsWith("original.jpg?sig=keep",StringComparison.Ordinal),"Instagram carousel did not choose full-frame photo or skipped video incorrectly");
         check(LegacyTextCodec.Decode(Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes("Türkçe 🍐")).ToArray())=="Türkçe 🍐","UTF-16 text lost Unicode");
-        check(LegacyTextCodec.Decode(new byte[]{0x63,0x61,0x66,0xe9})=="café","Legacy text decoding failed");
+        check(LegacyTextCodec.Decode(new UTF32Encoding(false,true).GetPreamble().Concat(Encoding.UTF32.GetBytes("Türkçe 🍐")).ToArray())=="Türkçe 🍐","UTF-32 text was read as UTF-16");
         // Files from Turkish Windows, 7-Zip and Excel: ANSI 1254 text, OEM 857 ZIP names, semicolon CSV.
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);var culture=System.Globalization.CultureInfo.CurrentCulture;
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);var culture=System.Globalization.CultureInfo.CurrentCulture;var codePages=LegacyTextCodec.SystemCodePages;
         try
         {
-            System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+            LegacyTextCodec.SystemCodePages=(1252,437);check(LegacyTextCodec.Decode(new byte[]{0x63,0x61,0x66,0xe9})=="café","Legacy text decoding failed");
+            LegacyTextCodec.SystemCodePages=(1254,857);System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
             var turkish=LegacyTextCodec.Decode(Encoding.GetEncoding(1254).GetBytes("1\n00:00:01,000 --> 00:00:02,000\nŞimdi ığdır, İzmir\n"));
             check(turkish.Contains("Şimdi ığdır, İzmir")&&SubtitleCodec.Convert(turkish,"vtt").Contains("Şimdi ığdır, İzmir"),"Turkish ANSI text or subtitles were decoded as Western European");
             var legacyZip=Path.Combine(root,"Legacy names.zip");using(var stream=File.Create(legacyZip))using(var archive=new ZipArchive(stream,ZipArchiveMode.Create,false,Encoding.GetEncoding(857)))foreach(var name in new[]{"Şubat.txt","Ğubat.txt"})using(var writer=new StreamWriter(archive.CreateEntry(name).Open()))writer.Write(name);
@@ -32,9 +33,13 @@ internal static class ParityChecks
             var legacy=ArchiveEngine.Extract(legacyZip,root)[0];var mac=ArchiveEngine.Extract(macZip,root)[0];
             check(File.Exists(Path.Combine(legacy,"Şubat.txt"))&&File.Exists(Path.Combine(legacy,"Ğubat.txt"))&&File.Exists(Path.Combine(mac,"Şubat.txt")),"ZIP names without the UTF-8 flag lost Turkish letters");
             var excel=Path.Combine(root,"Excel.csv");File.WriteAllText(excel,"\"Ad;Soyad\";Tutar\nAyşe;1,5\n");var plain=Path.Combine(root,"Plain.csv");File.WriteAllText(plain,"\"a;b\",c,d\n");
-            check(OfficeDocuments.DelimitedLayout(excel,"csv")==(59,1055)&&OfficeDocuments.DelimitedLayout(plain,"csv")==(44,1033),"Semicolon CSV from Turkish Excel was read as comma-separated English");
+            var notes=Path.Combine(root,"Notes.csv");File.WriteAllText(notes,"name,notes;detail;status\nAda,a;b;c\n");
+            check(OfficeDocuments.DelimitedLayout(excel,"csv")==(59,1055)&&OfficeDocuments.DelimitedLayout(plain,"csv")==(44,1033)&&OfficeDocuments.DelimitedLayout(notes,"csv")==(44,1033),"Semicolon CSV from Turkish Excel was read as comma-separated English, or a comma CSV with semicolons in it as semicolon-separated");
+            var streamed=Path.Combine(root,"Streamed.csv");var normalized=Path.Combine(root,"Streamed UTF-8.csv");const string table="Ad;Şehir\nAyşe;İzmir\n";
+            foreach(var bytes in new[]{Encoding.GetEncoding(1254).GetBytes(table),Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(table)).ToArray(),Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes(table)).ToArray(),new UTF32Encoding(true,true).GetPreamble().Concat(new UTF32Encoding(true,false).GetBytes(table)).ToArray()})
+            {File.WriteAllBytes(streamed,bytes);LegacyTextCodec.ToUtf8Async(streamed,normalized).GetAwaiter().GetResult();check(LegacyTextCodec.Decode(bytes)==table&&File.ReadAllText(normalized)==table&&File.ReadAllBytes(normalized).Length==Encoding.UTF8.GetByteCount(table),"Streamed text normalization did not match Decode");}
         }
-        finally{System.Globalization.CultureInfo.CurrentCulture=culture;}
+        finally{System.Globalization.CultureInfo.CurrentCulture=culture;LegacyTextCodec.SystemCodePages=codePages;}
         var clipping=LegacyTextCodec.Clipping(Encoding.UTF8.GetBytes("<?xml version=\"1.0\"?><plist><dict><key>public.utf8-plain-text</key><data>VMO8cmvDp2U=</data></dict></plist>"));check(Encoding.UTF8.GetString(clipping.Bytes)=="Türkçe","Text clipping plist lost content");
         var binary=LegacyTextCodec.Clipping(System.Convert.FromBase64String("YnBsaXN0MDDRAQJfEBZwdWJsaWMudXRmOC1wbGFpbi10ZXh0aQBUAPwAcgBrAOcAZQAg2DzfUAgLJAAAAAAAAAEBAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAA3"));check(Encoding.UTF8.GetString(binary.Bytes)=="Türkçe 🍐","Binary text clipping lost Unicode");
         var docx=Path.Combine(root,"Styled.docx");using(var archive=ZipFile.Open(docx,ZipArchiveMode.Create))

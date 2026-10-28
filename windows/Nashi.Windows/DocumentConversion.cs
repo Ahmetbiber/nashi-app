@@ -24,7 +24,7 @@ public sealed class DocumentConversion(OfficeRuntime runtime,Toolchain tools)
             if(ext=="pages"){if(engine is null||!tools.Ready)throw new InvalidOperationException("Set up office and media tools once to enable native Pages interoperability.");source=await engine.PagesReadAsync(input,work,token);}
             if(ext=="rtfd"){source=await RichTextAttachments.Materialize(input,work,token);}
             if(ext=="textclipping")source=await MaterializeClipping(input,work,token);
-            if(ext is "txt" or "md" or "csv" or "tsv"){var normalized=Path.Combine(work,Path.GetFileName(input));await File.WriteAllTextAsync(normalized,LegacyTextCodec.Decode(await File.ReadAllBytesAsync(input,token)),new UTF8Encoding(false),token);source=normalized;}
+            if(ext is "txt" or "md" or "csv" or "tsv"){var normalized=Path.Combine(work,Path.GetFileName(input));await LegacyTextCodec.ToUtf8Async(input,normalized,token);source=normalized;}
             if(ext=="epub")source=EpubToHtml(input,work,token);
             if(ext=="pdf"&&format is "txt" or "md")
             {var output=SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);await File.WriteAllTextAsync(output,await PdfDocumentMedia.Text(input,options.Password,token),new UTF8Encoding(false),token);outputs.Add(output);continue;}

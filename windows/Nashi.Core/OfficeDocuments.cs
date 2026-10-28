@@ -34,13 +34,21 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
     }
     // Excel saves semicolon-separated "CSV" where the comma is the decimal mark (Turkish,
     // German…). Read those with the user's locale so 1,5 stays a number, not text.
+    // Semicolons are the delimiter only when every record has the same number of them and
+    // the commas don't line up the same way; anything ambiguous stays comma-separated.
     internal static (int Delimiter,int Language) DelimitedLayout(string input,string ext)
     {
         if(ext=="tsv")return(9,1033);
-        using var reader=new StreamReader(input,Encoding.UTF8,true);var quoted=false;int commas=0,semicolons=0;
-        for(int c;(c=reader.Read())>=0;){if(c=='"')quoted=!quoted;else if(quoted)continue;else if(c=='\n'||c=='\r')break;else if(c==',')commas++;else if(c==';')semicolons++;}
+        using var reader=new StreamReader(input,Encoding.UTF8,true);var quoted=false;int commas=0,semicolons=0;var records=new List<(int Commas,int Semicolons)>();
+        for(int c,read=0;records.Count<50&&read<1_000_000&&(c=reader.Read())>=0;read++)
+        {
+            if(c=='"')quoted=!quoted;else if(quoted)continue;else if(c==',')commas++;else if(c==';')semicolons++;
+            else if(c is '\n' or '\r'){if(commas+semicolons>0)records.Add((commas,semicolons));commas=semicolons=0;}
+        }
+        if(commas+semicolons>0&&reader.Peek()<0)records.Add((commas,semicolons));
+        bool Aligned(Func<(int Commas,int Semicolons),int> count)=>records.Count>0&&count(records[0])>0&&records.All(r=>count(r)==count(records[0]));
         var culture=System.Globalization.CultureInfo.CurrentCulture;var commaDecimal=culture.NumberFormat.NumberDecimalSeparator==","&&culture.LCID is not (127 or 4096);
-        return semicolons>commas?(59,commaDecimal?culture.LCID:1033):(44,1033);
+        return Aligned(r=>r.Semicolons)&&!Aligned(r=>r.Commas)?(59,commaDecimal?culture.LCID:1033):(44,1033);
     }
     public async Task<string> PagesReadAsync(string input,string work,CancellationToken token)
     {

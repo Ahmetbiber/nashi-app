@@ -13,12 +13,12 @@ public static partial class DocumentEngine
         {
             if(inputs.Count<2)throw new ArgumentException("Choose at least two PDFs.");
             using var merged=new PdfDocument();
-            foreach(var file in inputs){token.ThrowIfCancellationRequested();using var source=PdfReader.Open(file,password,PdfDocumentOpenMode.Import);foreach(var page in source.Pages)merged.AddPage(page);}
+            foreach(var file in inputs){token.ThrowIfCancellationRequested();using var source=PdfReader.Open(file,password,PdfDocumentOpenMode.Import);RequireRebuildable(source,tool);foreach(var page in source.Pages)merged.AddPage(page);}
             var output=SafePaths.Unique(tx.StagingDirectory,"Merged.pdf");merged.Save(output);outputs.Add(output);
         }
         else foreach(var input in inputs)
         {
-            token.ThrowIfCancellationRequested();using var source=PdfReader.Open(input,password,PdfDocumentOpenMode.Import);
+            token.ThrowIfCancellationRequested();using var source=PdfReader.Open(input,password,PdfDocumentOpenMode.Import);RequireRebuildable(source,tool);
             if(tool=="splitPDF")
             {
                 if(pagesPerFile<1||pagesPerFile>1000)throw new ArgumentException("Choose between 1 and 1,000 pages per file.");
@@ -44,6 +44,21 @@ public static partial class DocumentEngine
             else throw new ArgumentException("Unknown PDF tool.");
         }
         return tx.Publish(outputs,token);
+    }
+    // These tools copy pages into a new document, which leaves the catalog's form field registry
+    // and attachments behind: fields go dead and files disappear without a word. Refuse instead,
+    // as macOS does where it cannot keep them. Unlike macOS, metadata cleanup still accepts tagged
+    // and layered PDFs: most PDFs saved from Word are tagged, and refusing them would make the tool
+    // unusable for them. Their tags and layer settings are dropped, as they were before.
+    private static void RequireRebuildable(PdfDocument source,string tool)
+    {
+        if(tool=="compress")return;var catalog=source.Internals.Catalog.Elements;
+        var widgets=source.Pages.Cast<PdfPage>().Any(p=>p.Elements.GetArray("/Annots") is {} annotations&&annotations.Elements.Any(e=>(e is PdfSharp.Pdf.Advanced.PdfReference reference?reference.Value:e) is PdfDictionary annotation&&annotation.Elements.GetName("/Subtype")=="/Widget"));
+        var attachments=catalog.GetDictionary("/Names")?.Elements.ContainsKey("/EmbeddedFiles")==true||catalog.ContainsKey("/AF")||catalog.ContainsKey("/Collection");
+        // Some generators write an empty /AcroForm; only fields (or an XFA form) are lost.
+        var form=catalog.GetDictionary("/AcroForm");var fields=form is not null&&(form.Elements.GetArray("/Fields") is {Elements.Count:>0}||form.Elements.ContainsKey("/XFA"));
+        if(!fields&&!widgets&&!attachments)return;
+        throw new InvalidDataException(tool=="removeMetadata"?"This PDF has form fields or attachments that metadata cleanup cannot keep. No copy was exported.":"This PDF has form fields or attachments that merging, splitting or reordering pages cannot keep. No copy was exported.");
     }
     public static string Zip(IReadOnlyList<string> inputs,string destination,IProgress<OperationProgress>? progress=null,CancellationToken token=default)
     {

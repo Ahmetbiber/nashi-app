@@ -1042,6 +1042,8 @@
   "Too many image redirects.": "Görsel çok fazla kez yönlendirildi.",
   "Too many update files.": "Güncellemede çok fazla dosya var.",
   "Turn off uniform width to preserve this PDF’s form fields, attachments, links or navigation.": "Bu PDF'nin form alanlarını, eklerini, bağlantılarını veya gezinmesini korumak için eşit genişliği kapat.",
+  "This PDF has form fields or attachments that merging, splitting or reordering pages cannot keep. No copy was exported.": "Bu PDF'de birleştirme, bölme veya sayfaları yeniden sıralama sırasında korunamayan form alanları ya da ekler var. Kopya dışa aktarılmadı.",
+  "This PDF has form fields or attachments that metadata cleanup cannot keep. No copy was exported.": "Bu PDF'de meta veri temizliği sırasında korunamayan form alanları ya da ekler var. Kopya dışa aktarılmadı.",
   "Unsafe download redirect.": "Güvenli olmayan indirme yönlendirmesi.",
   "Unsafe update entry.": "Güncellemede güvenli olmayan bir öğe var.",
   "Unsupported audio format.": "Desteklenmeyen ses biçimi.",

@@ -62,7 +62,7 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
         Encoding encoding=new UTF8Encoding(false);
         if(data.AsSpan().StartsWith(new byte[]{0x3c,0,0x3f,0}))encoding=new UnicodeEncoding(false,false);
         else if(data.AsSpan().StartsWith(new byte[]{0,0x3c,0,0x3f}))encoding=new UnicodeEncoding(true,false);
-        else if(Regex.Match(Encoding.Latin1.GetString(data,0,Math.Min(data.Length,512)),"^<\\?xml[^>]*?\\sencoding\\s*=\\s*[\"']([A-Za-z][A-Za-z0-9._-]*)[\"']") is {Success:true} declared)
+        else if(Regex.Match(Encoding.Latin1.GetString(data,0,Array.IndexOf(data,(byte)'>')+1),"^<\\?xml[^>]*?\\sencoding\\s*=\\s*[\"']([A-Za-z][A-Za-z0-9._-]*)[\"']") is {Success:true} declared)
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             try{if(Encoding.GetEncoding(declared.Groups[1].Value) is not (UnicodeEncoding or UTF32Encoding) and var named)encoding=named;}

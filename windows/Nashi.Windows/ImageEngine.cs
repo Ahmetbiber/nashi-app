@@ -71,7 +71,9 @@ public static partial class ImageEngine
                     image=FromPng(PhotoCodec.Adjust(PngBytes(image),options.Adjustments));
                     image=TransformPhoto(image,options);break;
                 case "frameImage":image=Frame(image,options.Frame);ext="png";break;
-                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);ext="png";break;
+                // Like macOS, keep the source format: redacted pixels are replaced before encoding, and a
+                // 48 MP JPEG re-saved as PNG took ~5-10 s and grew from 8 MB to 52 MB.
+                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);break;
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;
                 default:throw new ArgumentException("Unsupported image tool.");
             }
@@ -96,7 +98,8 @@ public static partial class ImageEngine
         BitmapSource converted=image.Format==PixelFormats.Bgra32?image:new FormatConvertedBitmap(image,PixelFormats.Bgra32,null,0);
         var stride=checked(converted.PixelWidth*4);var pixels=new byte[checked(stride*converted.PixelHeight)];converted.CopyPixels(pixels,stride,0);
         image=BitmapSource.Create(converted.PixelWidth,converted.PixelHeight,96,96,PixelFormats.Bgra32,null,pixels,stride);image.Freeze();
-        if(format is "webp" or "heic" or "avif"){PhotoCodec.EncodePng(PngBytes(image),output,format,quality,encoderPath,token);return;}
+        // Hand the raw pixels to Magick: an intermediate WPF PNG of a 48 MP photo took 15-19 s alone.
+        if(format is "webp" or "heic" or "avif"){PhotoCodec.EncodePixels(pixels,image.PixelWidth,image.PixelHeight,output,format,quality,encoderPath,token);return;}
         if(format=="pdf")
         {
             using var png=new MemoryStream();var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));encoder.Save(png);png.Position=0;

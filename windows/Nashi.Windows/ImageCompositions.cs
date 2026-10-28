@@ -58,6 +58,8 @@ public static partial class ImageEngine
     internal static BitmapSource Redact(BitmapSource image,Rect[] regions,string style)
     {
         if(regions.Length==0)throw new ArgumentException("Draw at least one area to redact.");
+        // Load can return a lazy EXIF-rotated chain; materialize it once so drawing and every crop reuse the pixels.
+        if(image is not (BitmapFrame or CachedBitmap)){image=new CachedBitmap(image,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);image.Freeze();}
         return Render(image.PixelWidth,image.PixelHeight,g=>
         {
             g.DrawImage(image,new Rect(0,0,image.PixelWidth,image.PixelHeight));foreach(var r in regions)

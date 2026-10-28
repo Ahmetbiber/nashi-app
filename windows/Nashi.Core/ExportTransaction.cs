@@ -52,18 +52,19 @@ public sealed class ExportTransaction : IDisposable
     /// Cleanup never replaces the batch's real outcome. A tool killed on cancel can hold a
     /// file for a moment (yt-dlp's ffmpeg child, for example), which used to turn "Cancelled"
     /// into "file is being used by another process" and leave the staging folder behind.
-    /// Whatever is still locked is retried in the background, so callers on the UI thread
-    /// never wait for it.
+    /// A staging folder that is still locked is retried in the background, so callers on the
+    /// UI thread never wait for it. Published names are tried only once: after a delay the
+    /// name could belong to a new file.
     public void Dispose()
     {
-        var leftovers = (committed ? [] : published).Append(StagingDirectory).Where(path => !TryDelete(path)).ToArray();
-        if (leftovers.Length == 0) return;
+        if (!committed) foreach (var path in published) TryDelete(path);
+        if (TryDelete(StagingDirectory)) return;
         _ = Task.Run(async () =>
         {
-            for (var attempt = 0; attempt < 40 && leftovers.Length > 0; attempt++)
+            for (var attempt = 0; attempt < 40; attempt++)
             {
                 await Task.Delay(250);
-                leftovers = leftovers.Where(path => !TryDelete(path)).ToArray();
+                if (TryDelete(StagingDirectory)) return;
             }
         });
     }
@@ -72,8 +73,13 @@ public sealed class ExportTransaction : IDisposable
     {
         try
         {
-            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-            else if (File.Exists(path)) File.Delete(path);
+            // Exists() is also false when the folder can't be reached; only "not found" means gone.
+            if ((File.GetAttributes(path) & FileAttributes.Directory) != 0) Directory.Delete(path, recursive: true);
+            else File.Delete(path);
+            return true;
+        }
+        catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException)
+        {
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)

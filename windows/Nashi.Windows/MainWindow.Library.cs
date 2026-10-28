@@ -53,7 +53,7 @@ public sealed partial class MainWindow
     private void ReuseSelectedLibrary(){if(busy||SelectedLibrary() is not {} entry)return;files.Clear();Add(entry.AvailablePaths);ShowLibrary(false);}
     private void BuildSelectionActions()
     {
-        homeTitle.Text=files.Count==0?"Your files. Their next form.":"Let’s make something of it.";
+        L10n.SetText(homeTitle,files.Count==0?"Your files. Their next form.":"Let’s make something of it.");
         shortcutHints.Children.Clear();foreach(var hint in new[]{preferences.Value.ConvertModifier+"  Convert",preferences.Value.ToolsModifier+"  Tools",preferences.Value.ActionsModifier+"  File actions"}){var pill=Card(Text(hint,11,"Muted"));pill.Padding=new(9,5,9,5);pill.Margin=new(0,0,7,0);pill.CornerRadius=new(9);shortcutHints.Children.Add(pill);}
         if(files.Count==0)return;
         var stack=new StackPanel();actions.Children.Add(stack);var tiles=new Grid();for(var n=0;n<3;n++)tiles.ColumnDefinitions.Add(new());stack.Children.Add(tiles);

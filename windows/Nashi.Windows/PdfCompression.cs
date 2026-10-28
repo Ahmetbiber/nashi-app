@@ -11,7 +11,7 @@ internal static class PdfCompression
         using var tx=new ExportTransaction(destination);var outputs=new List<string>();foreach(var input in inputs)
         {
             var original=new FileInfo(input).Length;var target=ImageEngine.CompressionTarget(original,options.TargetBytes,options.ReductionPercent);using var source=PdfReader.Open(input,password,PdfDocumentOpenMode.Import);
-            var featureful=source.Internals.Catalog.Elements.ContainsKey("/AcroForm")||source.Internals.Catalog.Elements.ContainsKey("/Names")||source.Internals.Catalog.Elements.ContainsKey("/Outlines")||source.Pages.Cast<PdfPage>().Any(p=>p.Elements.ContainsKey("/Annots"));var text=OfficeDocuments.PdfText(input,password);
+            var featureful=source.Internals.Catalog.Elements.ContainsKey("/AcroForm")||source.Internals.Catalog.Elements.ContainsKey("/Names")||source.Internals.Catalog.Elements.ContainsKey("/Outlines")||source.Internals.Catalog.Elements.ContainsKey("/AF")||source.Internals.Catalog.Elements.ContainsKey("/Collection")||source.Pages.Cast<PdfPage>().Any(p=>p.Elements.ContainsKey("/Annots"));var text=OfficeDocuments.PdfText(input,password);
             if(featureful||!string.IsNullOrWhiteSpace(text))
             {
                 var file=featureful?SafePaths.Unique(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+" Compressed.pdf"):DocumentEngine.Pdf("compress",[input],tx.StagingDirectory,token:token,password:password)[0];if(featureful)File.Copy(input,file);

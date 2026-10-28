@@ -253,7 +253,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
     private static string[] NormalizedRate(string ext,MediaInfo info)
     {
         var source=info.Audio is {SampleRate:>0} audio?audio.SampleRate:48000;
-        int? rate=ext switch{"wav" or "aiff" or "flac" or "ogg"=>source,"mp3" or "m4a" or "aac" or "wma"=>Math.Min(source,48000),_=>null};
+        int? rate=ext switch{"wav" or "aiff" or "flac"=>source,"ogg"=>Math.Min(source,192000),"mp3" or "m4a" or "aac" or "wma"=>Math.Min(source,48000),_=>null};
         return rate is {} value?["-ar",value.ToString(CultureInfo.InvariantCulture)]:[];
     }
 

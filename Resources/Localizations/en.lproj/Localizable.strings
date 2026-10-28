@@ -1207,6 +1207,7 @@
 "Number of clips" = "Number of clips";
 "OFFICE CABINET IS MISSING A FILE." = "OFFICE CABINET IS MISSING A FILE.";
 "OFFICE CHECKSUM MISMATCH. NOTHING WAS INSTALLED." = "OFFICE CHECKSUM MISMATCH. NOTHING WAS INSTALLED.";
+"OFFICE DID NOT FINISH CONVERTING THIS DOCUMENT WITHIN 5 MINUTES. TRY AGAIN, OR CANCEL AND CHOOSE ANOTHER FORMAT." = "OFFICE DID NOT FINISH CONVERTING THIS DOCUMENT WITHIN 5 MINUTES. TRY AGAIN, OR CANCEL AND CHOOSE ANOTHER FORMAT.";
 "OFFICE SETUP COULD NOT FINISH" = "OFFICE SETUP COULD NOT FINISH";
 "OFFICE TOOLS" = "OFFICE TOOLS";
 "ON YOUR MAC" = "ON YOUR MAC";
@@ -1239,6 +1240,7 @@
 "Office could not convert this document to %@. %lld" = "Office could not convert this document to %@. %lld";
 "Office could not convert this document to %lld. %@" = "Office could not convert this document to %lld. %@";
 "Office could not convert this document to %lld. %lld" = "Office could not convert this document to %lld. %lld";
+"Office did not finish converting this document within 5 minutes. Try again, or cancel and choose another format." = "Office did not finish converting this document within 5 minutes. Try again, or cancel and choose another format.";
 "Office package contains conflicting files: %@" = "Office package contains conflicting files: %@";
 "Office package contains conflicting files: %lld" = "Office package contains conflicting files: %lld";
 "Office package could not be extracted (Windows Installer data code %@)." = "Office package could not be extracted (Windows Installer data code %@).";

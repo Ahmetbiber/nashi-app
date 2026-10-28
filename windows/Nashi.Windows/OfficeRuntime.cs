@@ -8,7 +8,20 @@ namespace Nashi.Windows;
 /// actions, register COM servers or change Windows Installer/system settings.
 public sealed class OfficeRuntime(string root)
 {
-    public string? Executable=>new[]{Path.Combine(root,"office-26.8.1","program","soffice.com"),Path.Combine(root,"office-26.8.1","program","soffice.exe"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.com"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.exe")}.FirstOrDefault(ToolInstallation.UsableFile);
+    // Writer's first start registers the bundled Lightproof grammar-checker extensions, which are
+    // Python components. In Nashi's extracted runtime that Python start never returns on some
+    // systems (seen on Windows 11, tr-TR), so every Writer conversion hangs. Nashi only runs
+    // --convert-to filters, which are native code, so the private runtime runs without the
+    // Python loader. A LibreOffice installed under Program Files is never modified.
+    internal const string DisabledPythonLoader="pythonloaderlo.dll.disabled-by-nashi";
+    internal static void DisablePythonLoader(string application)
+    {
+        var loader=Path.Combine(application,"program","pythonloaderlo.dll");
+        try{if(File.Exists(loader))File.Move(loader,Path.Combine(application,"program",DisabledPythonLoader),true);}
+        catch(Exception error)when(error is IOException or UnauthorizedAccessException){}
+    }
+    public string? Executable{get{var managed=Path.Combine(root,"office-26.8.1");if(Directory.Exists(managed))DisablePythonLoader(managed);return Candidates.FirstOrDefault(ToolInstallation.UsableFile);}}
+    private string[] Candidates=>new[]{Path.Combine(root,"office-26.8.1","program","soffice.com"),Path.Combine(root,"office-26.8.1","program","soffice.exe"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.com"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"LibreOffice","program","soffice.exe")};
     public async Task InstallAsync(IProgress<OperationProgress>? progress,CancellationToken token)
     {
         if(Executable is not null)return;Directory.CreateDirectory(root);var stage=Path.Combine(root,".office-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
@@ -19,6 +32,7 @@ public sealed class OfficeRuntime(string root)
             var content=Path.Combine(stage,"content");Directory.CreateDirectory(content);await Task.Run(()=>MsiImage.Extract(msi,content,progress,token),token);
             var executable=Directory.GetFiles(content,"soffice.exe",SearchOption.AllDirectories).Single(p=>Path.GetFileName(Path.GetDirectoryName(p))=="program");var application=Directory.GetParent(Path.GetDirectoryName(executable)!)!.FullName;
             var runtimes=Path.Combine(content,".native-runtime");if(Directory.Exists(runtimes))foreach(var dll in Directory.EnumerateFiles(runtimes,"*.dll"))File.Copy(dll,Path.Combine(application,"program",Path.GetFileName(dll)),true);
+            DisablePythonLoader(application);
             token.ThrowIfCancellationRequested();ToolInstallation.Publish(application,Path.Combine(root,"office-26.8.1"),p=>ToolInstallation.UsableFile(Path.Combine(p,"program","soffice.exe")));progress?.Report(new(1,"Office tools ready"));
         }
         finally{if(Directory.Exists(stage))Directory.Delete(stage,true);}

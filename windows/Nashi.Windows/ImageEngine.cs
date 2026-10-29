@@ -73,7 +73,10 @@ public static partial class ImageEngine
                     image=FromPng(PhotoCodec.Adjust(PngBytes(image),options.Adjustments));
                     image=TransformPhoto(image,options);break;
                 case "frameImage":image=Frame(image,options.Frame);ext="png";break;
-                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);ext="png";break;
+                // Like macOS, keep the source format: redacted pixels are replaced before encoding, and a
+                // 48 MP JPEG re-saved as PNG took ~5-10 s and grew from 8 MB to 52 MB. Writing HEIC needs the
+                // media tools on Windows, so without them a HEIC source keeps the previous PNG output.
+                case "redactImage":image=Redact(image,options.Redactions,options.RedactionStyle);if(ext=="heic"&&options.EncoderPath is null)ext="png";break;
                 case "convert":case "compress":case "removeMetadata":case "annotate":break;
                 default:throw new ArgumentException("Unsupported image tool.");
             }
@@ -122,7 +125,8 @@ public static partial class ImageEngine
         // JPEG has no alpha and WPF drops it unflattened, turning transparent areas black.
         if(format=="jpg")for(var n=0;n<pixels.Length;n+=4){var alpha=pixels[n+3];if(alpha==255)continue;for(var c=0;c<3;c++)pixels[n+c]=(byte)((pixels[n+c]*alpha+255*(255-alpha)+127)/255);pixels[n+3]=255;}
         image=BitmapSource.Create(converted.PixelWidth,converted.PixelHeight,96,96,PixelFormats.Bgra32,null,pixels,stride);image.Freeze();
-        if(format is "webp" or "heic" or "avif"){PhotoCodec.EncodePng(PngBytes(image),output,format,quality,encoderPath,token);return;}
+        // Hand the raw pixels to Magick: an intermediate WPF PNG of a 48 MP photo took 15-19 s alone.
+        if(format is "webp" or "heic" or "avif"){PhotoCodec.EncodePixels(pixels,image.PixelWidth,image.PixelHeight,output,format,quality,encoderPath,token);return;}
         if(format=="pdf")
         {
             using var png=new MemoryStream();var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));encoder.Save(png);png.Position=0;

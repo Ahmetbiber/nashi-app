@@ -114,6 +114,13 @@ internal static class ParityChecks
         var changed=PhotoCodec.Adjust(png,new(){Brightness=.2,Saturation=.3,Temperature=.2,Shadows=.1});using(var a=new MagickImage(png))using(var b=new MagickImage(changed))check(a.Compare(b,ErrorMetric.Absolute)>0,"Photo adjustments did not change pixels");
         foreach(var effect in new[]{new PhotoAdjustments{Blur=2},new(){Sharpen=1},new(){NoiseReduction=.5},new(){Grain=.3},new(){Vignette=.4},new(){Gamma=1.2},new(){Exposure=.5},new(){Hue=50},new(){Dehaze=.2}})check(PhotoCodec.Adjust(png,effect).Length>0,"Photo effect failed");
         try{PhotoCodec.Adjust(png,new(){Gamma=double.NaN});throw new Exception("Invalid adjustment accepted");}catch(ArgumentException){check(true,"Photo finite validation");}
+        // A killed tool can still hold a staged file when the user cancels.
+        Exception? outcome=null;var hidden=false;FileStream? held=null;string? staging=null;var cleanup=new System.Diagnostics.Stopwatch();
+        try{using var tx=new ExportTransaction(Path.Combine(root,"Held export"));staging=tx.StagingDirectory;hidden=File.GetAttributes(staging).HasFlag(FileAttributes.Hidden);held=File.Create(Path.Combine(staging,"partial.mp4"));cleanup.Start();throw new OperationCanceledException();}
+        catch(Exception error){cleanup.Stop();outcome=error;}finally{held?.Dispose();}
+        check(hidden&&outcome is OperationCanceledException&&cleanup.ElapsedMilliseconds<300,"Staging cleanup replaced a cancellation with "+outcome?.GetType().Name+", blocked for "+cleanup.ElapsedMilliseconds+" ms, or staging was visible");
+        var released=System.Diagnostics.Stopwatch.StartNew();while(Directory.Exists(staging)&&released.Elapsed.TotalSeconds<5)Thread.Sleep(50);
+        check(!Directory.Exists(staging),"A staging folder was left behind after its file was released");
     }
     private static void StoredRar(string output)
     {
